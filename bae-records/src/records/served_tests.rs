@@ -54,7 +54,6 @@ async fn a_served_album_reads_its_release_and_numbered_tracks() {
             (TRACK_B, 2, None, format!("{TRACK_B}-0.flac").as_str(), 100),
         ]
     );
-    assert!(album.tracks.iter().all(|song| song.track.release_id == RELEASE_A));
     assert!(album.tracks.iter().all(|song| !song.track.credits.is_empty()));
 }
 

@@ -521,7 +521,7 @@ impl AppServices {
     delegate_lib!(records, served_song => served_song(track_id: &str) -> Option<bae_records::records::served::DbServedSong>);
     delegate_view!(served_artists => served_artists() -> Vec<bae_views::served::DbServedArtist>);
     delegate_view!(served_artist => served_artist(artist_id: &str) -> Option<(bae_views::served::DbServedArtist, Vec<bae_records::records::served::DbServedRelease>)>);
-    delegate_view!(served_album_list => served_album_list(order: bae_views::served::ServedAlbumOrder, page: bae_views::served::ServedPage) -> Vec<bae_records::records::served::DbServedRelease>);
+    delegate_view!(served_album_list => served_album_list(order: bae_views::served::ServedAlbumOrder, page: bae_store::ListPage) -> Vec<bae_records::records::served::DbServedRelease>);
     delegate_view!(served_search => served_search(request: bae_views::served::ServedSearchRequest) -> bae_views::served::DbServedSearch);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_records::ImageRef, pixels: Option<u32>) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_library_image => read_library_image(id: &str, image_type: &bae_records::LibraryImageType) -> Result<Option<bae_library::LibraryImage>, bae_library::LibraryError>);

@@ -224,21 +224,14 @@ pub enum ServedAlbumOrder {
     Random,
 }
 
-/// The place from which a page starts and how many rows it holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ServedPage {
-    pub offset: u64,
-    pub limit: u64,
-}
-
 /// A search outside bae: what it finds, and the page of each kind it lists.
 #[derive(Debug, Clone)]
 pub struct ServedSearchRequest {
     /// The query; `None` lists the whole library.
     pub query: Option<crate::LibrarySearchQuery>,
-    pub artists: ServedPage,
-    pub albums: ServedPage,
-    pub songs: ServedPage,
+    pub artists: ListPage,
+    pub albums: ListPage,
+    pub songs: ListPage,
 }
 
 impl ServedArtist {
@@ -286,7 +279,7 @@ impl LibraryViews {
     pub async fn served_album_list(
         &self,
         order: ServedAlbumOrder,
-        page: ServedPage,
+        page: ListPage,
     ) -> Result<Vec<DbServedRelease>, DbError> {
         let (order, low, high) = match order {
             ServedAlbumOrder::Title => ("title", 0, 0),

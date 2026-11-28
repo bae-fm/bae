@@ -1,6 +1,7 @@
 //! List and search endpoints: album lists, one song, and combined search.
 
-use bae_views::served::{ServedAlbumOrder, ServedPage, ServedSearchRequest};
+use bae_store::ListPage;
+use bae_views::served::{ServedAlbumOrder, ServedSearchRequest};
 use bae_views::LibrarySearchQuery;
 use tracing::debug;
 
@@ -20,7 +21,7 @@ pub(crate) async fn get_album_list2(
     params: Params,
 ) -> Result<Option<Element>, SubError> {
     let list_type = params.require("type")?;
-    let page = ServedPage {
+    let page = ListPage {
         offset: count_param(&params, "offset", 0)?,
         limit: count_param(&params, "size", 10)?,
     };
@@ -65,12 +66,8 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
 
 /// The page of one kind of `search3` result that the parameters
 /// `count_name` and `offset_name` ask for, 20 from the first by default.
-fn search_page(
-    params: &Params,
-    count_name: &str,
-    offset_name: &str,
-) -> Result<ServedPage, SubError> {
-    Ok(ServedPage {
+fn search_page(params: &Params, count_name: &str, offset_name: &str) -> Result<ListPage, SubError> {
+    Ok(ListPage {
         offset: count_param(params, offset_name, 0)?,
         limit: count_param(params, count_name, 20)?,
     })

@@ -137,9 +137,6 @@ sqlive_compose::read!(
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbServedRelease {
     pub id: String,
-    pub album_id: String,
-    /// Its place among its album's releases.
-    pub album_order: f64,
     pub album_title: String,
     /// The album's credits, in list order.
     pub credits: Vec<LibraryCredit>,
@@ -159,7 +156,6 @@ pub struct DbServedRelease {
 #[derive(Debug, Clone)]
 pub struct DbServedTrack {
     pub id: String,
-    pub release_id: String,
     pub title: String,
     pub duration_ms: u64,
     pub created_at: UtcDateTime,
@@ -238,8 +234,6 @@ impl ServedRelease {
             cover: crate::cover_ref(&self.served_release_id, self.cover_version),
             year,
             id: self.served_release_id,
-            album_id: self.served_album_id,
-            album_order: self.album_order,
             album_title: self.album_title,
             credits,
             created_at,
@@ -272,7 +266,6 @@ impl ServedTrack {
         };
         Ok(DbServedTrack {
             credits: super::read::credits_from_json(&credits.credits)?,
-            release_id: self.release_id,
             title: self.title,
             duration_ms: self.duration_ms,
             created_at,
@@ -296,19 +289,28 @@ impl Records {
             return Ok(None);
         };
         let release = first.served.clone().decoded()?;
-        let tracks = rows
-            .filter_map(|row| match (row.song, row.numbered) {
-                (Some(song), Some(numbered)) => Some((song, numbered)),
-                _ => None,
-            })
-            .map(|(song, numbered)| {
-                Ok(DbNumberedServedTrack {
+        let mut tracks = Vec::new();
+        for row in rows {
+            match (row.song, row.numbered) {
+                (Some(song), Some(numbered)) => tracks.push(DbNumberedServedTrack {
                     track: song.decoded()?,
                     number: numbered.number,
                     disc: numbered.disc,
-                })
-            })
-            .collect::<Result<_, DbError>>()?;
+                }),
+                // A release with no track reads as one row with neither.
+                (None, None) => {}
+                (song, numbered) => {
+                    return Err(DbError::unreadable(
+                        format!("a track of served release {release_id}"),
+                        format!(
+                            "song read: {}, numbers read: {}",
+                            song.is_some(),
+                            numbered.is_some()
+                        ),
+                    ))
+                }
+            }
+        }
         Ok(Some(DbServedAlbum { release, tracks }))
     }
 

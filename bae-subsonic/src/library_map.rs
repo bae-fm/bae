@@ -43,9 +43,10 @@ fn whole_seconds(duration_ms: u64) -> i64 {
     i64::try_from(duration_ms / 1000).expect("u64::MAX / 1000 is below i64::MAX")
 }
 
-/// A count as the `i64` Subsonic states. No library holds `i64::MAX` rows.
+/// A count as the `i64` Subsonic states. SQLite counts in `i64`, so every
+/// count the library reads fits.
 fn wire_count(count: u64) -> i64 {
-    i64::try_from(count).unwrap_or(i64::MAX)
+    i64::try_from(count).expect("SQLite counts fit in an i64")
 }
 
 /// The `AlbumID3` for a release: its album's title and credits, this

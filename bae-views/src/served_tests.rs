@@ -82,15 +82,12 @@ async fn an_artist_lists_the_releases_of_its_albums_in_its_pages_order() {
 async fn an_album_list_orders_and_pages_its_releases() {
     let (db, _temp) = served_library().await;
     let views = LibraryViews::new(db);
-    let all = ServedPage { offset: 0, limit: 10 };
+    let all = ListPage { offset: 0, limit: 10 };
     let list =
         async |order, page| release_ids(&views.served_album_list(order, page).await.unwrap());
 
     assert_eq!(list(ServedAlbumOrder::Title, all).await, ids(&["a1", "b1", "b2"]));
-    assert_eq!(
-        list(ServedAlbumOrder::Title, ServedPage { offset: 1, limit: 1 }).await,
-        ids(&["b1"])
-    );
+    assert_eq!(list(ServedAlbumOrder::Title, ListPage { offset: 1, limit: 1 }).await, ids(&["b1"]));
     assert_eq!(list(ServedAlbumOrder::Newest, all).await, ids(&["a1", "b2", "b1"]));
     assert_eq!(
         list(ServedAlbumOrder::Years { from: 1990, to: 2010 }, all).await,
@@ -115,7 +112,7 @@ async fn a_listed_release_reads_what_its_album_shows() {
     let (db, _temp) = served_library().await;
 
     let releases = LibraryViews::new(db)
-        .served_album_list(ServedAlbumOrder::Title, ServedPage { offset: 0, limit: 1 })
+        .served_album_list(ServedAlbumOrder::Title, ListPage { offset: 0, limit: 1 })
         .await
         .unwrap();
 
@@ -133,7 +130,7 @@ async fn a_listed_release_reads_what_its_album_shows() {
 async fn a_search_pages_each_kind_on_its_own() {
     let (db, _temp) = served_library().await;
     let views = LibraryViews::new(db);
-    let page = |offset, limit| ServedPage { offset, limit };
+    let page = |offset, limit| ListPage { offset, limit };
 
     let whole = views
         .served_search(ServedSearchRequest {
