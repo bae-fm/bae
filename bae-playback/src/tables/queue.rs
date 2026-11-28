@@ -81,15 +81,15 @@ impl PlaybackQueueTables {
     }
 }
 
-sqlive_compose::write!(ClearUpNext, r#"DELETE FROM playback_manual"#);
+coven::write!(ClearUpNext, r#"DELETE FROM playback_manual"#);
 
-sqlive_compose::write!(ClearContextLane, r#"DELETE FROM playback_context"#);
+coven::write!(ClearContextLane, r#"DELETE FROM playback_context"#);
 
 // Where the lane is empty, what it plays from cleared: its source and its
 // cursor, which the schema keeps NULL together exactly while the lane is empty.
 // The shuffle mode stays. The schema's `tracks_leave_playback_queue` trigger
 // writes the same clear when a deleted track was the lane's last.
-sqlive_compose::write!(
+coven::write!(
     ClearEmptiedContextSource,
     r#"
     UPDATE playback_queue
@@ -99,47 +99,38 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
-    ResetQueueModes,
-    r#"UPDATE playback_queue SET repeat = 'off', shuffled = 0"#
-);
+coven::write!(ResetQueueModes, r#"UPDATE playback_queue SET repeat = 'off', shuffled = 0"#);
 
-sqlive_compose::write!(
-    SetRepeat(repeat: &'static str),
-    r#"UPDATE playback_queue SET repeat = :repeat"#
-);
+coven::write!(SetRepeat(repeat: &'static str), r#"UPDATE playback_queue SET repeat = :repeat"#);
 
-sqlive_compose::write!(
-    SetShuffle(shuffled: bool),
-    r#"UPDATE playback_queue SET shuffled = :shuffled"#
-);
+coven::write!(SetShuffle(shuffled: bool), r#"UPDATE playback_queue SET shuffled = :shuffled"#);
 
-sqlive_compose::write!(
+coven::write!(
     SetNextEntry(next_entry: i64),
     r#"UPDATE playback_queue SET next_entry = :next_entry"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RemoveFromUpNext(entry: i64),
     r#"DELETE FROM playback_manual WHERE entry = :entry RETURNING track_id"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RemoveFromContextLane(entry: i64),
     r#"DELETE FROM playback_context WHERE entry = :entry RETURNING track_id"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteUpNextAt(position: i64),
     r#"DELETE FROM playback_manual WHERE position = :position"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteUpNextThrough(position: i64),
     r#"DELETE FROM playback_manual WHERE position <= :position"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     PlayContextEntry(entry: i64),
     r#"
     UPDATE playback_queue
@@ -150,7 +141,7 @@ sqlive_compose::write!(
 
 // The playing row's place in the shuffled order whose places start above `top`,
 // where the rows up to `cursor` in the lane's own order come first.
-sqlive_compose::write!(
+coven::write!(
     PlayShuffledAfter(top: i64, cursor: i64),
     r#"
     UPDATE playback_queue
@@ -159,7 +150,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ShuffleWholeLane(top: i64),
     r#"
     UPDATE playback_context SET shuffled = :top + placed.k
@@ -169,7 +160,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ShuffleLaneAfter(top: i64, cursor: i64),
     r#"
     UPDATE playback_context SET shuffled = :top + placed.k
@@ -185,7 +176,7 @@ sqlive_compose::write!(
 // The tracks of the JSON array `tracks` that the library holds, in the order
 // a given list puts them, as Up Next's entries numbered from `base` at places
 // from `start`.
-sqlive_compose::write!(
+coven::write!(
     QueueGivenTracks(tracks: &'p str, base: i64, start: i64),
     r#"
     INSERT INTO playback_manual (entry, position, track_id)
@@ -195,7 +186,7 @@ sqlive_compose::write!(
 );
 
 // [`QueueGivenTracks`] in the order a picked list puts them.
-sqlive_compose::write!(
+coven::write!(
     QueuePickedTracks(tracks: &'p str, base: i64, start: i64),
     r#"
     INSERT INTO playback_manual (entry, position, track_id)
@@ -205,7 +196,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::write!(
+coven::write!(
     SeedContextLane(tracks: &'p str, start: u64),
     r#"
     INSERT INTO playback_context (entry, ordered, shuffled, track_id)
@@ -215,7 +206,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::write!(
+coven::write!(
     SeedLibraryPlayback,
     r#"
     UPDATE playback_queue

@@ -80,9 +80,8 @@ allow_attributes_without_reason = "deny"
 
 # Every consumer, including tests, uses coven's application facade.
 coven = { git = "https://github.com/bae-fm/coven", rev = "a580630e9ea4a1512912701d18166acd20137231" }
-# The macros bae's read fragments are written with, and the compiler its build
-# scripts run. coven's application facade re-exports neither (coven's spec,
-# sqlive-compose).
+# The compiler bae-fragments-build runs. Every other crate writes its
+# statements with the macros coven re-exports.
 sqlive-compose = { git = "https://github.com/bae-fm/coven", rev = "a580630e9ea4a1512912701d18166acd20137231" }
 # coven's schema SQL and what the compiler must know of coven, and what sqlive
 # reads of a SELECT: crates that compile no coven runtime.

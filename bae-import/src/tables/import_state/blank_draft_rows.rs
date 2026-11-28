@@ -13,7 +13,7 @@ use super::*;
 use crate::{CandidateDraft, CandidateTrack, RawTrackEdit, TrackArtistAssignments};
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     SeedBlankDraft(content_hash: &'p str),
     r#"
     INSERT INTO blank_draft_seed (content_hash) VALUES (:content_hash)
@@ -31,7 +31,7 @@ pub(super) fn seed_blank_draft_on(sql: &CovenWrite<'_>, content_hash: &str) -> R
 
 // The blank draft of a candidate as its views hold it, with its mediums and
 // tracks as JSON arrays in their order.
-sqlive_compose::read!(
+coven::read!(
     writer BlankDraftOf(content_hash: String) {
         struct StoredBlankTrack {
             track_id: String,

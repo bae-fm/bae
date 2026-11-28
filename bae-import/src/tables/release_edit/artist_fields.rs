@@ -15,7 +15,7 @@
 // [`assignments_of`](crate::tables::draft_rows::assignments_of) reads: each
 // picked artist with its values as the library holds them, and its picked
 // credit name while the library holds that one.
-sqlive_compose::fragment!(
+coven::fragment!(
     FormArtistFields(album_artists: String, track_artists: String) {
         part: i64,
         track_id: Option<String>,

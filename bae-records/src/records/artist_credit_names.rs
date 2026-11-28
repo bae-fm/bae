@@ -54,7 +54,7 @@ pub(super) fn settle_credit_name(
     settle_credit_name_beside(conn, artist_id, &own, credit, now)
 }
 
-sqlive_compose::write!(
+coven::write!(
     KeepCreditName(artist_id: &'p str, name_key: &'p str, name: &'p str, created_at: &'p str),
     r#"
     INSERT INTO artist_credits (artist_id, name_key, name, created_at)
@@ -93,27 +93,27 @@ fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<Option<Stri
         .optional()?)
 }
 
-sqlive_compose::write!(
+coven::write!(
     RelinkAlbumArtistsCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
     "UPDATE album_artists SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
 );
 
-sqlive_compose::write!(
+coven::write!(
     RelinkTrackArtistsCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
     "UPDATE track_artists SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
 );
 
-sqlive_compose::write!(
+coven::write!(
     RelinkReleaseArtistRolesCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
     "UPDATE release_artist_roles SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
 );
 
-sqlive_compose::write!(
+coven::write!(
     RelinkTrackArtistRolesCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
     "UPDATE track_artist_roles SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
 );
 
-sqlive_compose::write!(
+coven::write!(
     RelinkWorkArtistsCreditName(artist_id: &'p str, from: &'p str, to: Option<&'p str>),
     "UPDATE work_artists SET credit_key = :to WHERE artist_id = :artist_id AND credit_key = :from"
 );
@@ -137,7 +137,7 @@ fn relink_credit_name(
 // The other printed names of the artist the parent row shows as, those of the
 // artists merged into it among them, in name order in the device's language,
 // ties going by key, as a JSON array.
-sqlive_compose::fragment!(
+coven::fragment!(
     OtherNames on artists {
         struct OtherName { artist_id: String, key: String, name: String }
         names: json<Vec<OtherName>>,
@@ -158,7 +158,7 @@ sqlive_compose::fragment!(
 
 // Each artist's other printed names ([`OtherNames`]) and how many they are, as
 // the artist's page lists them.
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistOtherNames { name_count: u64 },
     r#"
     SELECT artist.id AS names_artist_id,
@@ -187,7 +187,7 @@ impl ArtistOtherNames {
 
 // [`ArtistOtherNames`] of the artist `artist`, which a test reads.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer OtherNamesOfArtist(artist: String),
     r#"
     SELECT listed.*
@@ -196,12 +196,12 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SpellCreditName(artist_id: &'p str, name_key: &'p str, name: &'p str),
     "UPDATE artist_credits SET name = :name WHERE artist_id = :artist_id AND name_key = :name_key"
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCreditName(artist_id: &'p str, name_key: &'p str),
     "DELETE FROM artist_credits WHERE artist_id = :artist_id AND name_key = :name_key"
 );

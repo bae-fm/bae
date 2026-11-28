@@ -108,7 +108,7 @@ pub(super) fn sidecar_of(row: Sidecars) -> Result<FolderSidecar, DbError> {
     Ok(FolderSidecar { watched_folder_path, folder, files })
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer SidecarAt(folder: Vec<u8>),
     r#"
     SELECT sidecar.*
@@ -126,12 +126,12 @@ pub(crate) fn load_sidecar(
     bae_store::statement_optional(sql, &request)?.map(|row| sidecar_of(row.sidecar)).transpose()
 }
 
-sqlive_compose::write!(
+coven::write!(
     StampSidecar(folder: &'p [u8], generation: i64),
     r#"UPDATE scan_sidecar SET generation = :generation WHERE folder = :folder"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSidecar(
         folder: &'p [u8],
         watched_folder_path: Vec<u8>,
@@ -144,7 +144,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSidecarFile(
         folder: &'p [u8],
         position: i64,
@@ -309,7 +309,7 @@ struct StoredSidecarFile<'a> {
 
 // The sidecars of the folders `folders` names, a JSON array of their paths'
 // bytes in hex.
-sqlive_compose::write!(
+coven::write!(
     DeleteSidecars(folders: String),
     r#"
     DELETE FROM scan_sidecar

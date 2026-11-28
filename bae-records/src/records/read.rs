@@ -218,7 +218,7 @@ pub fn get_releases_for_album_on(
 }
 
 // One release's catalog records.
-sqlive_compose::read!(
+coven::read!(
     writer OneReleaseRecords(release: String),
     r#"
     SELECT listed.*

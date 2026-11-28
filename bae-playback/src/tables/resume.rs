@@ -16,7 +16,7 @@ pub struct PlaybackResumeRow {
 }
 
 // The `playback_state` row.
-sqlive_compose::fragment!(
+coven::fragment!(
     SavedResume { position_ms: Option<u64> },
     r#"
     SELECT saved.id, saved.current_entry, saved.current_track_id, saved.position_ms
@@ -41,7 +41,7 @@ impl SavedResume {
     }
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer StoredResume,
     r#"
     SELECT saved.*
@@ -52,7 +52,7 @@ sqlive_compose::read!(
 // What a playback service takes up as it starts: the kept volume, how the
 // queue repeats, the resume row while one is stored, and how many tracks the
 // context lane holds, played or not.
-sqlive_compose::read!(
+coven::read!(
     writer PlaybackStartRead { context_tracks: u64 },
     r#"
     SELECT level.*, queue.*, saved.*,
@@ -88,7 +88,7 @@ pub async fn playback_start(store: &Store) -> Result<PlaybackStart, DbError> {
     })
 }
 
-sqlive_compose::write!(
+coven::write!(
     SaveResume(
         current_entry: Option<&'p str>,
         current_track_id: Option<&'p str>,
@@ -100,7 +100,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(DeleteResume, r#"DELETE FROM playback_state"#);
+coven::write!(DeleteResume, r#"DELETE FROM playback_state"#);
 
 /// Write the single device-local `playback_state` row (id = 'current'),
 /// replacing any existing one. Never synced.

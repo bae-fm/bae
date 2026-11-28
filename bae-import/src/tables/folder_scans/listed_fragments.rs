@@ -5,7 +5,7 @@
 // Each release's scan row. `listed_invalid_tags` are the album title and
 // credits its tags give a folder that failed validation, as a JSON array, and
 // `listed_invalid_cover` is the image it leads with (`LeadingImage`).
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedScan {
         listed_invalid_tags: Option<String>
     },
@@ -28,7 +28,7 @@ sqlive_compose::fragment!(
 );
 
 // Each of a release's files as the scan read it.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedFile,
     r#"
     SELECT file.watched_folder_path AS file_root, file.candidate_path AS file_candidate,
@@ -39,7 +39,7 @@ sqlive_compose::fragment!(
 );
 
 // Which file each release's file-tag snapshot read its embedded cover from.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedSnapshot,
     r#"
     SELECT snapshot.watched_folder_path AS snapshot_root,
@@ -50,7 +50,7 @@ sqlive_compose::fragment!(
 );
 
 // The reading each release's file-tag snapshot took of each file.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedTagReading,
     r#"
     SELECT tags.watched_folder_path AS tags_root, tags.candidate_path AS tags_candidate,

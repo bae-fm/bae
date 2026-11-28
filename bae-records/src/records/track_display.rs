@@ -23,7 +23,7 @@ pub struct TrackDisplay {
 // The release a track is on as the track's display names it, as one JSON
 // object: its album, and the version of its own cover, not the album's primary
 // release's.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShownRelease on tracks {
         struct ShownReleaseDocument {
             album_id: String,
@@ -50,7 +50,7 @@ sqlive_compose::fragment!(
 // The fragment reads `tracks` alone, so that SQLite flattens it where a read
 // puts it on the right of a LEFT JOIN: a subquery that is itself a join would
 // be built there for every track in the library.
-sqlive_compose::fragment!(
+coven::fragment!(
     DisplayedTrack { duration_ms: u64 },
     r#"
     SELECT track.id AS display_track_id, track.duration_ms, track.title, track.release_id,

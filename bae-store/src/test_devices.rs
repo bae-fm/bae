@@ -165,7 +165,7 @@ fn pass_ends(
 }
 
 // How the device's last sync pass ended, and when sync last finished.
-sqlive_compose::read!(
+coven::read!(
     writer PassEnd { last_pass: Option<coven::LastPass> },
     r#"
     SELECT status.last_pass AS last_pass, status.last_synced AS last_synced

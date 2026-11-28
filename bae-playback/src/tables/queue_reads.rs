@@ -9,7 +9,7 @@ use crate::{ContextSource, QueueItem, RepeatMode};
 use bae_records::records::track_display::DisplayedTrack;
 
 // How the queue repeats.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueueRepeat { repeat: crate::RepeatMode },
     r#"
     SELECT queue.repeat
@@ -26,7 +26,7 @@ impl QueueRepeat {
 
 // The queue's head: whether shuffle is on, and what the context lane plays
 // from, with the title of its album when it plays one release.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueueHead { shuffled: bool },
     r#"
     SELECT queue.shuffled, queue.source_kind, queue.source_release_id,
@@ -72,7 +72,7 @@ impl QueueHead {
 // when `follows` is true or repeat is on, and `is_empty` is true when
 // `follows` is false. The CTE is materialized, so a read that puts the flags
 // beside each row of a list computes them once.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueueFlags { has_next: bool, has_previous: bool, up_next_count: u32, is_empty: bool },
     r#"
     WITH flagged AS MATERIALIZED (
@@ -104,7 +104,7 @@ sqlive_compose::fragment!(
 // rows show it: the entry's id, which is `QueueEntryId`'s text ('m' for Up
 // Next or 'c' for the context lane, then the entry number), the track and the
 // place the rows are in order by.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueueItems
     with lane_rows(entry TEXT, track_id TEXT, position INTEGER)
     { entry: String, position: i64 },
@@ -133,7 +133,7 @@ pub(super) fn queue_item(entry_id: String, track: DisplayedTrack) -> Result<Queu
 // the index of its order, from where the part starts. The fragment has one
 // context part for each order, and each reads its cursor from the queue row
 // only while the queue reads in that order, so the other part reads no rows.
-sqlive_compose::fragment!(
+coven::fragment!(
     SessionUpNext(limit: i64) { entry: String, track_id: String, position: i64 },
     r#"
     SELECT merged.entry, merged.track_id,
@@ -161,7 +161,7 @@ sqlive_compose::fragment!(
 );
 
 // The first row of the session's up-next list: the track that plays next.
-sqlive_compose::read!(
+coven::read!(
     writer QueueFront(limit: i64),
     r#"
     SELECT front.*
@@ -171,7 +171,7 @@ sqlive_compose::read!(
 
 // The context lane's track after the playing one, while the lane reads in its
 // own order and Up Next is empty; no row otherwise.
-sqlive_compose::read!(
+coven::read!(
     writer NextInOrder,
     r#"
     SELECT later.track_id
@@ -187,7 +187,7 @@ sqlive_compose::read!(
 // The queue as its screens show it: a row for each Up Next entry, in order,
 // each beside the queue's head and flags, and one row with no entry when Up
 // Next is empty.
-sqlive_compose::read!(
+coven::read!(
     writer QueueValue,
     r#"
     SELECT head.*, flags.*, item.*
@@ -201,7 +201,7 @@ sqlive_compose::read!(
 );
 
 // The session's up-next list, each row with its track.
-sqlive_compose::read!(
+coven::read!(
     writer SessionUpNextItems(limit: i64),
     r#"
     SELECT item.*

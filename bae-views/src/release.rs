@@ -106,7 +106,7 @@ pub struct ReleaseDetailProjection {
 // stars this device's person gave its tracks, beside its album's compilation
 // flag and year, its entry in the download queue, the storage actions it offers
 // and how the library shows ratings.
-sqlive_compose::fragment!(
+coven::fragment!(
     ViewedRelease,
     r#"
     SELECT release.*, album.*, download.*, actions.*, systems.*
@@ -124,7 +124,7 @@ sqlive_compose::fragment!(
 
 // [`ViewedRelease`] of the release `release`; no row for a release the
 // library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer ViewedReleaseDetail(release: String),
     r#"
     SELECT viewed.*
@@ -135,7 +135,7 @@ sqlive_compose::read!(
 
 // [`ViewedRelease`] of each release of the album `album`, in the album's
 // order.
-sqlive_compose::read!(
+coven::read!(
     writer ViewedAlbumReleases(album: String),
     r#"
     SELECT viewed.*

@@ -4,7 +4,7 @@ use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, P
 use bae_store::{exactly_one, statement_optional, WriteStatements};
 
 // A member with their profile, none until a device of theirs has written it.
-sqlive_compose::fragment!(
+coven::fragment!(
     MemberWithProfile,
     r#"
     SELECT member.*, profile.*
@@ -18,7 +18,7 @@ sqlive_compose::fragment!(
 // first, by its name in the device's language; the read reads `name_sort`, so
 // coven reruns it when the device's language changes. Those with no profile
 // yet follow, and member id orders the rest.
-sqlive_compose::read!(
+coven::read!(
     writer CurrentPeople,
     r#"
     SELECT person.*
@@ -31,7 +31,7 @@ sqlive_compose::read!(
 );
 
 // How many people the library has and how many active devices they have.
-sqlive_compose::read!(
+coven::read!(
     writer PeopleCounts { people: u32, devices: u32 },
     r#"
     SELECT count(*) AS people, coalesce(sum(member.active_device_count), 0) AS devices
@@ -43,7 +43,7 @@ sqlive_compose::read!(
 // The member this device writes as: its own member, also after the library
 // removed them, with their profile, none until a device of theirs has written
 // it.
-sqlive_compose::read!(
+coven::read!(
     writer WritingPerson { member_id: coven::MemberId },
     r#"
     SELECT own.member_id, profile.*
@@ -54,7 +54,7 @@ sqlive_compose::read!(
 
 // The profile of this device's person while the library holds them: the name
 // an invite gives its inviter.
-sqlive_compose::read!(
+coven::read!(
     writer InviterProfile,
     r#"
     SELECT profile.*
@@ -93,7 +93,7 @@ fn writing_profile_on(
 }
 
 // The current member `:member`.
-sqlive_compose::read!(
+coven::read!(
     writer CurrentPerson(member: coven::MemberId),
     r#"
     SELECT person.*
@@ -103,7 +103,7 @@ sqlive_compose::read!(
 );
 
 // The profile of the person `:member`.
-sqlive_compose::read!(
+coven::read!(
     writer ProfileOf(member: coven::MemberId),
     r#"
     SELECT profile.*
@@ -112,22 +112,22 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RenameProfile(name: &'p str, person: coven::MemberId),
     r#"UPDATE people SET name = :name WHERE id = :person"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetProfileHistorySharing(sharing: &'static str, person: coven::MemberId),
     r#"UPDATE people SET history_sharing = :sharing WHERE id = :person"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetProfileAvatar(avatar: coven::FileId, person: coven::MemberId),
     r#"UPDATE people SET avatar_id = :avatar WHERE id = :person"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ClearProfileAvatar(person: coven::MemberId),
     r#"UPDATE people SET avatar_id = NULL WHERE id = :person"#
 );

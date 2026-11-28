@@ -14,7 +14,7 @@ use bae_store::WriteStatements as _;
 
 // What a person decided the identification of each candidate that has decided
 // anything asks about: the header row, with its lists as JSON arrays.
-sqlive_compose::fragment!(
+coven::fragment!(
     LookupChoiceRow {
         choices_disc_id_excluded: bool,
         choices_chosen_catalogs: String,
@@ -39,7 +39,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer LookupChoicesOf(content_hash: String),
     r#"
     SELECT choices.*
@@ -86,14 +86,14 @@ fn load_lookup_choices_on(
         .unwrap_or_default())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteLookupChoices(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_lookup_choices WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertLookupChoices(
         content_hash: &'p str,
         disc_id_excluded: bool,
@@ -112,14 +112,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteExcludedBarcodes(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_excluded_barcode WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertExcludedBarcode(content_hash: &'p str, value: &'p str),
     r#"
     INSERT INTO import_candidate_excluded_barcode (content_hash, value)
@@ -127,14 +127,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteChosenCatalogs(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_chosen_catalog WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertChosenCatalog(content_hash: &'p str, position: i64, value: &'p str),
     r#"
     INSERT INTO import_candidate_chosen_catalog (content_hash, position, value)
@@ -142,14 +142,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDiscountedCatalogs(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_discounted_catalog WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertDiscountedCatalog(content_hash: &'p str, value: &'p str),
     r#"
     INSERT INTO import_candidate_discounted_catalog (content_hash, value)

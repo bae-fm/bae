@@ -132,7 +132,7 @@ fn a_former_devices_state_reads_by_coven_s_name() {
 fn every_place_returns_a_change_of_a_kind_no_place_shows() {
     use super::admin_operations::{PlaceAdminChanges, PlaceAdminChangesParams};
     use crate::admin_change::AdminChangePlace;
-    use sqlive_compose::{Returning as _, Statement as _};
+    use coven::{Returning as _, Statement as _};
     let connection = rusqlite::Connection::open_in_memory().unwrap();
     crate::test_fixtures::TEST_SCHEMA.open_bare_library(&connection);
     connection

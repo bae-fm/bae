@@ -8,19 +8,16 @@
 use bae_store::WriteStatements;
 
 #[cfg(test)]
-sqlive_compose::write!(PlantEarlierAlbumKeys, r#"UPDATE album_listing SET title_sort_key = x'01'"#);
+coven::write!(PlantEarlierAlbumKeys, r#"UPDATE album_listing SET title_sort_key = x'01'"#);
 
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     PlantEarlierArtistKeys,
     r#"UPDATE artist_listing SET name_sort_key = x'01', sort_name_sort_key = x'01'"#
 );
 
 #[cfg(test)]
-sqlive_compose::write!(
-    PlantEarlierLinkKeys,
-    r#"UPDATE album_artist_link SET artist_sort_key = x'01'"#
-);
+coven::write!(PlantEarlierLinkKeys, r#"UPDATE album_artist_link SET artist_sort_key = x'01'"#);
 
 #[cfg(test)]
 impl crate::LibraryViews {

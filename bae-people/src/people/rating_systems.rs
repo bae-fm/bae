@@ -107,23 +107,23 @@ pub(crate) fn write_first_rating_systems(sql: &coven::MemberWrite<'_>) -> rusqli
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertRatingSystems(system: &'static str),
     r#"INSERT INTO rating_systems (id, albums, tracks) VALUES ('library', :system, :system)"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetAlbumRatingSystem(system: &'static str),
     r#"UPDATE rating_systems SET albums = :system WHERE id = 'library'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetTrackRatingSystem(system: &'static str),
     r#"UPDATE rating_systems SET tracks = :system WHERE id = 'library'"#
 );
 
 // The library's one `rating_systems` row.
-sqlive_compose::fragment!(
+coven::fragment!(
     LibraryRatingSystems,
     r#"
     SELECT systems.albums, systems.tracks
@@ -134,7 +134,7 @@ sqlive_compose::fragment!(
 
 // The library's rating systems, and whether the member using this device may
 // change them.
-sqlive_compose::read!(
+coven::read!(
     writer RatingSystemsToChange,
     r#"
     SELECT library.*, viewer.*

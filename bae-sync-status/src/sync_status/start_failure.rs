@@ -316,7 +316,7 @@ impl StartFailure {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     KeepStartFailure(
         category: &'static str,
         storage_failure: Option<&'static str>,
@@ -336,7 +336,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(DeleteStartFailure, r#"DELETE FROM sync_start_failure"#);
+coven::write!(DeleteStartFailure, r#"DELETE FROM sync_start_failure"#);
 
 impl SyncStatus {
     /// Record why starting sync failed.

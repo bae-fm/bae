@@ -106,7 +106,7 @@ pub(super) fn require_watched(
         .ok_or_else(|| WatchedFolderRefusal::Unwatched(folder.to_path_buf()).into())
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer WatchedAmong(folders: String),
     r#"
     SELECT watched.path
@@ -116,12 +116,12 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer WatchedRoots,
     "SELECT watched.path FROM watched_import_folders AS watched ORDER BY watched.position"
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer IsWatched(path: Vec<u8>) { watched: bool },
     "SELECT EXISTS (SELECT 1 FROM watched_import_folders AS stored
                     WHERE stored.path = :path) AS watched"
@@ -129,7 +129,7 @@ sqlive_compose::read!(
 
 // The watched folders inside a folder, not the folder itself, in their order:
 // those whose key is in the range of paths below it, from `first` to `past`.
-sqlive_compose::read!(
+coven::read!(
     writer WatchedBelow(first: Vec<u8>, past: Vec<u8>, folder: Vec<u8>, most: i64),
     r#"
     SELECT watched.path
@@ -222,7 +222,7 @@ fn refuse_overlap_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), crate::I
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     AppendWatchedFolder(path: Vec<u8>),
     r#"
     INSERT INTO watched_import_folders (path, position)
@@ -310,7 +310,7 @@ impl ImportTables {
 }
 
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     PlantWatchedFolder(path: Vec<u8>),
     r#"INSERT INTO watched_import_folders (path, position) VALUES (:path, 99)"#
 );

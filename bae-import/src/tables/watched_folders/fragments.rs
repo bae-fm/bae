@@ -1,6 +1,6 @@
 //! What the watched folders offer other reads.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     WatchedFolderRows { watched_path: Vec<u8> },
     r#"
     SELECT watched.path AS watched_path, watched.position

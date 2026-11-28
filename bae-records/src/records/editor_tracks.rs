@@ -28,7 +28,7 @@ use bae_store::statement_rows;
 // object: its name, the side its first track sits on, the choices of side, how
 // many of its `FILE` lines play audio, the ones that play none, the line the
 // track is under and the audio files that line can play from.
-sqlive_compose::fragment!(
+coven::fragment!(
     EditorTrackRows(release: String, edits: String)
     with mediums(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
@@ -183,7 +183,7 @@ sqlive_compose::fragment!(
 // mediums the layout starts from
 // ([`BaseMediums`](super::layout_fragments::BaseMediums)), which number the
 // track table's headings and the choices of a CUE sheet's side.
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftEditorTrackRows(
         release: String,
         applied: bool,
@@ -214,7 +214,7 @@ sqlive_compose::fragment!(
 // [`DraftEditorTrackRows`] in release order, for the tests of the layout and
 // of the sheet edits.
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer DraftEditorTracks(
         release: String,
         applied: bool,

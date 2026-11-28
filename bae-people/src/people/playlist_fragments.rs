@@ -11,7 +11,7 @@ use bae_types::count_label::CountLabel;
 // Each playlist as it is listed: its owner, whether this device's person made
 // it, how many entries it has, how long their tracks play, and the covers of
 // the first four different releases its entries are on, in entry order.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedPlaylist {
         audience: coven::Audience,
         yours: bool,
@@ -54,7 +54,7 @@ sqlive_compose::fragment!(
 // array in order, each with its track, the track's album, its release's
 // cover, its number from 1, and whether an entry comes before it and after
 // it. `playlist_entries_position` serves the lookup and the numbering's order.
-sqlive_compose::fragment!(
+coven::fragment!(
     PagedEntries(playlist: Option<String>) {
         struct PlaylistEntryDocument {
             position_id: String,
@@ -104,7 +104,7 @@ sqlive_compose::fragment!(
 
 // Whether the person using this device has a profile, which a playlist needs
 // to have an owner.
-sqlive_compose::fragment!(
+coven::fragment!(
     OwnProfileExists { has_profile: bool },
     r#"
     SELECT COUNT(*) > 0 AS has_profile

@@ -45,7 +45,7 @@ impl RowSources {
     }
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer ItemsAtKeys(keys: String, grouping_releases: bool),
     r#"
     SELECT item.*
@@ -78,7 +78,7 @@ pub(crate) struct StoredScanItem {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer ItemsUnderRoot(root: Vec<u8>, grouping_releases: bool),
     r#"
     SELECT item.*
@@ -223,7 +223,7 @@ impl CoveredFolders {
     }
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer ReadersCovering(
         root: Vec<u8>,
         folder: Vec<u8>,

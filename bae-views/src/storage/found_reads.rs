@@ -5,7 +5,7 @@
 // The window of the list a search narrows: the releases from the window's
 // first key on, in the sort's order, each with its key and its row. The
 // subquery picks the window's releases, so only their rows are read.
-sqlive_compose::read!(
+coven::read!(
     writer FoundWindow(
         sort: String,
         search: Option<String>,
@@ -48,7 +48,7 @@ sqlive_compose::read!(
 );
 
 // [`FoundWindow`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer FoundTop(
         sort: String,
         search: Option<String>,
@@ -83,7 +83,7 @@ sqlive_compose::read!(
 );
 
 // How many releases of the list a search narrows come before the row at a key.
-sqlive_compose::read!(
+coven::read!(
     writer FoundBefore(
         sort: String,
         search: Option<String>,
@@ -112,7 +112,7 @@ sqlive_compose::read!(
 // The key at a position of the list a search narrows, or of its last row when
 // it ends before it; no row for an empty list, since SQLite reads its offset
 // of -1 as 0.
-sqlive_compose::read!(
+coven::read!(
     writer FoundKeyAt(sort: String, search: Option<String>, stored: Option<i64>, position: i64) {
         key_0: bae_store::list_windows::SortValue,
         key_1: bae_store::list_windows::SortValue,
@@ -142,7 +142,7 @@ sqlive_compose::read!(
 
 // How many releases a search finds under a filter or none, and their files'
 // total size.
-sqlive_compose::read!(
+coven::read!(
     writer FoundTotals(search: Option<String>, stored: Option<i64>) { found: u64, total_size: u64 },
     r#"
     SELECT COUNT(*) AS found, COALESCE(SUM(entry.total_size), 0) AS total_size

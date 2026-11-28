@@ -10,7 +10,7 @@ use bae_records::records::served::{DbServedRelease, DbServedTrack};
 
 // Each artist the artist list shows, as the list shows it, with how many
 // releases the albums that credit it hold.
-sqlive_compose::fragment!(
+coven::fragment!(
     ServedArtist { release_count: i64 },
     r#"
     SELECT shown.*,
@@ -24,7 +24,7 @@ sqlive_compose::fragment!(
 );
 
 // Every artist the artist list shows, in name order, ties going by id.
-sqlive_compose::read!(
+coven::read!(
     writer EveryServedArtist,
     r#"
     SELECT served.*
@@ -39,7 +39,7 @@ sqlive_compose::read!(
 // album), each album's releases in their album's order. The artist list shows
 // only artists whose credits show an album, and every album holds a release
 // (§2.1), so no row means the list doesn't show the artist.
-sqlive_compose::read!(
+coven::read!(
     writer ServedArtistReleases(artist: String),
     r#"
     SELECT served.*, release.*
@@ -60,7 +60,7 @@ sqlive_compose::read!(
 // by that year up and down; and `random`, in an order no two reads share.
 // Ties go by when each release was added, then by id. The statement reads
 // what a release shows only for the releases of the page.
-sqlive_compose::read!(
+coven::read!(
     writer ServedAlbumList(order: String, low: i64, high: i64, offset: i64, limit: i64),
     r#"
     SELECT release.*
@@ -85,7 +85,7 @@ sqlive_compose::read!(
 // pattern `pattern`, every one for no pattern, in name order, ties going by
 // id: the `limit` from the place `offset`, each with its place among them,
 // from 1.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundServedArtists(pattern: Option<String>, offset: i64, limit: i64) { place: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.name_sort_key, picked.artist_id) AS place,
@@ -105,7 +105,7 @@ sqlive_compose::fragment!(
 // for the search pattern `pattern`, every one for no pattern, in album title
 // order, ties going by album, each album's releases in its order: the `limit`
 // from the place `offset`, each with its place among them, from 1.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundServedAlbums(pattern: Option<String>, offset: i64, limit: i64) { place: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (
@@ -132,7 +132,7 @@ sqlive_compose::fragment!(
 // for no pattern, in title order, ties going by id: the `limit` from the place
 // `offset`, each with its place among them, from 1, and its release as an
 // album.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundServedSongs(pattern: Option<String>, offset: i64, limit: i64) { place: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.title_sort_key, picked.track_id) AS place,
@@ -156,7 +156,7 @@ sqlive_compose::fragment!(
 // ([`FoundServedArtists`], [`FoundServedAlbums`], [`FoundServedSongs`]). The
 // places are those any kind lists, and the row of each place holds each
 // kind's row at that place, none for a kind that lists fewer.
-sqlive_compose::read!(
+coven::read!(
     writer ServedSearch(
         pattern: Option<String>,
         artist_offset: i64,

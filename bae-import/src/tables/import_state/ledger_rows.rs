@@ -116,35 +116,35 @@ pub(super) fn step_columns<'a>(
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteLookupValues(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_lookup_value WHERE verdict_id = :verdict
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteLookupProviders(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_lookup_provider WHERE verdict_id = :verdict
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteLookupIsrcs(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_lookup_isrc WHERE verdict_id = :verdict
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteOfferedCatalogs(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_lookup_offered_catalog WHERE verdict_id = :verdict
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLookupProvider(verdict: super::verdict_rows::VerdictId, position: i64, catalog: &'p str),
     r#"
     INSERT INTO import_candidate_lookup_provider
@@ -153,7 +153,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLookupValue(
         verdict: super::verdict_rows::VerdictId,
         step: &'p str,
@@ -168,7 +168,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertOfferedCatalog(verdict: super::verdict_rows::VerdictId, position: i64, value: &'p str),
     r#"
     INSERT INTO import_candidate_lookup_offered_catalog
@@ -177,7 +177,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLookupIsrc(verdict: super::verdict_rows::VerdictId, position: i64, isrc: &'p str),
     r#"
     INSERT INTO import_candidate_lookup_isrc
@@ -186,7 +186,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLookup(
         verdict: super::verdict_rows::VerdictId,
         step: &'p str,
@@ -208,7 +208,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLookupRelease(
         verdict: super::verdict_rows::VerdictId,
         step: &'p str,
@@ -233,7 +233,7 @@ sqlive_compose::write!(
 
 // Damage a test plants: a ledger's ISRC rows gone.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     LoseIsrcRows(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_lookup_isrc
@@ -244,7 +244,7 @@ sqlive_compose::write!(
 
 // What a test rewrites the one not-asked cell of a candidate's ledger as.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     RewriteNotAskedCell(
         answer: &'static str,
         not_asked_reason: Option<&'static str>,

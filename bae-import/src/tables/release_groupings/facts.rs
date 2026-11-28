@@ -14,7 +14,7 @@ pub(crate) enum GroupingFacts {
 // The grouping `key`, and beside it, for an anchored one, the watched folder
 // covering its anchor: watched folders never overlap, so at most one does.
 // `bae_folder_relative` refuses NULL, so `CASE` calls it only for an anchor.
-sqlive_compose::read!(
+coven::read!(
     writer GroupingWithWatched(key: crate::CandidateKey),
     r#"
     SELECT stored.*, watched.*

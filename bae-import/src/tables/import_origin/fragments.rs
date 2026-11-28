@@ -1,7 +1,7 @@
 //! What the import origin offers the candidate pane: the release this device imported from a candidate.
 
 // The release this device imported from each folder hash it imported.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseOrigin {},
     r#"
     SELECT origin.content_hash AS origin_hash, origin.release_id AS origin_release_id
@@ -9,7 +9,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ImportedRelease(key: crate::CandidateKey) { imported_key: crate::CandidateKey },
     r#"
     SELECT :key AS imported_key, release.*

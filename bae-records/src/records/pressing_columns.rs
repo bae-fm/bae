@@ -20,7 +20,7 @@ use rusqlite::Row;
 // The library release's labels as one JSON array of each label's name, as the
 // library label it names shows it, and its catalog number, in order; `[]` for
 // a release with none. [`labels_of_json`] reads it.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseLabels on releases { labels: String },
     r#"
     SELECT json_group_array(json_object(
@@ -34,7 +34,7 @@ sqlive_compose::fragment!(
 );
 
 // The library release's barcodes as one JSON array, in order.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseBarcodes on releases { barcodes: String },
     r#"
     SELECT json_group_array(barcode.barcode ORDER BY barcode.position) AS barcodes
@@ -45,7 +45,7 @@ sqlive_compose::fragment!(
 
 // The library release's media as one JSON array of each carrier and its
 // count, in order.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseMedia on releases { media: String },
     r#"
     SELECT json_group_array(json_object('medium', counted.medium, 'count', counted.count)
@@ -63,7 +63,7 @@ impl ReleaseMedia {
 }
 
 // The library release's Discogs details as one JSON array of keys, in order.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseDiscogsDetails on releases { discogs_details: String },
     r#"
     SELECT json_group_array(stated.detail ORDER BY stated.position) AS discogs_details

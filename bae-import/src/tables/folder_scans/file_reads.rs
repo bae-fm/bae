@@ -17,7 +17,7 @@ use bae_store::statement_rows;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-sqlive_compose::read!(
+coven::read!(
     writer KnownOfRootRows(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
         root_generation: Option<i64>
     },
@@ -264,7 +264,7 @@ impl<'a> WantedElement<'a> {
     }
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer ScanBatchReadings(wanted: String) { at: i64, settled: bool },
     r#"
     SELECT asked.value ->> 'at' AS at,

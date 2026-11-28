@@ -6,7 +6,7 @@
 // under a filter and a search keeps, by release id, each beside what all of
 // those rows allow, whether Cancel is the only action one of them offers, and
 // whether it is the only one of them. Each is reached by its id.
-sqlive_compose::read!(
+coven::read!(
     writer SelectedStorageRows(selected: String, stored: Option<i64>, search: Option<String>) {
         every_can_upload: bool,
         every_can_pin: bool,
@@ -38,7 +38,7 @@ sqlive_compose::read!(
 // The releases the list under a sort, a filter and a search shows from the
 // release `from` to the release `to`, both included, in its order; the one it
 // shows when it shows only one of the two, and none when it shows neither.
-sqlive_compose::read!(
+coven::read!(
     writer StorageBetween(
         sort: String,
         stored: Option<i64>,
@@ -68,7 +68,7 @@ sqlive_compose::read!(
 );
 
 // Every release the list under a filter and a search shows.
-sqlive_compose::read!(
+coven::read!(
     writer StorageIds(stored: Option<i64>, search: Option<String>),
     r#"
     SELECT entry.release_id
@@ -82,7 +82,7 @@ sqlive_compose::read!(
 
 // Whether the upload queue holds a file and what holds that queue back, and
 // what the download queue and the export and save queue are doing.
-sqlive_compose::read!(
+coven::read!(
     writer StorageQueueWork { uploading: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM coven_upload_queue) AS uploading,

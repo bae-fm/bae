@@ -46,7 +46,7 @@ pub async fn now_playing(store: &Store) -> Result<NowPlayingValues, DbError> {
     now_playing_of(store.read_row(PlayingNowParams {}).await?)
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     KeptLevel { volume: f32, is_muted: bool },
     r#"
     SELECT now.volume, now.is_muted
@@ -65,7 +65,7 @@ impl KeptLevel {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer PlaybackLevel,
     r#"
     SELECT kept.*
@@ -79,7 +79,7 @@ pub async fn playback_level(store: &Store) -> Result<(crate::Volume, bool), DbEr
     store.read_row(PlaybackLevelParams {}).await?.kept.into_level()
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Casting {
         cast_receiver_id: Option<String>,
         cast_receiver_name: Option<String>,
@@ -111,7 +111,7 @@ impl Casting {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     PreviewedWindow {
         previewed_state: String,
         previewed_path: Option<Vec<u8>>,
@@ -139,7 +139,7 @@ impl PreviewedWindow {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     SetPlaybackState(
         state: &'static str,
         track_id: Option<&'p str>,
@@ -162,17 +162,11 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
-    SetPlaybackVolume(volume: f32),
-    r#"UPDATE playback_now SET volume = :volume"#
-);
+coven::write!(SetPlaybackVolume(volume: f32), r#"UPDATE playback_now SET volume = :volume"#);
 
-sqlive_compose::write!(
-    SetPlaybackMuted(is_muted: bool),
-    r#"UPDATE playback_now SET is_muted = :is_muted"#
-);
+coven::write!(SetPlaybackMuted(is_muted: bool), r#"UPDATE playback_now SET is_muted = :is_muted"#);
 
-sqlive_compose::write!(
+coven::write!(
     SetRemotePlayback(
         remote: &'static str,
         receiver_id: Option<&'p str>,
@@ -192,7 +186,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetPlaybackPreview(
         preview: &'static str,
         path: Option<&'p [u8]>,
@@ -207,7 +201,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetPlaybackFailure(
         failure: &'static str,
         problem: Option<&'static str>,
@@ -233,7 +227,7 @@ sqlive_compose::write!(
 );
 
 // The row's failure cleared, which ends the failure notice.
-sqlive_compose::write!(
+coven::write!(
     ClearPlaybackFailure,
     r#"
     UPDATE playback_now
@@ -247,7 +241,7 @@ sqlive_compose::write!(
 );
 
 // Every column but the volume and mute, as playback starts with them.
-sqlive_compose::write!(
+coven::write!(
     ResetPlaybackNow,
     r#"
     UPDATE playback_now
@@ -267,7 +261,7 @@ sqlive_compose::write!(
 );
 
 // The volume full and unmuted.
-sqlive_compose::write!(ResetPlaybackLevel, r#"UPDATE playback_now SET volume = 1.0, is_muted = 0"#);
+coven::write!(ResetPlaybackLevel, r#"UPDATE playback_now SET volume = 1.0, is_muted = 0"#);
 
 impl PlaybackNowRow {
     /// Write `change` into the row. A state that plays clears the last
@@ -622,7 +616,7 @@ impl StoredReceiver {
 // of a file it previews, and the current display of the track it names,
 // loading, playing or paused; the display is NULL when the row names no track
 // the library holds.
-sqlive_compose::read!(
+coven::read!(
     writer PlayingNow {
         prepared: Option<bool>,
         waits_on_storage: Option<bool>,

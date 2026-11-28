@@ -12,7 +12,7 @@
 // Each stored file's version, for a fragment to read the version of the file
 // its row names. SQLite's `hex` of NULL is an empty string, not NULL, so the
 // device's part is chosen on `coven_file_device` itself.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredFileVersion { file: coven::FileId, version: String },
     r#"
     SELECT coven.id AS file,

@@ -67,7 +67,7 @@ pub struct HistoryCount {
 // the place (`from_at`, `from_id`), each with its track, cover and person. The
 // joins after the plays are CROSS JOINs, so that SQLite reads the plays first,
 // along their index.
-sqlive_compose::read!(
+coven::read!(
     writer HistoryWindow(from_at: String, from_id: String, limit: i64) { opens_day: bool },
     r#"
     SELECT play.started_at, play.id, play.played_on, play.opens_day, track.*, cover.*,
@@ -84,7 +84,7 @@ sqlive_compose::read!(
 );
 
 // [`HistoryWindow`] from History's top: the newest plays.
-sqlive_compose::read!(
+coven::read!(
     writer HistoryTop(limit: i64) { opens_day: bool },
     r#"
     SELECT play.started_at, play.id, play.played_on, play.opens_day, track.*, cover.*,
@@ -100,7 +100,7 @@ sqlive_compose::read!(
 );
 
 // [`HistoryWindow`] of the plays of the person `person`.
-sqlive_compose::read!(
+coven::read!(
     writer PersonHistoryWindow(person: coven::MemberId, from_at: String, from_id: String, limit: i64)
         { opens_day: bool },
     r#"
@@ -119,7 +119,7 @@ sqlive_compose::read!(
 );
 
 // [`PersonHistoryWindow`] from History's top: the person's newest plays.
-sqlive_compose::read!(
+coven::read!(
     writer PersonHistoryTop(person: coven::MemberId, limit: i64)
         { opens_day: bool },
     r#"
@@ -140,7 +140,7 @@ sqlive_compose::read!(
 // of whose plays, the current members with a profile, this device's person
 // first and the others by name in the device's language, each marked when
 // `person` names them; and `person`'s name, NULL when no profile has the id.
-sqlive_compose::read!(
+coven::read!(
     writer HistoryTotals(person: Option<coven::MemberId>) {
         plays: u64,
         people: json<Vec<crate::history::HistoryPerson>>,
@@ -172,7 +172,7 @@ sqlive_compose::read!(
 );
 
 // How many plays of History come before the place (`at`, `id`).
-sqlive_compose::read!(
+coven::read!(
     writer PlaysBefore(at: String, id: String) { plays: u64 },
     r#"
     SELECT COUNT(*) AS plays
@@ -182,7 +182,7 @@ sqlive_compose::read!(
 );
 
 // [`PlaysBefore`] among the plays of the person `person`.
-sqlive_compose::read!(
+coven::read!(
     writer PersonPlaysBefore(person: coven::MemberId, at: String, id: String) { plays: u64 },
     r#"
     SELECT COUNT(*) AS plays
@@ -194,7 +194,7 @@ sqlive_compose::read!(
 // The place of the play at `index`, counted from History's top, or of the last
 // play when History ends before it. SQLite reads the offset -1 of an empty
 // list as 0, where there is no row.
-sqlive_compose::read!(
+coven::read!(
     writer PlayAt(index: i64),
     r#"
     SELECT play.started_at, play.id
@@ -207,7 +207,7 @@ sqlive_compose::read!(
 );
 
 // [`PlayAt`] among the plays of the person `person`.
-sqlive_compose::read!(
+coven::read!(
     writer PersonPlayAt(person: coven::MemberId, index: i64),
     r#"
     SELECT play.started_at, play.id

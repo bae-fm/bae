@@ -135,7 +135,7 @@ impl Store {
     /// Every row of the generated statement `statement`, read once.
     pub async fn read_rows<Q>(&self, statement: Q) -> Result<Vec<Q::Row>, DbError>
     where
-        Q: sqlive_compose::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
         Q::Row: Send + 'static,
     {
         self.read(move |sql| Ok(statement_rows(&sql, &statement)?)).await
@@ -144,7 +144,7 @@ impl Store {
     /// The one row of the generated statement `statement`, read once.
     pub async fn read_row<Q>(&self, statement: Q) -> Result<Q::Row, DbError>
     where
-        Q: sqlive_compose::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
         Q::Row: Send + 'static,
     {
         self.read(move |sql| statement_row(&sql, &statement)).await
@@ -214,7 +214,7 @@ impl Store {
     /// query; any other number of rows is an error.
     pub fn subscribe_row<Q>(&self, statement: Q) -> coven::LiveQuery<Q::Row, DbError>
     where
-        Q: sqlive_compose::Read<Handle = sqlive_reads::Writer> + Send + Sync + 'static,
+        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + Sync + 'static,
         Q::Row: Clone + PartialEq + Send + 'static,
     {
         self.subscribe(statement).process(exactly_one::<Q, _>)
@@ -224,7 +224,7 @@ impl Store {
     /// that returns at most one, as a live query; a second row is an error.
     pub fn subscribe_optional<Q>(&self, statement: Q) -> coven::LiveQuery<Option<Q::Row>, DbError>
     where
-        Q: sqlive_compose::Read<Handle = sqlive_reads::Writer> + Send + Sync + 'static,
+        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + Sync + 'static,
         Q::Row: Clone + PartialEq + Send + 'static,
     {
         self.subscribe(statement).process(at_most_one::<Q, _>)

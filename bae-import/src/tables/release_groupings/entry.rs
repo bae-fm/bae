@@ -13,7 +13,7 @@ use crate::tables::PreparationRefusal;
 use crate::{CandidateStanding, ImportError, TriageRuntimeFacts};
 use bae_store::statement_rows;
 
-sqlive_compose::read!(
+coven::read!(
     writer CandidateEntryAt(key: crate::CandidateKey),
     r#"
     SELECT entry.*

@@ -2,7 +2,7 @@
 //! and the ledger's cells show them. Each statement that spreads the fragment
 //! hands it the list's releases, their records and the list's id.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Cards with
         members(ord INTEGER, card INTEGER, pressing INTEGER, record_order INTEGER,
             section INTEGER, row_order INTEGER, kind TEXT, source TEXT, release_id TEXT,

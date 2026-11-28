@@ -13,7 +13,7 @@ pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release
 // Whether any of the release `:release`'s files waits in this device's upload
 // queue.
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseHasQueuedFile(release: String) { queued: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM release_files AS f
@@ -29,7 +29,7 @@ pub(super) const RELEASE_FILE_QUEUED: &str = "SELECT EXISTS (SELECT 1 FROM relea
 
 // Each release with files this process is sending now, and how many. One row
 // per upload in flight is read, each release file found by its file.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseSending { files: i64 },
     r#"
     SELECT f.release_id, COUNT(*) AS files
@@ -48,7 +48,7 @@ sqlive_compose::fragment!(
 // says the device has no usable network; `metered` while a file waits for an
 // unmetered network; `retrying` while a file waits for its retry or a
 // provider's cooldown to end. NULL when nothing holds the queue.
-sqlive_compose::fragment!(
+coven::fragment!(
     UploadQueueHeld { upload_wait: Option<String>, upload_wait_at: Option<i64> },
     r#"
     SELECT CASE
@@ -129,7 +129,7 @@ impl crate::release_storage::ReleaseStorage {
 // file; each release with files in flight, found by its files from them, with
 // the bytes of its files stored of its whole size; and whether the person
 // paused uploads. One row per upload in flight is read.
-sqlive_compose::read!(
+coven::read!(
     writer SendingUploads {
         files: json<Vec<crate::models::DbSendingFile>>,
         releases: json<Vec<crate::models::DbSendingRelease>>,

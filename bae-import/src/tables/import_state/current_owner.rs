@@ -3,7 +3,7 @@
 //! reads spread it to hand the state and cards fragments the owner they read,
 //! and the cover picker's statement spreads it to ask whether a key has one.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CurrentOwner(key: crate::CandidateKey) { content_hash: Option<String>, identify_run: Option<i64> },
     r#"
     SELECT state.content_hash AS content_hash, NULL AS identify_run

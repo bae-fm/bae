@@ -284,7 +284,7 @@ fn work_detail_rows_of(
 // Each artist the composer list shows (`composer_listing`), with how many
 // works it is credited on and how many releases perform them, and its image's
 // version.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedComposer,
     r#"
     SELECT listing.artist_id AS listed_id, listing.work_count, listing.linked_release_count, artist.*, image.*
@@ -312,7 +312,7 @@ impl ListedComposer {
 
 // The composer `artist`, as the composer list shows it; no row for an artist
 // the list doesn't show.
-sqlive_compose::read!(
+coven::read!(
     writer ListedComposerById(artist: String),
     r#"
     SELECT shown.*
@@ -324,7 +324,7 @@ sqlive_compose::read!(
 // The first `limit` composers library search finds for `pattern`, in name
 // order, ties going by id, each with its place in that order, from 1, how many
 // composers these are, and the composer as the composer list shows it.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundComposers(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.name_sort_key, picked.artist_id) AS place,
@@ -341,7 +341,7 @@ sqlive_compose::fragment!(
 );
 
 // The work `work`, as its rows show it, with its cover.
-sqlive_compose::read!(
+coven::read!(
     writer WorkById(work: String),
     r#"
     SELECT work.*, cover.*
@@ -354,7 +354,7 @@ sqlive_compose::read!(
 
 // Each track that performs a work, with its link to the work, the track and
 // its album, and the columns the work's page orders its tracks by.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorkPerformedTrack { performed_work_id: String, title_key: Vec<u8> },
     r#"
     SELECT shown.work_id AS performed_work_id, shown.title_key, shown.album_id AS order_album,
@@ -374,7 +374,7 @@ sqlive_compose::fragment!(
 // performs it and how many do: release by release in its page's order, each
 // release's tracks in playing order. A work no track performs gives one row
 // with no track, and a work the library does not hold gives none.
-sqlive_compose::read!(
+coven::read!(
     writer WorkPage(work: String) { tracks: i64 },
     r#"
     SELECT work.*, cover.*, performed.*,
@@ -393,7 +393,7 @@ sqlive_compose::read!(
 // The children of the work `work` at the places from `offset`, at most
 // `limit`, in their order: its parts, then the releases that perform it, each
 // with what it shows and beside how many children of its kind the work has.
-sqlive_compose::read!(
+coven::read!(
     writer WorkChildRows(work: String, offset: i64, limit: i64) { of_kind: i64 },
     r#"
     SELECT child.*, part.*, part_cover.*, release.*, release_cover.*,
@@ -414,7 +414,7 @@ sqlive_compose::read!(
 );
 
 // How many children the work `work` has.
-sqlive_compose::read!(
+coven::read!(
     writer WorkChildCount(work: String) { children: i64 },
     r#"
     SELECT COUNT(*) AS children

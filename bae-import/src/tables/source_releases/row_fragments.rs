@@ -1,7 +1,7 @@
 //! The source releases' rows that other domains' statements spread to reach
 //! them.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     LinkedAlbumGroup on import_candidate_release_link {
         source_group_id: Option<String>
     },
@@ -11,7 +11,7 @@ sqlive_compose::fragment!(
     WHERE release.catalog = @parent.source AND release.release_id = @parent.release_id
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     MatchAlbumFirstYear on import_candidate_match {
         album_first_year: Option<i32>
     },
@@ -24,7 +24,7 @@ sqlive_compose::fragment!(
 // The own albums of each stored release `listed` names, in the order
 // surfaces list them by `ord`: the one its catalog files it under, then those
 // its records name, in their catalogs' order.
-sqlive_compose::fragment!(
+coven::fragment!(
     OwnAlbums with listed(at INTEGER, catalog TEXT, release_id TEXT) {
         at: i64,
         catalog: String,

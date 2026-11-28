@@ -55,7 +55,7 @@ pub enum DownloadStep {
 }
 
 // Each release's entry in the download queue, by the release.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueuedDownloadEntry,
     r#"
     SELECT queued.release_id, queued.kind, queued.state, queued.error

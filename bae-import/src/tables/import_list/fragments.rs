@@ -1,6 +1,6 @@
 //! What the import list offers the candidate pane: where the list places a candidate, what it can do, the mapping of its files to tracks, and its album artists.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Listed(key: crate::CandidateKey) {
         listed_key: crate::CandidateKey,
         tab: String,
@@ -27,7 +27,7 @@ sqlive_compose::fragment!(
 // Each draft track with the place among the folder's units of the one it
 // plays: the unit of the same kind, file, sheet and slice. The place is NULL
 // where the folder has no such unit, which the reads refuse.
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftUnits(key: crate::CandidateKey) {
         draft_track_id: String,
         draft_unit_position: Option<i64>
@@ -54,7 +54,7 @@ sqlive_compose::fragment!(
 // draft track plays reads. A unit reads the file it plays from, and a CUE
 // track also the file its pregap is in. The pane names these files and the
 // import writes none of them.
-sqlive_compose::fragment!(
+coven::fragment!(
     LeftOutAudio(key: crate::CandidateKey) {
         relative_path: String,
         position: i64
@@ -84,7 +84,7 @@ sqlive_compose::fragment!(
     )
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Mapping(key: crate::CandidateKey) {
         mapping_key: crate::CandidateKey,
         mapping: Option<String>
@@ -326,7 +326,7 @@ sqlive_compose::fragment!(
     ) AS mapping
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistField(key: crate::CandidateKey) {
         artist_field_key: crate::CandidateKey,
         artist_field: Option<String>

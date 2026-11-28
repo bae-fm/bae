@@ -32,7 +32,7 @@ use bae_preferences::{CatalogAvailability, SourceAvailability};
 use bae_store::WriteStatements as _;
 use std::str::FromStr;
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEverySearch,
     r#"
     DELETE FROM import_candidate_search
@@ -256,14 +256,14 @@ pub(super) fn load_picks_on(
     picks_of(&json)
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSearchPick(run: i64, release_id: &'p str),
     r#"
     DELETE FROM import_candidate_search_pick WHERE search_run = :run AND release_id = :release_id
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSearchPick(run: i64, release_id: &'p str, links: &'static str),
     r#"
     INSERT INTO import_candidate_search_pick (search_run, release_id, links)
@@ -271,7 +271,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSearchPickAlbum(
         run: i64,
         release_id: &'p str,
@@ -311,14 +311,14 @@ fn store_pick_on(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSearchOf(candidate_key: &'p crate::CandidateKey),
     r#"
     DELETE FROM import_candidate_search WHERE candidate_key = :candidate_key
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSearchOfOtherFiles(
         candidate_key: &'p crate::CandidateKey,
         content_hash: &'p str,
@@ -350,7 +350,7 @@ pub(super) fn end_search_unless_of_on(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertSearch(
         candidate_key: &'p crate::CandidateKey,
         content_hash: Option<&'p str>,
@@ -371,7 +371,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSearchSource(run: i64, catalog: &'p str, position: i64, state: &'static str),
     r#"
     INSERT INTO import_candidate_search_source (search_run, catalog, position, state)
@@ -429,7 +429,7 @@ fn catalog_of(catalog: &str) -> Result<LookupCatalog, DbError> {
         .map_err(|_unknown| DbError::unreadable("import_candidate_search_source.catalog", catalog))
 }
 
-sqlive_compose::write!(
+coven::write!(
     LandSearchSource(
         state: &'static str,
         failure: Option<&'static str>,
@@ -495,7 +495,7 @@ fn land_on(
     Ok(true)
 }
 
-sqlive_compose::write!(
+coven::write!(
     RetryFailedSources(run: i64),
     r#"
     UPDATE import_candidate_search_source
@@ -505,14 +505,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEverySearchPick,
     r#"
     DELETE FROM import_candidate_search_pick
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SwitchSourceOff(catalog: &'p str),
     r#"
     UPDATE import_candidate_search_source
@@ -708,7 +708,7 @@ impl ImportTables {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     RuntimeSearch with keys(candidate_key TEXT) {
         search_key: crate::CandidateKey,
         search: String

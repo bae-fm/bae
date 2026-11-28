@@ -116,7 +116,7 @@ pub(super) fn album_held_on(tx: &CovenWrite<'_>, album_id: &str) -> Result<bool,
 
 // Order the release `release_id` last among those of the album `album_id`.
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     OrderReleaseLast(release_id: &'p str, album_id: String),
     r#"
     UPDATE releases
@@ -126,7 +126,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetReleaseAlbum(release_id: &'p str, album_id: &'p str),
     "UPDATE releases SET album_id = :album_id WHERE id = :release_id"
 );
@@ -232,7 +232,7 @@ pub fn album_records_name_on(
 // [`AlbumRecordsName`](super::fragments::AlbumRecordsName) over the records of
 // the JSON array `records` ([`records_json`]), leaving out the releases of the
 // JSON array `excluding`.
-sqlive_compose::read!(
+coven::read!(
     writer AlbumRecordsNameOfJson(records: String, excluding: String),
     r#"
     SELECT named.*
@@ -248,7 +248,7 @@ sqlive_compose::read!(
 // [`LibraryStatusRows`](super::fragments::LibraryStatusRows) over the checks
 // of the JSON array `checks`, each a `[release_id, catalog, group_id]`, in
 // its order.
-sqlive_compose::read!(
+coven::read!(
     writer LibraryStatusOfJson(checks: String),
     r#"
     SELECT status.*
@@ -286,7 +286,7 @@ pub fn records_target_album_on(
 // [`FiledByRecords`](super::fragments::FiledByRecords) over the records of
 // the JSON array `records` ([`records_json`]).
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer RecordsTargetAlbumOfJson(release: String, records: String),
     r#"
     SELECT filed.*

@@ -8,7 +8,7 @@ use bae_types::credits::CreditLine;
 
 // Each album's card: its summary, and whether another device alone holds the
 // audio of its primary release.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumCardRow { primary_release_unplayable: bool },
     r#"
     SELECT summary.*,
@@ -24,7 +24,7 @@ sqlive_compose::fragment!(
 // The cards of the albums the artist's credits show, in its page's order: by
 // year, an unknown year after every year, then by title and id, which
 // `album_artist_link`'s artist page index holds, so the read sorts nothing.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistAlbums(artist: String),
     r#"
     SELECT card.*
@@ -37,7 +37,7 @@ sqlive_compose::read!(
 
 // The card of the album `album`, as the album grid lists it; no row for an
 // album the grid doesn't list.
-sqlive_compose::read!(
+coven::read!(
     writer ListedAlbumCard(album: String),
     r#"
     SELECT card.*

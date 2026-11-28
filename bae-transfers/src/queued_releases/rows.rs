@@ -14,7 +14,7 @@ use bae_store::{statement_row, DbError};
 use coven::SqlReadContext;
 
 // Each entry of the download queue, with its place in the order queued.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadQueueRow { file_count: u64, total_size: u64, kind: crate::DownloadKind },
     r#"
     SELECT kept.position, kept.release_id, kept.created_at, kept.file_count, kept.total_size,
@@ -24,7 +24,7 @@ sqlive_compose::fragment!(
 );
 
 // Each entry of the export and save queue, with its place in the order queued.
-sqlive_compose::fragment!(
+coven::fragment!(
     OutputQueueRow { file_count: u64, total_size: u64 },
     r#"
     SELECT kept.position, kept.release_id, kept.created_at, kept.file_count, kept.total_size,
@@ -36,7 +36,7 @@ sqlive_compose::fragment!(
 
 // How many entries of the export and save queue are in each phase, and
 // whether it holds any entry and any failed one.
-sqlive_compose::fragment!(
+coven::fragment!(
     OutputQueueTally {
         queued: u32,
         active: u32,
@@ -55,7 +55,7 @@ sqlive_compose::fragment!(
 );
 
 // Whether coven says the device has a usable network.
-sqlive_compose::read!(
+coven::read!(
     writer CurrentNetwork,
     r#"
     SELECT network.*
@@ -67,7 +67,7 @@ sqlive_compose::read!(
 // entry it takes next, unless the queue is paused or coven says the device has
 // no network. It takes the active entry if there is one, else the first
 // queued. A network coven cannot tell about does not hold the queue.
-sqlive_compose::read!(
+coven::read!(
     writer NextDownload,
     r#"
     SELECT network.*, entry.*
@@ -85,7 +85,7 @@ sqlive_compose::read!(
 
 // The entry the export and save worker takes next, unless the queue is paused:
 // the active entry if there is one, else the first queued.
-sqlive_compose::read!(
+coven::read!(
     writer NextOutput,
     r#"
     SELECT entry.*
@@ -99,7 +99,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer DownloadQueueTotals,
     r#"
     SELECT counts.*
@@ -108,7 +108,7 @@ sqlive_compose::read!(
 );
 
 // The export and save queue's counts and its pause.
-sqlive_compose::read!(
+coven::read!(
     writer OutputQueueTotals,
     r#"
     SELECT tally.*, pause.*
@@ -120,7 +120,7 @@ sqlive_compose::read!(
 // Every entry of the export and save queue in the order queued, each beside
 // its album's title.
 #[cfg(any(desktop, test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer OutputQueueEntries,
     r#"
     SELECT entry.*, release.*, album.*

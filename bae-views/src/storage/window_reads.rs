@@ -3,7 +3,7 @@
 //! each with its key and its row. Each reads from the sort's index.
 
 // The window of the whole list sorted by album title ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowTitle(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -33,7 +33,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by album title descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowTitleBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -63,7 +63,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by artist ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowArtist(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -93,7 +93,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by artist descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowArtistBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -123,7 +123,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by media ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowMedia(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -153,7 +153,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by media descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowMediaBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -183,7 +183,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by file count ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowFiles(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -213,7 +213,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by file count descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowFilesBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -243,7 +243,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by size ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowSize(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -273,7 +273,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by size descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowSizeBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -303,7 +303,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by storage ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowStorage(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -333,7 +333,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by storage descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowStorageBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -363,7 +363,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by date added, oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowAdded(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,
@@ -393,7 +393,7 @@ sqlive_compose::read!(
 );
 
 // The window of the whole list sorted by date added, newest first.
-sqlive_compose::read!(
+coven::read!(
     writer AllWindowAddedBack(
         limit: i64,
         key_0: bae_store::list_windows::SortValue,

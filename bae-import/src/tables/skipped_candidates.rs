@@ -10,7 +10,7 @@ use super::*;
 use crate::CandidateKey;
 use std::path::Path;
 
-sqlive_compose::write!(
+coven::write!(
     ForgetSkippedAtOrBelow(folder: &'p [u8], below_first: &'p [u8], below_past: &'p [u8]),
     r#"
     DELETE FROM skipped_import_candidates
@@ -19,12 +19,12 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UnskipFolder(candidate_path: Vec<u8>),
     r#"DELETE FROM skipped_import_candidates WHERE candidate_path = :candidate_path"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SkipFolder(candidate_path: Vec<u8>),
     r#"
     INSERT INTO skipped_import_candidates (candidate_path) VALUES (:candidate_path)

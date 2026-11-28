@@ -44,8 +44,6 @@ bae-track-audio = { workspace = true }
 bae-types = { workspace = true }
 # Content types, HTTP, error text and the panic-reporting tasks.
 bae-util = { workspace = true }
-# The macros the pane's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The store's files, clock and ids.
 coven = { workspace = true }
 rusqlite = { workspace = true }

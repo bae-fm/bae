@@ -12,28 +12,28 @@ use bae_identify::{AlbumLink, PressingLink};
 use bae_store::WriteStatements as _;
 use std::str::FromStr;
 
-sqlive_compose::write!(
+coven::write!(
     DeleteReleaseLink(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_release_link WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteLinkPartners(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_release_link_partner WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteLinkAlbums(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_release_link_album WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertReleaseLink(
         content_hash: &'p str,
         kind: &'static str,
@@ -48,7 +48,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLinkPartner(content_hash: &'p str, source: &'p str, release_id: &'p str),
     r#"
     INSERT INTO import_candidate_release_link_partner (content_hash, kind, source, release_id)
@@ -56,7 +56,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLinkAlbum(content_hash: &'p str, catalog: &'p str, album_id: &'p str),
     r#"
     INSERT INTO import_candidate_release_link_album (content_hash, kind, catalog, album_id)
@@ -114,7 +114,7 @@ pub(super) fn store_release_link(
 
 // The release link of the candidate `content_hash`; no row for one linked to
 // nothing.
-sqlive_compose::read!(
+coven::read!(
     writer LinkOfCandidate(content_hash: String),
     r#"
     SELECT link.*

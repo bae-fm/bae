@@ -124,7 +124,7 @@ impl FormParams {
 // they name (a new one where they name none the library holds); else, with
 // the release's own records or none, the album the release is in. `kind` says
 // which of those names it, and `album` is the library album it names.
-sqlive_compose::fragment!(
+coven::fragment!(
     FiledAlbum(
         release: String, pick_kind: String, pick_album: Option<String>, linked: bool,
         records: String
@@ -172,7 +172,7 @@ sqlive_compose::fragment!(
 // when the form holds no row for it). `form` has the row's `own` artists where
 // it has any: its assignments, with each picked artist as the library holds it,
 // and how they stand to the library.
-sqlive_compose::fragment!(
+coven::fragment!(
     FormDraftTrackRows(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String, album_artists: String, track_artists: String, form_tracks: String
@@ -207,7 +207,7 @@ sqlive_compose::fragment!(
 // library no longer holds the release. The album is read with the tracks, not
 // with the rest of the draft, because one statement of them all opens more
 // tables than SQLite allows.
-sqlive_compose::read!(
+coven::read!(
     writer FormDraftTracks(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String, album_artists: String, track_artists: String, form_tracks: String,
@@ -229,7 +229,7 @@ sqlive_compose::read!(
 
 // Whether a track the save of the edits `edits` deletes from the release
 // `release` has a rating, a play in the history or a playlist entry.
-sqlive_compose::fragment!(
+coven::fragment!(
     DroppedKeptData(release: String, edits: String),
     r#"
     WITH gone AS (
@@ -246,7 +246,7 @@ sqlive_compose::fragment!(
 // with no row once the library holds no such release; the album's artist
 // field, none when the album has none; whether a track the save deletes has
 // kept data; the files a save reads first; and the release's files.
-sqlive_compose::read!(
+coven::read!(
     writer EditorDraftHead(
         release: String, relinked: bool, form_records: String, album_artists: String,
         track_artists: String, applied: bool, mediums: String, edits: String

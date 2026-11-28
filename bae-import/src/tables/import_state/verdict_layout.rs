@@ -128,7 +128,7 @@ pub(super) fn verdict_text_on(
     Ok(CandidateText::of(&pool, &struck_out, &barcodes))
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer VerdictOf(content_hash: Option<String>, run: Option<i64>)
         { verdict_id: crate::tables::import_state::verdict_rows::VerdictId },
     r#"
@@ -141,7 +141,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     PlaceVerdictMatch(
         card: u32,
         record_order: u32,

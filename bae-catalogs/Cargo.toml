@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the read fragments are written with.
-sqlive-compose = { workspace = true }
 # The pressing values the catalog clients read releases into and whose words
 # they compare, and the credit line a stored artist credit is written as.
 bae-types = { workspace = true }

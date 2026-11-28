@@ -1,7 +1,7 @@
 use crate::records::release_with_files::{ReleaseFileById, ReleaseFileByIdParams};
 use crate::records::*;
+use coven::Returning as _;
 use rusqlite::Connection;
-use sqlive_compose::Returning as _;
 
 /// An in-memory DB on the real schema with one album and release whose
 /// `created_at` is valid, so a test can corrupt one column and prove the

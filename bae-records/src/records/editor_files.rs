@@ -8,7 +8,7 @@
 // the side it was on if the form still places it. Its place choices are the
 // sides of the mediums the form lays the release out on
 // ([`BaseMediums`](super::layout_fragments::BaseMediums)).
-sqlive_compose::fragment!(
+coven::fragment!(
     EditorFiles(release: String, applied: bool, mediums: String, edits: String),
     r#"
     WITH gone AS MATERIALIZED (
@@ -93,7 +93,7 @@ sqlive_compose::fragment!(
 
 // [`EditorFiles`] as a read of its own, for the tests of the files it lists.
 #[cfg(all(desktop, test))]
-sqlive_compose::read!(
+coven::read!(
     writer EditorReleaseFiles(release: String, applied: bool, mediums: String, edits: String),
     r#"
     SELECT listed.*

@@ -49,7 +49,7 @@ pub struct ActivityBarRows {
 // share of the batch, in file order. A release the library no longer holds
 // counts none of its bytes, and a cover's or a picture's file belongs to no
 // release of the batch.
-sqlive_compose::fragment!(
+coven::fragment!(
     UploadBar {
         upload_done: f64,
         upload_moving: json<Vec<crate::activity_bars::MovingShare<coven::FileId>>>,
@@ -76,7 +76,7 @@ sqlive_compose::fragment!(
 // The bar of the download line of `:kind`: the share of its batch's bytes in
 // done releases, and the release downloading as the kind now with its size's
 // share of the batch.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadBar(kind: String) {
         done_share: f64,
         moving: json<Vec<crate::activity_bars::MovingShare<String>>>,
@@ -100,7 +100,7 @@ sqlive_compose::fragment!(
 );
 
 // Every transfer line's bar: one row.
-sqlive_compose::read!(
+coven::read!(
     writer TransferBars(pins: String, moving_to_this_device: String),
     r#"
     SELECT uploads.*, pins.*, moves.*

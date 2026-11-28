@@ -11,7 +11,7 @@ use super::*;
 use crate::{AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, TrackArtistAssignments};
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     UpdateDraftRow(
         content_hash: &'p str,
         album_title: &'p str,
@@ -37,14 +37,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftLabels(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_edit_label WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftBarcodes(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_edit_barcode WHERE content_hash = :content_hash
@@ -157,7 +157,7 @@ impl<'a> TrackRows<'a> {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteTrackArtists(content_hash: &'p str, track_id: &'p str),
     r#"
     DELETE FROM import_candidate_track_artist_assignment
@@ -165,7 +165,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteTrackRoles(content_hash: &'p str, track_id: &'p str),
     r#"
     DELETE FROM import_candidate_track_role
@@ -173,7 +173,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteTrackWorks(content_hash: &'p str, track_id: &'p str),
     r#"
     DELETE FROM import_candidate_track_work
@@ -230,28 +230,28 @@ impl<'a> DraftBody<'a> {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftTracks(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_track WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftWorks(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_work WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftReleaseRoles(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_release_role WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftMediums(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_medium WHERE content_hash = :content_hash

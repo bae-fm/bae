@@ -96,7 +96,7 @@ pub(crate) fn audio_codec(
 // bitrates, each file's weighted by its duration (each file counts once when
 // no file states a duration). Otherwise the summary lists each fact the files
 // disagree on, with its values in the order the files first show them.
-sqlive_compose::fragment!(
+coven::fragment!(
     AudioSummary
     with counted(
         position INTEGER, layout TEXT, content_type TEXT, sample_rate_hz INTEGER,

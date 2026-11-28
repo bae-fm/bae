@@ -31,7 +31,7 @@ use bae_identify::signals::Signals;
 use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
 use bae_store::WriteStatements as _;
 
-sqlive_compose::fragment!(
+coven::fragment!(
     RuntimeRows with keys(candidate_key TEXT) {
         runtime_key: crate::CandidateKey,
         runtime_run: Option<i64>
@@ -70,7 +70,7 @@ sqlive_compose::fragment!(
         keys: (SELECT * FROM keys)) AS search ON search.search_key = chosen.candidate_key
 "#);
 
-sqlive_compose::read!(
+coven::read!(
     writer RuntimeOf(key: crate::CandidateKey),
     r#"
     SELECT runtime.*
@@ -79,7 +79,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer EveryRuntime,
     r#"
     SELECT runtime.*
@@ -92,7 +92,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer RunSignals(key: crate::CandidateKey, run: i64),
     r#"
     WITH owners AS (
@@ -189,7 +189,7 @@ fn runtime_in(row: RuntimeOfRow) -> Result<StoredRuntime, DbError> {
     runtime_of(row.runtime).map(|(_, runtime)| runtime)
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEveryRun,
     r#"
     DELETE FROM import_identify_run
@@ -203,7 +203,7 @@ pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     ClaimRunKey(
         run: i64,
         key: &'p crate::CandidateKey,
@@ -289,14 +289,14 @@ fn publish_candidate_run_on(
     Ok(named)
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteRunOfKey(key: &'p crate::CandidateKey, run: i64),
     r#"
     DELETE FROM import_identify_run WHERE candidate_key = :key AND identify_run = :run
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteRunsOfKey(key: &'p crate::CandidateKey),
     r#"
     DELETE FROM import_identify_run WHERE candidate_key = :key

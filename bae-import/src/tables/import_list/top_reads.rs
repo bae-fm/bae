@@ -2,7 +2,7 @@
 //! the list shows: [`super::window_reads`] with no key to start from.
 
 // [`super::window_reads::NewestFirstWindow`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer NewestFirstTop(
         tab: String,
         filter: Option<String>,
@@ -66,7 +66,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::OldestFirstWindow`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer OldestFirstTop(
         tab: String,
         filter: Option<String>,
@@ -130,7 +130,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::PathAscendingWindow`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer PathAscendingTop(
         tab: String,
         filter: Option<String>,
@@ -187,7 +187,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::PathDescendingWindow`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer PathDescendingTop(
         tab: String,
         filter: Option<String>,

@@ -36,7 +36,7 @@ fn holds_a_call(root: &Path, name: &str) -> bool {
     rust_files(&root.join(name).join("src"), &mut files);
     files.iter().any(|file| {
         let text = read_file(file).unwrap();
-        text.contains("sqlive_compose::fragment!(") || text.contains("sqlive_compose::read!(")
+        text.contains("coven::fragment!(") || text.contains("coven::read!(")
     })
 }
 

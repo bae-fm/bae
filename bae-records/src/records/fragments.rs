@@ -9,7 +9,7 @@ use super::release_records::{library_status_from, StoredAlbumMatch};
 use crate::LibraryStatus;
 use bae_store::DbError;
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseAlbum,
     r#"
     SELECT release.id AS release_id, release.album_id
@@ -29,7 +29,7 @@ impl ReleaseAlbum {
 // a release no catalog describes; and what they identify the release as:
 // 'pressing' when a catalog's record names its pressing, 'album' when the
 // records name only its album, and NULL when no catalog describes it.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseRecords {
         records: String,
         records_kind: Option<String>,
@@ -66,7 +66,7 @@ impl ReleaseRecords {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumCredits on albums { credits: String },
     r#"
     SELECT COALESCE(
@@ -91,7 +91,7 @@ sqlive_compose::fragment!(
 "#);
 
 // Each release's media.
-sqlive_compose::fragment!(
+coven::fragment!(
     MediaOfRelease,
     r#"
     SELECT release.id AS media_release_id,
@@ -110,7 +110,7 @@ impl MediaOfRelease {
 // What an album's page says above its releases of the records that hold them,
 // by the album: its credits ([`AlbumCredits`]), and whether it has more than
 // one release to choose among.
-sqlive_compose::fragment!(
+coven::fragment!(
     DetailedAlbum { has_release_choices: bool },
     r#"
     SELECT album.id AS detailed_album_id,
@@ -141,7 +141,7 @@ impl DetailedAlbum {
 
 // The ids of the album's releases in album order (the primary release first),
 // as a JSON array.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumReleaseIds on albums { release_ids: String },
     r#"
     SELECT json_group_array(held.id ORDER BY held.album_order, held.id) AS release_ids
@@ -153,7 +153,7 @@ sqlive_compose::fragment!(
 // What a list shows of each album: its title, year and whether it is a
 // compilation, its primary release with that release's cover version, its
 // credits and its releases.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumSummary { is_compilation: bool, cover_version: Option<String> },
     r#"
     SELECT album.id AS summary_album_id, album.title, album.year, album.is_compilation,
@@ -211,7 +211,7 @@ impl AlbumSummary {
 // For each album and each artist, the album's credits that show another artist
 // than that one, as a JSON array in list order, NULL for none: what the row of
 // the album under that artist names beside it, in a list grouped by artist.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumCreditsBeside { credits: Option<String> },
     r#"
     SELECT album.id AS beside_album_id, grouping.id AS beside_artist_id,
@@ -232,7 +232,7 @@ impl AlbumCreditsBeside {
 }
 
 // Each album's row.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumRow { is_compilation: bool },
     r#"
     SELECT album.id AS row_album_id, album.title, album.year, album.is_compilation,
@@ -257,7 +257,7 @@ impl AlbumRow {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     LibraryStatusRows with checks(position INTEGER, release_id TEXT, catalog TEXT, group_id TEXT)
         { position: i64, release_id: String, albums: String },
     r#"
@@ -326,7 +326,7 @@ pub fn library_status_of_columns(
 // partner's. Where one record names several albums, the record's own group
 // album ([`crate::identity::album_id`]) wins if the library holds it, and
 // otherwise the oldest album (ties by id), so the answer is one album.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumRecordsName with records(
         position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
     ), excluding(release_id TEXT) { album_id: String },
@@ -368,7 +368,7 @@ sqlive_compose::fragment!(
 // The album's primary release: its lowest-ordered release, ties broken by
 // release id, so every device that holds the same rows names the same one. No
 // row for an album that holds no release.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumPrimaryRelease on albums { release_id: String },
     r#"
     SELECT lowest.id AS release_id
@@ -381,7 +381,7 @@ sqlive_compose::fragment!(
 
 // Each album's primary release ([`AlbumPrimaryRelease`]) by the album, as a
 // row a read joins to; no row for an album that holds no release.
-sqlive_compose::fragment!(
+coven::fragment!(
     PrimaryReleaseOfAlbum,
     r#"
     SELECT album.id AS primary_of_album_id, release.id AS primary_release_id
@@ -408,7 +408,7 @@ sqlive_compose::fragment!(
 //    than the records do on a catalog both name.
 // 5. Else the group's album, new when the library does not hold it, or a new
 //    album when the records name no group.
-sqlive_compose::fragment!(
+coven::fragment!(
     FiledByRecords(release: String) with records(
         position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
     ) { current_album_id: String, target_album_id: Option<String> },
@@ -458,7 +458,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumTitle,
     r#"
     SELECT titled.id AS album_id, titled.title
@@ -473,7 +473,7 @@ impl AlbumTitle {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     LibraryAlbum,
     r#"
     SELECT album.id AS album_id, album.title,
@@ -499,7 +499,7 @@ impl LibraryAlbum {
 
 // Each track's release and title, and the credits it shows (its own, else its
 // album's), as the JSON array [`super::read::credit_line_of_json`] reads.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShownTrack,
     r#"
     SELECT track.id AS track_id, track.release_id, track.title,

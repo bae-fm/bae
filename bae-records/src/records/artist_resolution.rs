@@ -360,7 +360,7 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer CreditUnderTest(name: String, musicbrainz: Option<String>, discogs: Option<String>),
     r#"
     SELECT answer.*

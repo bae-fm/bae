@@ -9,21 +9,21 @@ use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
 use crate::tables::FinishRead;
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSheetReferences(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_sheet_reference WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSheetPlaces(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_sheet_place WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateSheetPlace(
         content_hash: &'p str,
         sheet_id: &'p str,
@@ -37,7 +37,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateSheetReference(
         content_hash: &'p str,
         sheet_id: &'p str,
@@ -89,7 +89,7 @@ pub(super) fn insert_file_edits(
 // The file decisions of each candidate in `keys` that has a state row, with
 // the revision they stand at: the places the user put its sheets on, and the
 // `FILE` reference bindings they decided.
-sqlive_compose::fragment!(
+coven::fragment!(
     FileEdits with keys(content_hash TEXT) {
         struct StoredSheetPlace {
             sheet_id: String,
@@ -121,7 +121,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer FileEditsOf(content_hashes: String),
     r#"
     SELECT decided.*
@@ -133,7 +133,7 @@ sqlive_compose::read!(
 
 // The content hash of every candidate a decision was made for: those that
 // hold one, and those whose revision moved past zero though none stands now.
-sqlive_compose::fragment!(
+coven::fragment!(
     DecidedFileHashes,
     r#"
     SELECT state.content_hash

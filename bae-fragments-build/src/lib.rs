@@ -1,8 +1,8 @@
-//! The build step of a crate that writes fragments (`sqlive-compose`): it
-//! checks the crate's `fragment!`, `read!` and `write!` calls against the library's
-//! schema, writes the Rust they include, hands the crate's fragments to the
-//! crates that spread them, and refuses a call that reads a table of a domain
-//! whose homes don't hold the call's file.
+//! The build step of a crate that writes coven's statements: it runs
+//! sqlive-compose's compiler, which checks the crate's `fragment!`, `read!` and
+//! `write!` calls against the library's schema, writes the Rust they include,
+//! hands the crate's fragments to the crates that spread them, and refuses a
+//! call that reads a table of a domain whose homes don't hold the call's file.
 //!
 //! The schema is every crate's SQL in migration order, on top of coven's
 //! readable objects, as a library's migration makes it. A crate that a
@@ -100,7 +100,7 @@ fn check_crate(
         let source_reader = |path: &str| read_text(&crate_dir.join(path));
         let compiled = compile_crate(Input {
             crate_name: crate_name.to_owned(),
-            macros_crate: "sqlive_compose".to_owned(),
+            macros_crate: "coven".to_owned(),
             source_reader: &source_reader,
             manifests: manifests.to_vec(),
             setup,

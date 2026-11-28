@@ -6,7 +6,7 @@
 //! under, which is the draft it holds or the release this device imported from
 //! it. The pane's value takes fields of both.
 
-sqlive_compose::read!(
+coven::read!(
     writer PaneHead(key: Option<crate::CandidateKey>),
     r#"
     SELECT listed.*, scan.*, grouping.*, files.*, standing.*, imported.*, state.*, evidence.*,
@@ -32,7 +32,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer PaneDraft(key: Option<crate::CandidateKey>) { pane_key: Option<crate::CandidateKey> },
     r#"
     SELECT pane.key AS pane_key, draft.*, flags.*, failure.*, pane_failure.*, mapping.*,

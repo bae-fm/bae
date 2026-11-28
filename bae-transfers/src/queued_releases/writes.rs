@@ -169,7 +169,7 @@ impl QueueWrites for OutputRequest {
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     InsertDownload(
         release: &'p str,
         created_at: i64,
@@ -188,7 +188,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     InsertOutput(
         release: &'p str,
         created_at: i64,
@@ -214,7 +214,7 @@ sqlive_compose::write!(
 // Queue to pin, in the order of the JSON array `releases`, each release not
 // wholly pinned on this device, as its storage row says, turning a failed
 // entry into a queued pin in its place.
-sqlive_compose::write!(
+coven::write!(
     QueuePins(created_at: i64, releases: &'p str),
     r#"
     INSERT INTO download_queue (release_id, created_at, file_count, total_size, state, kind)
@@ -235,7 +235,7 @@ sqlive_compose::write!(
 // array `releases`, each release the library holds, turning a failed entry
 // into this move in its place.
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     QueueMovesToThisDevice(created_at: i64, releases: &'p str, target_dir: Vec<u8>),
     r#"
     INSERT INTO download_queue
@@ -253,7 +253,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ActivateDownload(release: &'p str),
     r#"
     UPDATE download_queue SET state = 'active'
@@ -262,7 +262,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ActivateOutput(release: &'p str),
     r#"
     UPDATE output_queue SET state = 'active'
@@ -271,17 +271,17 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FinishDownload(release: &'p str),
     r#"DELETE FROM download_queue WHERE release_id = :release AND state = 'active'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FinishOutput(release: &'p str),
     r#"DELETE FROM output_queue WHERE release_id = :release AND state = 'active'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FailDownload(release: &'p str, error: &'p str),
     r#"
     UPDATE download_queue SET state = 'failed', error = :error
@@ -289,7 +289,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FailOutput(release: &'p str, error: &'p str),
     r#"
     UPDATE output_queue SET state = 'failed', error = :error
@@ -297,7 +297,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FailActiveDownload(release: &'p str, error: &'p str),
     r#"
     UPDATE download_queue SET state = 'failed', error = :error
@@ -305,7 +305,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FailActiveOutput(release: &'p str, error: &'p str),
     r#"
     UPDATE output_queue SET state = 'failed', error = :error
@@ -313,17 +313,17 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RetryFailedDownloads,
     r#"UPDATE download_queue SET state = 'queued', error = NULL WHERE state = 'failed'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RetryFailedOutputs,
     r#"UPDATE output_queue SET state = 'queued', error = NULL WHERE state = 'failed'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RetryFailedDownload(release: &'p str),
     r#"
     UPDATE download_queue SET state = 'queued', error = NULL
@@ -331,7 +331,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RetryFailedOutput(release: &'p str),
     r#"
     UPDATE output_queue SET state = 'queued', error = NULL
@@ -339,37 +339,37 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RequeueActiveDownload,
     r#"UPDATE download_queue SET state = 'queued' WHERE state = 'active'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     RequeueActiveOutput,
     r#"UPDATE output_queue SET state = 'queued' WHERE state = 'active'"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDownload(release: &'p str),
     r#"DELETE FROM download_queue WHERE release_id = :release"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteOutput(release: &'p str),
     r#"DELETE FROM output_queue WHERE release_id = :release"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetQueuePaused(queue: &'static str, paused: bool),
     r#"UPDATE release_queues SET paused = :paused WHERE queue = :queue"#
 );
 
-sqlive_compose::write!(ClearOutputQueue, r#"DELETE FROM output_queue"#);
+coven::write!(ClearOutputQueue, r#"DELETE FROM output_queue"#);
 
 // Queue the releases of the JSON array `releases` to pin, with no files, the
 // first at place `start` and each next one a place later.
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::write!(
+coven::write!(
     QueueDownloadsAtPlaces(start: i64, releases: &'p str),
     r#"
     INSERT INTO download_queue

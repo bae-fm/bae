@@ -12,7 +12,7 @@ use bae_store::{statement_optional, WriteStatements};
 // of: its kind, catalog and release, its partners and its albums. A fetch of a
 // candidate's covers stores it beside them, and the picker shows them while
 // the candidate's link is still that value.
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateCoverLink { cover_link: String },
     r#"
     WITH listed AS (
@@ -27,7 +27,7 @@ sqlive_compose::fragment!(
 );
 
 // [`CandidateCoverLink`] of the content `:content_hash`.
-sqlive_compose::read!(
+coven::read!(
     writer CoverLinkOf(content_hash: String),
     r#"
     SELECT link.*
@@ -42,7 +42,7 @@ sqlive_compose::read!(
 // while its state is the one its scanned files hold. Folder images show under
 // all or the release's files. The candidate's own cover is the one its draft
 // chose.
-sqlive_compose::read!(
+coven::read!(
     writer CandidateGallery(
         key: crate::CandidateKey,
         filter: &'static str,
@@ -117,12 +117,12 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCandidateCoverFetch(content_hash: &'p str),
     r#"DELETE FROM candidate_cover_fetch WHERE content_hash = :content_hash"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateCoverFetch(content_hash: &'p str, link: Option<&'p str>, linked: bool),
     r#"
     INSERT INTO candidate_cover_fetch (content_hash, link, linked)
@@ -130,7 +130,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateCoverEntry(
         content_hash: &'p str,
         position: i64,

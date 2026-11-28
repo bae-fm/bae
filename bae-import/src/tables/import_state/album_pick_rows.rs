@@ -7,7 +7,7 @@ use bae_store::WriteStatements as _;
 
 // What the person picked for the album of each candidate they picked one for:
 // the library album `picked_album_id`, or a new album when it is NULL.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumPickRow {},
     r#"
     SELECT pick.content_hash AS pick_hash, pick.album_id AS picked_album_id
@@ -27,14 +27,14 @@ pub(super) fn album_pick_of(row: Option<AlbumPickRow>) -> crate::AlbumPick {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteAlbumPick(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_album_pick WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetAlbumPick(content_hash: &'p str, album_id: Option<String>),
     r#"
     INSERT INTO import_candidate_album_pick (content_hash, album_id)

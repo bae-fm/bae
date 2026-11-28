@@ -39,8 +39,6 @@ bae-track-audio = { workspace = true }
 bae-types = { workspace = true }
 # Content types, and work whose panic comes back as a value.
 bae-util = { workspace = true }
-# The macros playback's read fragments are written with.
-sqlive-compose = { workspace = true }
 # The store's files, clock and ids.
 coven = { workspace = true }
 time = { workspace = true }

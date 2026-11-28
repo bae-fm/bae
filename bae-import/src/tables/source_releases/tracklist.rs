@@ -169,7 +169,7 @@ fn insert_work(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseEntry(
         catalog: &'p str,
         key: &'p str,
@@ -189,7 +189,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseEntryCredit(
         catalog: &'p str,
         key: &'p str,
@@ -212,7 +212,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseEntryRole(
         catalog: &'p str,
         key: &'p str,
@@ -237,7 +237,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseWork(
         catalog: &'p str,
         key: &'p str,
@@ -261,7 +261,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseWorkCredit(
         catalog: &'p str,
         key: &'p str,
@@ -286,7 +286,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseRole(
         catalog: &'p str,
         key: &'p str,

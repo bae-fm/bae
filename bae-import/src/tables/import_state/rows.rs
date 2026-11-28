@@ -29,7 +29,7 @@ struct StoredCandidate<Signals> {
     matches: String,
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer StatesOf(candidate: String),
     r#"
     WITH owners AS (
@@ -46,7 +46,7 @@ sqlive_compose::read!(
 );
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer EveryState,
     r#"
     WITH owners AS (

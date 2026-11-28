@@ -5,7 +5,7 @@
 //! artist, with the album's other credits too.
 
 // The window of the flat grid sorted first by title ascending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowTitle(
         first: String,
         second: String,
@@ -53,7 +53,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by title descending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowTitleBack(
         first: String,
         second: String,
@@ -101,7 +101,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by artist ascending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowArtist(
         first: String,
         second: String,
@@ -149,7 +149,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by artist descending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowArtistBack(
         first: String,
         second: String,
@@ -197,7 +197,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by year ascending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowYear(
         first: String,
         second: String,
@@ -245,7 +245,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by year descending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowYearBack(
         first: String,
         second: String,
@@ -293,7 +293,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by date added, oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowAdded(
         first: String,
         second: String,
@@ -341,7 +341,7 @@ sqlive_compose::read!(
 );
 
 // The window of the flat grid sorted first by date added, newest first.
-sqlive_compose::read!(
+coven::read!(
     writer FlatWindowAddedBack(
         first: String,
         second: String,
@@ -389,7 +389,7 @@ sqlive_compose::read!(
 );
 
 // The window of the grid grouped by artist sorted first by the artists ascending.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedWindowArtist(
         first: String,
         second: String,
@@ -441,7 +441,7 @@ sqlive_compose::read!(
 );
 
 // The window of the grid grouped by artist sorted first by the artists descending.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedWindowArtistBack(
         first: String,
         second: String,

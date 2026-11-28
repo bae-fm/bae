@@ -10,7 +10,7 @@ use bae_store::WriteStatements;
 
 pub(crate) mod fragments;
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseOrigin(release_id: &'p str, content_hash: &'p str),
     r#"
     INSERT INTO local_release_origin (release_id, content_hash)
@@ -66,7 +66,7 @@ pub(super) fn imported_release_on(
     Ok(statement_optional(sql, &request)?.map(|row| row.origin.origin_release_id))
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer OriginOf(content_hash: String),
     r#"
     SELECT origin.*

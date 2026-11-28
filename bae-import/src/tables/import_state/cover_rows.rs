@@ -27,14 +27,14 @@ fn cover_columns(
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCoverCopies(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_cover_copy WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertCover(
         content_hash: &'p str,
         kind: &'static str,
@@ -53,7 +53,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCoverCopy(content_hash: &'p str, image_url: &'p str, max_edge: u32, url: &'p str),
     r#"
     INSERT INTO import_candidate_cover_copy (content_hash, image_url, max_edge, url)
@@ -61,7 +61,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCover(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_cover WHERE content_hash = :content_hash
@@ -71,7 +71,7 @@ sqlive_compose::write!(
 // Damage a test plants: a cover row stating whatever the test names, which
 // the table's checks and the cover reads refuse.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     PlantCoverRow(
         content_hash: &'p str,
         kind: &'p str,
@@ -192,7 +192,7 @@ impl StoredCover {
 
 // The cover each candidate chose, with the copies the catalog serves of a
 // remote one as a JSON array, and the bytes a remote one was fetched with.
-sqlive_compose::fragment!(
+coven::fragment!(
     ChosenCover {
         prepared_copies: String,
         prepared_content_type: Option<String>,

@@ -4,7 +4,7 @@
 //! row: SQLite reads its offset of -1 as 0.
 
 // The key at a position of the whole list sorted by album title ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtTitle(
         position: i64
     ) {
@@ -25,7 +25,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by album title descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtTitleBack(
         position: i64
     ) {
@@ -46,7 +46,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by artist ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtArtist(
         position: i64
     ) {
@@ -67,7 +67,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by artist descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtArtistBack(
         position: i64
     ) {
@@ -88,7 +88,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by media ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtMedia(
         position: i64
     ) {
@@ -109,7 +109,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by media descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtMediaBack(
         position: i64
     ) {
@@ -130,7 +130,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by file count ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtFiles(
         position: i64
     ) {
@@ -151,7 +151,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by file count descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtFilesBack(
         position: i64
     ) {
@@ -172,7 +172,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by size ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtSize(
         position: i64
     ) {
@@ -193,7 +193,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by size descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtSizeBack(
         position: i64
     ) {
@@ -214,7 +214,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by storage ascending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtStorage(
         position: i64
     ) {
@@ -235,7 +235,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by storage descending.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtStorageBack(
         position: i64
     ) {
@@ -256,7 +256,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by date added, oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtAdded(
         position: i64
     ) {
@@ -277,7 +277,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the whole list sorted by date added, newest first.
-sqlive_compose::read!(
+coven::read!(
     writer AllKeyAtAddedBack(
         position: i64
     ) {
@@ -298,7 +298,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by album title ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtTitle(
         stored: i64,
         position: i64
@@ -321,7 +321,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by album title descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtTitleBack(
         stored: i64,
         position: i64
@@ -344,7 +344,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by artist ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtArtist(
         stored: i64,
         position: i64
@@ -367,7 +367,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by artist descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtArtistBack(
         stored: i64,
         position: i64
@@ -390,7 +390,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by media ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtMedia(
         stored: i64,
         position: i64
@@ -413,7 +413,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by media descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtMediaBack(
         stored: i64,
         position: i64
@@ -436,7 +436,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by file count ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtFiles(
         stored: i64,
         position: i64
@@ -459,7 +459,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by file count descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtFilesBack(
         stored: i64,
         position: i64
@@ -482,7 +482,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by size ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtSize(
         stored: i64,
         position: i64
@@ -505,7 +505,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by size descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtSizeBack(
         stored: i64,
         position: i64
@@ -528,7 +528,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by storage ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtStorage(
         stored: i64,
         position: i64
@@ -551,7 +551,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by storage descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtStorageBack(
         stored: i64,
         position: i64
@@ -574,7 +574,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by date added, oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtAdded(
         stored: i64,
         position: i64
@@ -597,7 +597,7 @@ sqlive_compose::read!(
 );
 
 // The key at a position of the Local or Uploaded list sorted by date added, newest first.
-sqlive_compose::read!(
+coven::read!(
     writer KeptKeyAtAddedBack(
         stored: i64,
         position: i64

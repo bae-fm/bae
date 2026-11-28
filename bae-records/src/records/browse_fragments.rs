@@ -14,7 +14,7 @@ use crate::{
     DbAlbum, DbArtist, DbReleaseArtistRole, DbTrack, DbTrackArtistRole, DbTrackWork, DbWork,
 };
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistRecord,
     r#"
     SELECT artist.id AS artist_id, artist.name, artist.sort_name, artist.discogs_artist_id,
@@ -45,7 +45,7 @@ impl ArtistRecord {
 // then release id. A release with several such tracks has a row for each:
 // a `DISTINCT` here would keep SQLite from reading one work's rows through
 // that work where a read names it by a row's column.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorkPerformances { title_key: Vec<u8> },
     r#"
     SELECT performed.id AS link_id, performed.work_id, release.id AS release_id,
@@ -65,7 +65,7 @@ sqlive_compose::fragment!(
 // That release is the first of those performing it in the order of
 // [`WorkPerformances`]: the first album's primary release when it
 // performs the work, otherwise its first release in album order that does.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorkSummary {
         linked_release_count: i64,
         representative_release_id: Option<String>,
@@ -124,7 +124,7 @@ impl WorkSummary {
 // by title; then the releases performing it (`section` 1), in the order of
 // [`WorkPerformances`]. Titles compare by their sort keys in the
 // device's language. `item_id` is the part's work or the release.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorkChildren(work: String) {
         section: i64,
         place: Option<i64>,
@@ -163,7 +163,7 @@ impl WorkChildren {
 
 // Each release as the list of a work's releases shows it: its album, its name,
 // year and media, and its place among its album's releases.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorkReleaseRow {
         album_title: Option<String>,
         release_number: Option<i64>,
@@ -223,7 +223,7 @@ impl WorkReleaseRow {
 
 // A release's catalog role credit, with the other printed name it names, if
 // any.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseRoleCredit {
         position: i32,
         credit_name_key: Option<String>,
@@ -270,7 +270,7 @@ impl ReleaseRoleCredit {
 }
 
 // A track's catalog role credit, with the other printed name it names, if any.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackRoleCredit {
         position: i32,
         credit_name_key: Option<String>,
@@ -356,7 +356,7 @@ impl StoredRole<'_> {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackRecord {
         side: std::num::NonZeroU8,
         track_number: std::num::NonZeroU32,
@@ -388,7 +388,7 @@ impl TrackRecord {
     }
 }
 
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumRecord { year: Option<i32>, is_compilation: bool },
     r#"
     SELECT album.id AS album_id, album.title, album.year, album.is_compilation,
@@ -412,7 +412,7 @@ impl AlbumRecord {
 }
 
 // The artist each artist shows as after merges, itself unless it was merged.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShownArtist,
     r#"
     SELECT shown.artist_id, shown.shown_artist_id
@@ -422,7 +422,7 @@ sqlive_compose::fragment!(
 
 // Each track's link to a work it performs, with the track's place in its
 // release's playing order.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackWorkLink { position: i32 },
     r#"
     SELECT link.id AS link_id, link.track_id, link.work_id, link.position, link.source,

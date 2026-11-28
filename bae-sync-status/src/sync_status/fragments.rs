@@ -3,7 +3,7 @@
 //! failed and where its storage setup stands. A read composes them as
 //! fragments, so no other domain reads the sync status's table.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     StartFailure,
     r#"
     SELECT failure.category, failure.storage_failure, failure.required_access,
@@ -14,7 +14,7 @@ sqlive_compose::fragment!(
 
 // The newest storage setup that ended undone, if any. coven names how an
 // operation ended in `outcome_kind`.
-sqlive_compose::fragment!(
+coven::fragment!(
     UndoneSetup {
         operation: i64,
         outcome: Option<coven::StorageSetupOutcome>,
@@ -31,7 +31,7 @@ sqlive_compose::fragment!(
 // One row always: whether a storage setup runs, which is one in
 // `coven_operations` with no outcome yet, beside the newest one that ended
 // undone.
-sqlive_compose::fragment!(
+coven::fragment!(
     StorageSetup { setup_running: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM coven_operations AS setup
@@ -47,7 +47,7 @@ sqlive_compose::fragment!(
 // do, the recorded location, the failed start while one stands, and the
 // storage setup. `coven_sync_state` is a live query's own: coven runs a query
 // that reads it again as a file starts or ends a transfer.
-sqlive_compose::fragment!(
+coven::fragment!(
     CurrentSyncStatus {
         state: coven::SyncState,
         last_synced: Option<i64>,

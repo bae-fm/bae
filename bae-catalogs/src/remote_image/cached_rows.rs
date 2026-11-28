@@ -1,7 +1,7 @@
 //! What the catalog image cache offers the reads of other crates: the size of
 //! each file it keeps.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CachedImageBytes,
     r#"
     SELECT image.bytes

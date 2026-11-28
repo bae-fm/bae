@@ -71,7 +71,7 @@ pub struct DraftLayout {
 // `tracks` of the tracks it lays out on them, in playing order, and the JSON
 // array `honored` of the sides picked for CUE sheets that it gave the sheets,
 // those on which a sheet's first laid track sits.
-sqlive_compose::read!(
+coven::read!(
     writer LaidReleaseLayout(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String
@@ -112,7 +112,7 @@ sqlive_compose::read!(
 
 // The layout an import draft's sheet moves give its tracks, as
 // [`LaidReleaseLayout`] gives its mediums and tracks.
-sqlive_compose::read!(
+coven::read!(
     writer LaidDraftLayout(mediums: String, places: String, carving: String, moves: String) {
         laid_mediums: String,
         laid_tracks: String
@@ -280,7 +280,7 @@ fn laid_track(row: TrackJson) -> Result<LaidTrack, DbError> {
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     MoveTracksPastEnd(release_id: &'p str),
     r#"
     WITH past_end(value) AS MATERIALIZED (
@@ -291,7 +291,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     PlaceTrack(
         id: &'p str,
         release_id: &'p str,

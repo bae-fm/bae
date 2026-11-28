@@ -3,7 +3,7 @@
 //! reads the cards of the picked ones.
 
 // A page of the flat grid sorted first by title ascending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageTitle(
         first: String,
         second: String,
@@ -31,7 +31,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by title descending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageTitleBack(
         first: String,
         second: String,
@@ -59,7 +59,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by artist ascending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageArtist(
         first: String,
         second: String,
@@ -87,7 +87,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by artist descending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageArtistBack(
         first: String,
         second: String,
@@ -115,7 +115,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by year ascending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageYear(
         first: String,
         second: String,
@@ -143,7 +143,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by year descending.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageYearBack(
         first: String,
         second: String,
@@ -171,7 +171,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by date added, oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageAdded(
         first: String,
         second: String,
@@ -199,7 +199,7 @@ sqlive_compose::read!(
 );
 
 // A page of the flat grid sorted first by date added, newest first.
-sqlive_compose::read!(
+coven::read!(
     writer FlatPageAddedBack(
         first: String,
         second: String,

@@ -10,7 +10,7 @@
 // that. The other term of a pair, and both for the empty code of an unused
 // place, hold one value for every row, which is never NULL: a row value with a
 // NULL compares as neither before nor after another.
-sqlive_compose::fragment!(
+coven::fragment!(
     FlatAlbumOrder(first: String, second: String, third: String, fourth: String) {
         first: bae_store::list_windows::SortValue, first_back: bae_store::list_windows::SortValue,
         second: bae_store::list_windows::SortValue, second_back: bae_store::list_windows::SortValue,
@@ -81,7 +81,7 @@ sqlive_compose::fragment!(
 // that. The other term of a pair, and both for the empty code of an unused
 // place, hold one value for every row, which is never NULL: a row value with a
 // NULL compares as neither before nor after another.
-sqlive_compose::fragment!(
+coven::fragment!(
     GroupedAlbumOrder(first: String, second: String, third: String, fourth: String) {
         first: bae_store::list_windows::SortValue, first_back: bae_store::list_windows::SortValue,
         second: bae_store::list_windows::SortValue, second_back: bae_store::list_windows::SortValue,
@@ -147,7 +147,7 @@ sqlive_compose::fragment!(
 // The cards of the flat grid: each card's album, the artist
 // whose group holds it, none here, and its position counted from 0 in the
 // grid's order.
-sqlive_compose::fragment!(
+coven::fragment!(
     FlatAlbumCards(first: String, second: String, third: String, fourth: String) {
         section_id: Option<String>, position: u64
     },
@@ -165,7 +165,7 @@ sqlive_compose::fragment!(
 // The cards of the grid grouped by artist: each card's album, the artist
 // whose group holds it, and its position counted from 0 in the
 // grid's order.
-sqlive_compose::fragment!(
+coven::fragment!(
     GroupedAlbumCards(first: String, second: String, third: String, fourth: String) {
         position: u64
     },

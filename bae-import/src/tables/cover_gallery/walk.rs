@@ -22,7 +22,7 @@ use crate::folder_scanner::FileVersion;
 // The statement names `walk` twice and `items` once: SQLite expands a common
 // table at each place a statement names it, and refuses a statement whose
 // expansions open too many cursors.
-sqlive_compose::fragment!(
+coven::fragment!(
     PickerWalk(filter: &'static str, focus_kind: Option<&'static str>, focus_key: Option<String>)
     with items(
         rank INTEGER, pos INTEGER, kind TEXT, key TEXT, preferred INTEGER, item TEXT

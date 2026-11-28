@@ -4,7 +4,7 @@
 use super::*;
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     UpsertArtistImage(artist_id: &'p str, file: &'p coven::FileId, content_type: &'p str),
     r#"
     INSERT INTO artist_images (id, file, content_type) VALUES (:artist_id, :file, :content_type)
@@ -63,7 +63,7 @@ pub fn stage_cover(w: &mut coven::WriteBatch<'_>, cover: &NewCover) -> StagedCov
     StagedCover { browse, large, original }
 }
 
-sqlive_compose::write!(
+coven::write!(
     UpsertCover(
         release_id: &'p str,
         source_file: Option<&'p str>,
@@ -121,7 +121,7 @@ pub fn stage_preview(w: &mut coven::WriteBatch<'_>, preview: &NewReleasePreview)
     )
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseFilePreview(
         release_file_id: &'p str,
         file: &'p coven::FileId,

@@ -20,7 +20,7 @@
 // Separate nor Combine; any other release offers Separate when a grouping
 // reads it, even one that cannot be worked on as it stands, and Combine when
 // the person can act on it. Every release offers to reveal its folders.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedActions on import_list_placement { actions: String },
     r#"
     SELECT json_object(
@@ -82,7 +82,7 @@ sqlive_compose::fragment!(
 // album, cover, catalog records and upload, or its draft's provenance, link
 // and chosen cover with the versions of the files the cover reads. A part
 // whose row is missing is JSON null.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedRow on import_list_placement { listed_row: String },
     r#"
     SELECT json_object(
@@ -178,7 +178,7 @@ sqlive_compose::fragment!(
 
 // The groups `folded` names, each a JSON array of its watched folder's path
 // and its folder in hex, as the placement holds them.
-sqlive_compose::fragment!(
+coven::fragment!(
     NamedGroups(folded: String) {
         named_root: Option<Vec<u8>>, named_folder: Option<Vec<u8>>
     },
@@ -193,7 +193,7 @@ sqlive_compose::fragment!(
 // of those `folded` names, each a JSON array of its watched folder's path and
 // its folder in hex, or, when `folds_only` is false, `folded` names the groups
 // left open and the group is none of them.
-sqlive_compose::fragment!(
+coven::fragment!(
     Folded(folds_only: bool, folded: String) on import_list_placement { folded: bool },
     r#"
     SELECT ((@parent.watched_folder_path, @parent.group_folder) IN (
@@ -206,7 +206,7 @@ sqlive_compose::fragment!(
 // The releases the filters keep: Found's filter entry `filter`, when the list
 // narrows to one, and the shown text matching the pattern of `filter_text`,
 // when the list searches.
-sqlive_compose::fragment!(
+coven::fragment!(
     KeptReleases(filter: Option<String>, filter_text: Option<String>),
     r#"
     SELECT kept.entry AS kept_entry, kept.watched_folder_path AS kept_root,
@@ -223,7 +223,7 @@ sqlive_compose::fragment!(
 // Whether the filters keep something of the placement row: a release they
 // keep, and a group's header while its group holds a release they keep. With
 // nothing narrowing the list, every row.
-sqlive_compose::fragment!(
+coven::fragment!(
     Kept(filter: Option<String>, filter_text: Option<String>)
         on import_list_placement { kept: bool },
     r#"
@@ -249,7 +249,7 @@ sqlive_compose::fragment!(
 // members that the filter entry keeps, read from the group counts kept beside
 // the placement, so a header walks none of its members; while the list
 // searches, it counts the matching releases instead.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedHeader(
         filter: Option<String>, filter_text: Option<String>, folds_only: bool, folded: String
     ) on import_list_placement { listed_header: String },

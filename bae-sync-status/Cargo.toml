@@ -35,8 +35,6 @@ rusqlite = { workspace = true }
 # How a failure to record a failed start says it holds a bug already reported.
 bae-util = { workspace = true }
 thiserror = { workspace = true }
-# The macros the read fragments are written with.
-sqlive-compose = { workspace = true }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }

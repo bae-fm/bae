@@ -11,7 +11,7 @@ use super::*;
 // labels, barcodes, media, Discogs details, tracks in groups (each with the
 // stars `stars` gives it), credits, files, records, storage row, cover and
 // number in its album.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseDetail
     with stars(track_id TEXT, stars INTEGER) {
         release_number: Option<i64>
@@ -138,7 +138,7 @@ impl ReleaseDetail {
 
 // The title of the album a release is in, with its year, its credits and
 // whether it is a compilation.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseAlbumFacts { year: Option<i64>, is_compilation: bool, album_created_at: String },
     r#"
     SELECT album.id AS album_id, album.year, album.is_compilation,

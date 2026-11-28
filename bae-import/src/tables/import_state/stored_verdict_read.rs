@@ -8,7 +8,7 @@ use super::DbImportCandidateState;
 use bae_identify::signals::PaneSignals;
 use bae_store::DbError;
 
-sqlive_compose::read!(
+coven::read!(
     writer StoredVerdict(key: crate::CandidateKey),
     r#"
     SELECT state.*, cards.*

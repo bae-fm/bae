@@ -1,6 +1,6 @@
 //! The statements that read stored catalog releases.
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleasesWithKeptAlbums(releases: String) { at: Option<i64> },
     r#"
     SELECT wanted.key AS at, release.*, kept.*

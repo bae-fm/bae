@@ -6,7 +6,7 @@
 // Where the album's card is in the flat grid: the card in the group of the
 // artist `section` when that group holds one, else its first card. No row when
 // the grid shows no card of the album.
-sqlive_compose::read!(
+coven::read!(
     writer FlatAlbumPlaceRead(
         first: String,
         second: String,
@@ -33,7 +33,7 @@ sqlive_compose::read!(
 // in the group of its section when that group holds one, else its album's
 // first card. With no card of the first end's album the albums are the second
 // end's alone, and with no card of the second end's there are none.
-sqlive_compose::read!(
+coven::read!(
     writer FlatAlbumsBetween(
         first: String,
         second: String,
@@ -69,7 +69,7 @@ sqlive_compose::read!(
 
 // The albums of `albums`, a JSON array of ids, that the flat grid lists,
 // each once at its first card, in the grid's order.
-sqlive_compose::read!(
+coven::read!(
     writer FlatAlbumsInOrder(first: String, second: String, third: String, fourth: String, albums: String),
     r#"
     WITH listed AS (
@@ -89,7 +89,7 @@ sqlive_compose::read!(
 // Where the album's card is in the grid grouped by artist: the card in the group of the
 // artist `section` when that group holds one, else its first card. No row when
 // the grid shows no card of the album.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedAlbumPlaceRead(
         first: String,
         second: String,
@@ -115,7 +115,7 @@ sqlive_compose::read!(
 // in the group of its section when that group holds one, else its album's
 // first card. With no card of the first end's album the albums are the second
 // end's alone, and with no card of the second end's there are none.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedAlbumsBetween(
         first: String,
         second: String,
@@ -151,7 +151,7 @@ sqlive_compose::read!(
 
 // The albums of `albums`, a JSON array of ids, that the grid grouped by artist lists,
 // each once at its first card, in the grid's order.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedAlbumsInOrder(
         first: String,
         second: String,
@@ -176,7 +176,7 @@ sqlive_compose::read!(
 
 // Every album, in the flat grid's order.
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer EveryAlbum(first: String, second: String, third: String, fourth: String),
     r#"
     SELECT album.*

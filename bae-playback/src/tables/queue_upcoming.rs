@@ -15,7 +15,7 @@ use bae_store::{ListWindow, WindowRead};
 // The context lane's rows after its playing one in its own order: those
 // placed past that order's cursor. When no track is playing, the cursor is
 // NULL and the fragment gives no rows.
-sqlive_compose::fragment!(
+coven::fragment!(
     UpcomingOrdered,
     r#"
     SELECT lane.entry, lane.ordered AS place
@@ -27,7 +27,7 @@ sqlive_compose::fragment!(
 // The context lane's rows after its playing one in the shuffled order: those
 // placed past that order's cursor. When no track is playing, the cursor is
 // NULL and the fragment gives no rows.
-sqlive_compose::fragment!(
+coven::fragment!(
     UpcomingShuffled,
     r#"
     SELECT lane.entry, lane.shuffled AS place
@@ -36,7 +36,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer WindowTopOrdered(limit: i64),
     r#"
     SELECT lane.ordered, lane.entry, track.*
@@ -49,7 +49,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer WindowFromOrdered(from: i64, limit: i64),
     r#"
     SELECT lane.ordered, lane.entry, track.*
@@ -63,7 +63,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer WindowTopShuffled(limit: i64),
     r#"
     SELECT lane.shuffled, lane.entry, track.*
@@ -76,7 +76,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer WindowFromShuffled(from: i64, limit: i64),
     r#"
     SELECT lane.shuffled, lane.entry, track.*
@@ -90,7 +90,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer CountOrdered { count: u64 },
     r#"
     SELECT COUNT(*) AS count
@@ -98,7 +98,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer CountBeforeOrdered(place: i64) { count: u64 },
     r#"
     SELECT COUNT(*) AS count
@@ -109,7 +109,7 @@ sqlive_compose::read!(
 
 // The place of the last of the first `:count` upcoming rows, NULL when there
 // are none.
-sqlive_compose::read!(
+coven::read!(
     writer LastPlaceOfFirstOrdered(count: i64) { place: Option<i64> },
     r#"
     SELECT MAX(first.place) AS place
@@ -120,7 +120,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer CountShuffled { count: u64 },
     r#"
     SELECT COUNT(*) AS count
@@ -128,7 +128,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer CountBeforeShuffled(place: i64) { count: u64 },
     r#"
     SELECT COUNT(*) AS count
@@ -139,7 +139,7 @@ sqlive_compose::read!(
 
 // The place of the last of the first `:count` upcoming rows, NULL when there
 // are none.
-sqlive_compose::read!(
+coven::read!(
     writer LastPlaceOfFirstShuffled(count: i64) { place: Option<i64> },
     r#"
     SELECT MAX(first.place) AS place
@@ -152,7 +152,7 @@ sqlive_compose::read!(
 
 // The entry that a row moved to place `:offset` of the upcoming list goes
 // before: the entry there once the moved row `:moved` is left out.
-sqlive_compose::read!(
+coven::read!(
     writer EntryAtPlaceOrdered(moved: i64, offset: i64),
     r#"
     SELECT upcoming.*
@@ -163,7 +163,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer EntryAtPlaceShuffled(moved: i64, offset: i64),
     r#"
     SELECT upcoming.*

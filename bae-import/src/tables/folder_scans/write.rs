@@ -23,7 +23,7 @@ pub(crate) fn delete_entry(
     crate::tables::import_state::end_file_work_unless_of_on(sql, key, None)
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteScanCandidate(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_candidate WHERE watched_folder_path = :watched_folder_path AND path = :key
@@ -42,7 +42,7 @@ fn delete_entry_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEntryTagSnapshot(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_candidate_tag_snapshot
@@ -50,7 +50,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEntryUnits(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_candidate_unit
@@ -58,7 +58,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEntryParts(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_candidate_part
@@ -66,7 +66,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEntryFiles(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_candidate_file
@@ -74,7 +74,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEntrySkippedFiles(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_skipped_file
@@ -82,7 +82,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEntrySkippedTags(watched_folder_path: &'p [u8], key: &'p crate::CandidateKey),
     r#"
     DELETE FROM scan_skipped_tags
@@ -122,7 +122,7 @@ entry_row_clears!(
     DeleteEntrySkippedTags => DeleteEntrySkippedTagsParams,
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteOtherGenerations(watched_folder_path: &'p [u8], generation: i64),
     r#"
     DELETE FROM scan_candidate
@@ -158,7 +158,7 @@ pub(super) fn prune_other_generations(
     Ok(pruned)
 }
 
-sqlive_compose::write!(
+coven::write!(
     StampScanCandidate(
         watched_folder_path: &'p [u8],
         path: &'p crate::CandidateKey,
@@ -170,7 +170,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     StampTagSnapshot(watched_folder_path: &'p [u8], path: &'p crate::CandidateKey, generation: i64),
     r#"
     UPDATE scan_candidate_tag_snapshot SET scan_generation = :generation
@@ -271,7 +271,7 @@ fn insert_candidate(
 // A candidate's row, valid or invalid, written over the one stored under its
 // key, column for column. Only an invalid candidate has the `invalid_*`
 // columns, and it has no content hash.
-sqlive_compose::write!(
+coven::write!(
     UpsertCandidateRow(
         watched_folder_path: &'p [u8],
         path: &'p crate::CandidateKey,
@@ -316,7 +316,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidatePart(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -380,7 +380,7 @@ pub(crate) fn insert_candidate_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertSkippedFile(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -403,7 +403,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSkippedTags(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -487,7 +487,7 @@ fn insert_invalid(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertSheetAudioFile(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -505,7 +505,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetBlankCoverFile(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -553,7 +553,7 @@ pub(crate) fn insert_candidate_files(
     super::units::insert_units(sql, watched_folder_path, candidate_path, files)
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateFile(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -640,7 +640,7 @@ fn insert_file(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertCueSheet(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -660,7 +660,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCueTrack(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -687,7 +687,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCueIndex(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -770,7 +770,7 @@ fn insert_cue_sheet(
 
 // Damage a test plants: every candidate stamped with `generation`.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     StampEveryCandidate(generation: i64),
     r#"UPDATE scan_candidate SET generation = :generation"#
 );

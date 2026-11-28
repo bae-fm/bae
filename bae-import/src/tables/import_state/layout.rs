@@ -264,7 +264,7 @@ impl<'a> OwnersList<'a> {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCardList(
         verdict: Option<super::verdict_rows::VerdictId>,
         search_run: Option<i64>,
@@ -279,7 +279,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCardList(
         verdict: Option<super::verdict_rows::VerdictId>,
         search_run: Option<i64>,
@@ -294,7 +294,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCardText(list: i64, card: u32, kind: &'p str, ordinal: i64, text: &'p str),
     r#"
     INSERT INTO import_candidate_card_text
@@ -303,7 +303,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCard(
         list: i64,
         card: u32,
@@ -323,7 +323,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertRowStatement(
         list: i64,
         listing: &'static str,
@@ -447,7 +447,7 @@ pub(super) fn store_list_text(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     PlaceSearchMatch(
         pressing: u32,
         card: u32,
@@ -467,7 +467,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteMatchAlbumLinks(match_id: super::match_rows::MatchId),
     r#"
     DELETE FROM import_candidate_match_album_link WHERE match_id = :match_id

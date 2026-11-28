@@ -1,7 +1,7 @@
 //! Records' rows that other crates' fragments join to, one row of a table
 //! each. The columns are read by the joins' SQL, and no Rust code reads them.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistRow,
     r#"
     SELECT artist.id AS artist_id, artist.name, artist.sort_name, artist.musicbrainz_artist_id,
@@ -10,7 +10,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumArtistRow,
     r#"
     SELECT credit.album_id, credit.artist_id, credit.credit_key
@@ -18,7 +18,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistCreditName,
     r#"
     SELECT credit.artist_id, credit.name_key, credit.name
@@ -26,7 +26,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseFileRow,
     r#"
     SELECT file.release_id, file.id AS file_id, file.original_filename, file.content_type,
@@ -35,7 +35,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     HeldPressing,
     r#"
     SELECT held.catalog, held.key
@@ -44,7 +44,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackRow,
     r#"
     SELECT track.id AS track_id, track.release_id, track.position, track.title,

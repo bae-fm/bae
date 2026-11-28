@@ -3,7 +3,7 @@
 //! list. Each reads from the sort's index after `stored`.
 
 // The window of the Local or Uploaded list sorted by album title ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowTitle(
         stored: i64,
         limit: i64,
@@ -35,7 +35,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by album title descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowTitleBack(
         stored: i64,
         limit: i64,
@@ -67,7 +67,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by artist ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowArtist(
         stored: i64,
         limit: i64,
@@ -99,7 +99,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by artist descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowArtistBack(
         stored: i64,
         limit: i64,
@@ -131,7 +131,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by media ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowMedia(
         stored: i64,
         limit: i64,
@@ -163,7 +163,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by media descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowMediaBack(
         stored: i64,
         limit: i64,
@@ -195,7 +195,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by file count ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowFiles(
         stored: i64,
         limit: i64,
@@ -227,7 +227,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by file count descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowFilesBack(
         stored: i64,
         limit: i64,
@@ -259,7 +259,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by size ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowSize(
         stored: i64,
         limit: i64,
@@ -291,7 +291,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by size descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowSizeBack(
         stored: i64,
         limit: i64,
@@ -323,7 +323,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by storage ascending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowStorage(
         stored: i64,
         limit: i64,
@@ -355,7 +355,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by storage descending.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowStorageBack(
         stored: i64,
         limit: i64,
@@ -387,7 +387,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by date added, oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowAdded(
         stored: i64,
         limit: i64,
@@ -419,7 +419,7 @@ sqlive_compose::read!(
 );
 
 // The window of the Local or Uploaded list sorted by date added, newest first.
-sqlive_compose::read!(
+coven::read!(
     writer KeptWindowAddedBack(
         stored: i64,
         limit: i64,

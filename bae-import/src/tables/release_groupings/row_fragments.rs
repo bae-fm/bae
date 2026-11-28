@@ -3,7 +3,7 @@
 
 // The groupings anchored at the folder `root` or at a folder below it, whose
 // paths run from `below_first` to `below_past`.
-sqlive_compose::fragment!(
+coven::fragment!(
     AnchoredGroupingKeys(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
         grouping_key: crate::CandidateKey
     },
@@ -16,7 +16,7 @@ sqlive_compose::fragment!(
 );
 
 // Why each grouping cannot be worked on, if anything holds it.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedBlock,
     r#"
     SELECT block.key AS block_key, block.blocked, block.blocked_subject, block.blocked_holder

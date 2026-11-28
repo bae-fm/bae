@@ -6,7 +6,7 @@
 // `lead_back`, in the `descending` collation, when it compares by that. The
 // other of the two holds one value for every release, never NULL, so a row
 // value of the order's terms compares.
-sqlive_compose::fragment!(
+coven::fragment!(
     StorageOrder(sort: String) {
         lead: bae_store::list_windows::SortValue,
         lead_back: bae_store::list_windows::SortValue

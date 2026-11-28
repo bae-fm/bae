@@ -5,7 +5,7 @@
 
 // The mediums the JSON array `mediums` gives, each a `{position, carrier,
 // sides}`.
-sqlive_compose::fragment!(
+coven::fragment!(
     GivenMediums(mediums: String) {
         position: Option<i64>,
         carrier: Option<String>,
@@ -22,7 +22,7 @@ sqlive_compose::fragment!(
 // (the JSON array `mediums`, [`GivenMediums`]) where `applied`, else the
 // release's own. A layout neither adds nor drops one, so a medium no track
 // sits on stays at its position.
-sqlive_compose::fragment!(
+coven::fragment!(
     BaseMediums(release: String, applied: bool, mediums: String) {
         position: Option<i64>,
         carrier: Option<String>,
@@ -59,7 +59,7 @@ sqlive_compose::fragment!(
 // place of its anchor, the first track of that sheet, ahead of the track that
 // holds it, and every side numbers its tracks from one in playing order. An
 // added track is named by its file's id.
-sqlive_compose::fragment!(
+coven::fragment!(
     LaidPlaces
     with base_mediums(position INTEGER, carrier TEXT, sides INTEGER),
          base_places(
@@ -143,7 +143,7 @@ sqlive_compose::fragment!(
 // position}`) where `applied`, else the library's, with the sheets the JSON
 // array `moves` puts onto sides, each a `{sheet_file_id, medium, side}`, and
 // without and with the tracks the edits `edits` delete and add.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseLaidPlaces(
         release: String,
         applied: bool,

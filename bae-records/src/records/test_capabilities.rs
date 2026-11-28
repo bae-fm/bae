@@ -3,7 +3,7 @@ use coven::SqlReadContext;
 
 // Whether the cover of the release `:release` waits in this device's upload
 // queue.
-sqlive_compose::read!(
+coven::read!(
     writer CoverQueued(release: String) { queued: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM covers AS cover
@@ -14,7 +14,7 @@ sqlive_compose::read!(
 
 // The labels of the release `:release`, each with the label it shows as.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer ShownLabels(release: String),
     r#"
     SELECT @crate::records::pressing_columns::ReleaseLabels(parent: rel) AS labels
@@ -25,7 +25,7 @@ sqlive_compose::read!(
 
 // The title of the album `:album`.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer TitleOfAlbum(album: String),
     "SELECT album.title FROM albums AS album WHERE album.id = :album"
 );

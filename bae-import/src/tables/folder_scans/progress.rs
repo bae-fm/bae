@@ -17,7 +17,7 @@ use crate::folder_scan_status::{
 };
 
 // Each watched folder's status, with the `position` the folders are listed in.
-sqlive_compose::fragment!(
+coven::fragment!(
     WatchedScanStatus {
         watched_folder_path: Vec<u8>,
         status: String,
@@ -35,7 +35,7 @@ sqlive_compose::fragment!(
 
 // Each watched folder's status, in the order the folders are listed (their
 // `position`, by its index).
-sqlive_compose::read!(
+coven::read!(
     writer FolderScanStatuses,
     r#"
     SELECT shown.*
@@ -49,7 +49,7 @@ sqlive_compose::read!(
 // folders are listed: a failed or not-watched folder that is not among the
 // raised alerts `raised` names, a JSON array of each one's folder path in hex,
 // kind and detail. One row with no alert when none is owed.
-sqlive_compose::read!(
+coven::read!(
     writer FolderScanAlerts(raised: String) { has_problem: bool, scanning: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM folder_scan_status AS folder
@@ -199,7 +199,7 @@ fn folder_scan_progress_of(
     Ok(FolderScanProgress { statuses, has_problem, scanning, alerts })
 }
 
-sqlive_compose::write!(
+coven::write!(
     HoldRootScan(
         watched_folder_path: Vec<u8>,
         state: &'static str,
@@ -218,7 +218,7 @@ sqlive_compose::write!(
 
 // Every root's held state but those of the roots `kept` names, a JSON array
 // of their paths' bytes in hex.
-sqlive_compose::write!(
+coven::write!(
     DropUnheldRootScans(kept: String),
     r#"
     DELETE FROM folder_scan_held
@@ -227,7 +227,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(ClearHeldRootScans, r#"DELETE FROM folder_scan_held"#);
+coven::write!(ClearHeldRootScans, r#"DELETE FROM folder_scan_held"#);
 
 /// Store `held` as the one row of `watched_folder_path`, leaving a row that
 /// already says it unwritten.
@@ -255,7 +255,7 @@ fn hold_root_scan_on(
 
 // What the folder scan coordinator holds of each root's scan.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer HeldRootScanRows {
         watched_folder_path: Vec<u8>,
         state: String,
@@ -300,7 +300,7 @@ fn held_root_scans_of(rows: Vec<HeldRootScanRowsRow>) -> Result<HeldRootScans, D
 // A scan root is always a watched folder: deleting the folder deletes its
 // root. `volume` is never NULL on a root, so a NULL one is a folder with
 // none.
-sqlive_compose::read!(
+coven::read!(
     writer StoredFolderScans,
     r#"
     SELECT watched.*, roots.status, roots.detail, roots.unwatched_directory,
@@ -368,7 +368,7 @@ pub(super) fn stored_outcome(
 // The folders bae is scanning, in the order the folders are listed, each
 // with how many folders its scan's current generation has stored, which the
 // query counts through the index on `scan_candidate`.
-sqlive_compose::read!(
+coven::read!(
     writer ScanningFolders { watched_folder_path: Vec<u8>, found: i64 },
     r#"
     SELECT folder.watched_folder_path,

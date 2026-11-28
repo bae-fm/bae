@@ -145,7 +145,7 @@ impl<'a> Outcome<'a> {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdict(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_verdict WHERE content_hash = :content_hash
@@ -180,7 +180,7 @@ pub(super) fn store_verdict(
 // The verdict's row, written over the one its owner holds. The only rows an
 // insert here can conflict with are that one: the owner's, by content_hash or
 // by identify_run.
-sqlive_compose::write!(
+coven::write!(
     UpsertVerdict(
         content_hash: Option<String>,
         identify_run: Option<i64>,
@@ -724,7 +724,7 @@ impl ImportTables {
 
 // The files among `files` that a verdict is stored for: the candidate state
 // holds them at the file decision revision named, with a verdict.
-sqlive_compose::fragment!(
+coven::fragment!(
     AnsweredFiles with files(content_hash TEXT, edit_revision INTEGER) {},
     r#"
     SELECT state.content_hash AS answered_hash, state.edit_revision AS answered_revision
@@ -735,7 +735,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer AnsweredOf(files: String),
     r#"
     SELECT answered.*
@@ -748,7 +748,7 @@ sqlive_compose::read!(
 
 // A candidate's entry, with whether a verdict is stored for its files as the
 // scan holds them.
-sqlive_compose::read!(
+coven::read!(
     writer CandidateAnswer(key: crate::CandidateKey),
     r#"
     SELECT entry.*, answered.*

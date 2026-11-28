@@ -21,8 +21,6 @@ bae-desktop-cfg = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the reads are written with.
-sqlive-compose = { workspace = true }
 bae-app-dir = { workspace = true }
 bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }

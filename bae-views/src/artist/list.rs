@@ -51,7 +51,7 @@ impl ListSortField for ArtistSortField {
 // The artist list's rows from a key on, at most `limit` of them, for each
 // first term, each beside its twin that reads from the list's top. Each term is returned ahead of the row, so coven reruns a full
 // window only for a write at or before its last row.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistWindowByName(
         field_2: Option<String>,
         key_1: SortValue,
@@ -92,7 +92,7 @@ sqlive_compose::read!(
 );
 
 // The list's first rows, at most `limit` of them, for each first term.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistTopByName(
         field_2: Option<String>,
         limit: i64
@@ -121,7 +121,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistWindowByNameDescending(
         field_2: Option<String>,
         key_1: SortValue,
@@ -162,7 +162,7 @@ sqlive_compose::read!(
 );
 
 // [`ArtistWindowByNameDescending`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistTopByNameDescending(
         field_2: Option<String>,
         limit: i64
@@ -191,7 +191,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistWindowByAlbums(
         field_2: Option<String>,
         key_1: SortValue,
@@ -232,7 +232,7 @@ sqlive_compose::read!(
 );
 
 // [`ArtistWindowByAlbums`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistTopByAlbums(
         field_2: Option<String>,
         limit: i64
@@ -261,7 +261,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistWindowByAlbumsDescending(
         field_2: Option<String>,
         key_1: SortValue,
@@ -302,7 +302,7 @@ sqlive_compose::read!(
 );
 
 // [`ArtistWindowByAlbumsDescending`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistTopByAlbumsDescending(
         field_2: Option<String>,
         limit: i64
@@ -332,7 +332,7 @@ sqlive_compose::read!(
 );
 
 // How many artists come before the row at a key, for each first term.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistBeforeByName(
         field_2: Option<String>,
         key_1: SortValue,
@@ -353,7 +353,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistBeforeByNameDescending(
         field_2: Option<String>,
         key_1: SortValue,
@@ -374,7 +374,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistBeforeByAlbums(
         field_2: Option<String>,
         key_1: SortValue,
@@ -395,7 +395,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistBeforeByAlbumsDescending(
         field_2: Option<String>,
         key_1: SortValue,
@@ -419,7 +419,7 @@ sqlive_compose::read!(
 // The key of the row at the place `index`, or of the last row when the list
 // ends before it, for each first term. SQLite reads the offset -1 of an empty
 // list as 0, where there is no row.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistKeyAtByName(
         field_2: Option<String>,
         index: i64
@@ -446,7 +446,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistKeyAtByNameDescending(
         field_2: Option<String>,
         index: i64
@@ -473,7 +473,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistKeyAtByAlbums(
         field_2: Option<String>,
         index: i64
@@ -500,7 +500,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ArtistKeyAtByAlbumsDescending(
         field_2: Option<String>,
         index: i64
@@ -528,7 +528,7 @@ sqlive_compose::read!(
 );
 
 // How many artists the list has.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistListLength { entries: i64 },
     r#"
     SELECT COUNT(*) AS entries

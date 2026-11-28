@@ -14,7 +14,7 @@ use bae_records::records::fragments::AlbumSummary;
 // key. `INDEXED BY` holds the walk to that index: left to choose, SQLite reads
 // the albums the search finds by id and sorts them all. Every album holds a
 // release (§2.1), so every album has a listing row.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumsFoundByTitle(pattern: Option<String>),
     r#"
     SELECT entry.album_id AS searched_album_id, entry.title_sort_key AS searched_title_key
@@ -27,7 +27,7 @@ sqlive_compose::fragment!(
 
 // The albums a search for `pattern` lists: the first `cap` albums that hold
 // it ([`AlbumsFoundByTitle`]), in title order, ties going by id.
-sqlive_compose::fragment!(
+coven::fragment!(
     SearchedAlbums(pattern: Option<String>, cap: i64),
     r#"
     SELECT titled.*
@@ -40,7 +40,7 @@ sqlive_compose::fragment!(
 // A page of the albums a search lists ([`SearchedAlbums`]): those at the
 // places from `offset` on, at most `limit`. The statement reads what an album
 // shows only for the albums of the page.
-sqlive_compose::read!(
+coven::read!(
     writer SearchAlbums(pattern: Option<String>, cap: i64, offset: i64, limit: i64),
     r#"
     SELECT shown.*
@@ -58,7 +58,7 @@ sqlive_compose::read!(
 // The first `limit` albums a search lists ([`SearchedAlbums`]), each with its
 // place in their order, from 1, how many albums these are, and what a list
 // shows of it.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundAlbums(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (
@@ -73,7 +73,7 @@ sqlive_compose::fragment!(
 
 // How many albums a search for `pattern` lists: those that hold it, counting
 // at most `cap`. The count needs no order, so it sorts nothing.
-sqlive_compose::read!(
+coven::read!(
     writer SearchAlbumCount(pattern: Option<String>, cap: i64) { albums: u64 },
     r#"
     SELECT COUNT(*) AS albums

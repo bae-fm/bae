@@ -147,7 +147,7 @@ pub(crate) mod tests;
 // done (every file stored and none queued), and how many files this process
 // is sending now, a cover or a picture among them. The bytes the files move
 // are not read, so a confirmed part reruns nothing.
-sqlive_compose::fragment!(
+coven::fragment!(
     UploadBatchCounts { upload_total: u32, upload_done: u32, uploads_sending: u32 },
     r#"
     SELECT (SELECT COUNT(*) FROM upload_batch) AS upload_total,
@@ -162,7 +162,7 @@ sqlive_compose::fragment!(
 
 // The batches of the Pinning and the Moving to this device lines: the
 // releases each holds, and how many of them are done.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadBatchCounts { pin_total: u32, pin_done: u32, move_total: u32, move_done: u32 },
     r#"
     SELECT COUNT(*) FILTER (WHERE batched.kind = 'pin') AS pin_total,
@@ -176,7 +176,7 @@ sqlive_compose::fragment!(
 
 // The transfer lines' batches, beside what holds the upload queue back and
 // the download queue's counts and the sync status: one row.
-sqlive_compose::read!(
+coven::read!(
     writer TransferLines,
     r#"
     SELECT uploads.*, downloads.*, held.*, queue.*, current.*

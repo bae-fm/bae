@@ -1,6 +1,6 @@
 //! The current state of a candidate or of one identify run, as the candidate pane and the runtime read it.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CurrentState with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
         provenance_row: Option<String>,
@@ -199,7 +199,7 @@ sqlive_compose::fragment!(
         AS signals ON signals.owner_row = statement.owner_row
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     SignalTextPool with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
         signals_text_pool: String
@@ -216,7 +216,7 @@ sqlive_compose::fragment!(
     FROM owner
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Signals with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
         signals_not_cd_rate: Option<u32>,
@@ -271,7 +271,7 @@ sqlive_compose::fragment!(
     SELECT * FROM statement
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     StateRow with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
         candidate_key: crate::CandidateKey,

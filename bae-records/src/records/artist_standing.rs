@@ -7,7 +7,7 @@
 //! such credit leaves that many to choose, else the field is new, in the
 //! library or partly new.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistFieldStanding with raw(part INTEGER, track_id TEXT, position INTEGER, assignment_kind TEXT,
         artist_id TEXT, name TEXT, sort_name TEXT, musicbrainz_artist_id TEXT,
         discogs_artist_id TEXT, credit_key TEXT, credited_as TEXT, join_phrase TEXT),

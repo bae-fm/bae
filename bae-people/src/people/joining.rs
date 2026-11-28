@@ -4,7 +4,7 @@
 use bae_store::WriteStatements;
 
 // The private profile of a member who has none.
-sqlive_compose::write!(
+coven::write!(
     CreateJoiningProfile(member: coven::MemberId, name: &'p str, circle: coven::CircleId),
     r#"
     INSERT INTO people (id, name, private_circle, history_sharing)
@@ -14,7 +14,7 @@ sqlive_compose::write!(
 );
 
 // A member's profile points at `circle`, where it names another.
-sqlive_compose::write!(
+coven::write!(
     MoveProfileCircle(member: coven::MemberId, circle: coven::CircleId),
     r#"
     UPDATE people SET private_circle = :circle

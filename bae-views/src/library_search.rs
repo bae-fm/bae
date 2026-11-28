@@ -135,7 +135,7 @@ fn search_results(rows: Vec<LibrarySearchRow>) -> Result<DbLibrarySearchResults,
 // index, tests each entry against the titles the search finds, and stops at its
 // limit, computing no key. `INDEXED BY` holds the walk to that index: left to
 // choose, SQLite reads the entries the search finds and sorts them all.
-sqlive_compose::fragment!(
+coven::fragment!(
     TracksFoundByTitle(pattern: Option<String>),
     r#"
     SELECT entry.track_id, entry.title_sort_key
@@ -148,7 +148,7 @@ sqlive_compose::fragment!(
 // The first `limit` tracks that hold the search pattern `pattern`, in title
 // order, ties going by id, each with its place in that order, from 1, how many
 // tracks these are, and the track as playback shows it.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundTracks(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.title_sort_key, picked.track_id) AS place,
@@ -165,7 +165,7 @@ sqlive_compose::fragment!(
 // The works whose title holds the search pattern `pattern`, each with its
 // title's sort key. A read that takes them in title order walks the entries'
 // title index, as [`TracksFoundByTitle`] does for tracks.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorksFoundByTitle(pattern: Option<String>),
     r#"
     SELECT entry.work_id, entry.title_sort_key
@@ -178,7 +178,7 @@ sqlive_compose::fragment!(
 // The first `limit` works whose title holds the search pattern `pattern`, in
 // title order, ties going by id, each with its place in that order, from 1, how
 // many works these are, and the work as its rows show it, with its cover.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundWorks(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.title_sort_key, picked.work_id) AS place,
@@ -199,7 +199,7 @@ sqlive_compose::fragment!(
 // none for a kind that lists fewer; `places` is the JSON array of the places,
 // from 1 to `limit`, and 1 for a `limit` of 0. `found`: whether any kind has a
 // match, through the conditions that list each kind.
-sqlive_compose::read!(
+coven::read!(
     writer LibrarySearch(pattern: Option<String>, places: String, limit: i64) { found: bool },
     r#"
     SELECT (EXISTS (SELECT 1
@@ -238,7 +238,7 @@ sqlive_compose::read!(
 // The track a spoken "play" of the search pattern `pattern` plays: the first
 // track it finds in title order, and failing that, the first track of the
 // first album it finds, in title order, whose primary release has one.
-sqlive_compose::read!(
+coven::read!(
     writer TopPlayable(pattern: Option<String>) {
         release_id: String,
         track_id: String

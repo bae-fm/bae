@@ -5,7 +5,7 @@ use super::*;
 use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
-sqlive_compose::write!(
+coven::write!(
     KeepWork(
         id: &'p str,
         title: &'p str,
@@ -33,7 +33,7 @@ pub fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbErr
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     KeepWorkArtist(
         id: String,
         work_id: &'p str,
@@ -76,7 +76,7 @@ pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Res
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     KeepWorkPart(
         id: String,
         parent_work_id: &'p str,
@@ -104,7 +104,7 @@ pub fn insert_work_part_row(conn: &CovenWrite<'_>, part: &DbWorkPart) -> Result<
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertTrackWork(
         id: &'p str,
         track_id: &'p str,
@@ -131,7 +131,7 @@ pub fn insert_track_work_row(conn: &CovenWrite<'_>, link: &DbTrackWork) -> Resul
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseArtistRole(
         id: &'p str,
         release_id: &'p str,
@@ -177,7 +177,7 @@ pub fn insert_release_artist_role_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertTrackArtistRole(
         id: &'p str,
         track_id: &'p str,

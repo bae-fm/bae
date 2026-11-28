@@ -300,14 +300,14 @@ pub(crate) fn pane_failure_of(
     })
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeletePaneFailure(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_pane_failure WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertPaneFailure(
         content_hash: &'p str,
         command: &'static str,

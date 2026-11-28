@@ -18,7 +18,7 @@
 //   row names as holding one, in hex, and coven's registration of it: its
 //   name, its state, whether a member removed its person from the library and
 //   whether it is this device, or `null` when coven registers no such device.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseStorage {
         pinned: bool,
         waiting_files: i64,

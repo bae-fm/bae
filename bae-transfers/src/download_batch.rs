@@ -4,7 +4,7 @@
 //! batch's table.
 
 // Each release of each kind's batch.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadBatchMember,
     r#"
     SELECT member.release_id, member.kind

@@ -51,7 +51,7 @@ impl FromSql for RendererKind {
 
 // The receivers discovery found, apart from the one playback is cast to, by
 // name in the device's language, then id.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundReceivers {
         struct FoundReceiverDocument {
             id: String,
@@ -78,7 +78,7 @@ sqlive_compose::fragment!(
 
 // What the picker lists: the found receivers, and the one playback is cast to
 // while it casts, with whether it lists no receiver at all.
-sqlive_compose::read!(
+coven::read!(
     writer PickerList { is_empty: bool },
     r#"
     SELECT listed.*, casting.*,
@@ -115,9 +115,9 @@ fn cast_receivers_of(row: PickerListRow) -> Result<CastReceiverList, DbError> {
     Ok(CastReceiverList { casting, found, is_empty: row.is_empty })
 }
 
-sqlive_compose::write!(ForgetReceivers, r#"DELETE FROM cast_receiver"#);
+coven::write!(ForgetReceivers, r#"DELETE FROM cast_receiver"#);
 
-sqlive_compose::write!(
+coven::write!(
     ListReceiver(
         id: &'p str,
         name: &'p str,

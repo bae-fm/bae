@@ -23,7 +23,7 @@ impl Membership {
 }
 
 // The name of this device's own registration.
-sqlive_compose::read!(
+coven::read!(
     writer ThisDeviceName,
     r#"
     SELECT own.name

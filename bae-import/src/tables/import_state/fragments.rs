@@ -1,6 +1,6 @@
 //! What the candidate state offers the candidate pane: what is running for the candidate, the evidence in its files, its draft and cover, its failures, and the records and album its draft links to.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Standing with keys(candidate_key TEXT) {
         standing_key: crate::CandidateKey,
         identification: Option<String>,
@@ -23,7 +23,7 @@ sqlive_compose::fragment!(
     JOIN import_candidate_standing AS standing ON standing.candidate_key = keys.candidate_key
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     FileEvidence(key: crate::CandidateKey) {
         file_evidence_key: crate::CandidateKey,
         file_evidence: String
@@ -49,7 +49,7 @@ sqlive_compose::fragment!(
     FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     PickedLibraryStatus(key: crate::CandidateKey) {
         picked_status_key: crate::CandidateKey,
         picked_status_release_id: Option<String>,
@@ -73,7 +73,7 @@ sqlive_compose::fragment!(
     FROM status
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateAlbum(key: crate::CandidateKey) {
         candidate_album_key: crate::CandidateKey,
         candidate_album_kind: String
@@ -117,7 +117,7 @@ sqlive_compose::fragment!(
            ON album.album_id = choice.album_id
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftRows with candidate(content_hash TEXT) {
         album_title: String,
         album_year: String,
@@ -221,7 +221,7 @@ sqlive_compose::fragment!(
     FROM statement
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftFlags(key: crate::CandidateKey) {
         draft_flags_key: crate::CandidateKey,
         draft_blank: bool,
@@ -239,7 +239,7 @@ sqlive_compose::fragment!(
     FROM statement
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Failure(key: crate::CandidateKey) {
         failure_key: crate::CandidateKey,
         failure_error: String,
@@ -257,7 +257,7 @@ sqlive_compose::fragment!(
     FROM statement
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     PaneFailure(key: crate::CandidateKey) {
         pane_failure_key: crate::CandidateKey,
         pane_failure_command: String,
@@ -276,7 +276,7 @@ sqlive_compose::fragment!(
     FROM statement
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ClaimedRecords(key: crate::CandidateKey) {
         claimed_key: crate::CandidateKey,
         claimed_records: Option<String>
@@ -298,7 +298,7 @@ sqlive_compose::fragment!(
     ) AS claimed_records
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CoverChoice(key: crate::CandidateKey) {
         cover_choice_key: crate::CandidateKey,
         cover_row: String,

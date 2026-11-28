@@ -184,7 +184,7 @@ fn heading_over(item: &ComposerDetailItem) -> ComposerHeading {
 // its summary and cover, or a credit with its role and its release's album,
 // and for a track credit its track and the composer; and whether the row is
 // the first of its part of the page, which opens the part's heading.
-sqlive_compose::fragment!(
+coven::fragment!(
     ComposerPageEntry { opens_heading: bool },
     r#"
     SELECT listing.entry AS row_entry, listing.section AS part, listing.place AS indent,
@@ -217,7 +217,7 @@ sqlive_compose::fragment!(
 // The rows of the composer `artist`'s page at or after a key of its order, at
 // most `limit`, each with its key. The order is the page's index's: its terms
 // after the artist, which end with terms that tell every row of a page apart.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerPageWindow(
         artist: String,
         order_key_0: SortValue,
@@ -254,7 +254,7 @@ sqlive_compose::read!(
 );
 
 // [`ComposerPageWindow`] from the page's top.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerPageTop(
         artist: String,
         limit: i64
@@ -281,7 +281,7 @@ sqlive_compose::read!(
 
 // The rows of the composer `artist`'s page at the places from `offset`, at
 // most `limit`.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerPageRows(artist: String, offset: i64, limit: i64),
     r#"
     SELECT shown.*
@@ -295,7 +295,7 @@ sqlive_compose::read!(
 );
 
 // How many rows the composer `artist`'s page lists.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerPageLength(artist: String) { entries: i64 },
     r#"
     SELECT COUNT(*) AS entries
@@ -306,7 +306,7 @@ sqlive_compose::read!(
 
 // How many rows of the composer `artist`'s page come before a key of its
 // order.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerPageRowsBefore(
         artist: String,
         order_key_0: SortValue,
@@ -331,7 +331,7 @@ sqlive_compose::read!(
 // The key of the row at the place `index` of the composer `artist`'s page, or
 // of its last row when the page ends before it. SQLite reads the offset -1 of
 // an empty page as 0, where there is no row.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerPageKeyAt(artist: String, index: i64) { order_key_0: SortValue, order_key_1: SortValue, order_key_2: SortValue, order_key_3: SortValue, order_key_4: SortValue, order_key_5: SortValue, order_key_6: SortValue, order_key_7: SortValue, order_key_8: SortValue },
     r#"
     SELECT listing.section AS order_key_0,
@@ -355,7 +355,7 @@ sqlive_compose::read!(
 
 // The composer `artist` as the composer list shows it, with the first work its
 // page lists; no row for an artist the list doesn't show.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerHead(artist: String) { default_work_id: Option<String> },
     r#"
     SELECT shown.*,

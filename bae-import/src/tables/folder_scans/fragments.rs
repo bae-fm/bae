@@ -5,7 +5,7 @@
 // images by the name the scan stored in `blank_cover_file`, as a JSON array of
 // its path in hex, its size and its modification time; JSON null for a row
 // with none.
-sqlive_compose::fragment!(
+coven::fragment!(
     LeadingImage on scan_candidate { leading_image: String },
     r#"
     SELECT COALESCE((
@@ -25,7 +25,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ScanItems with keys(candidate_key BLOB) {
         watched_folder_path: Vec<u8>,
         path: crate::CandidateKey,
@@ -136,7 +136,7 @@ sqlive_compose::fragment!(
         candidate.watched_folder_path AND invalid_tags.candidate_path = candidate.path
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     PaneFiles(key: crate::CandidateKey) {
         pane_files_key: crate::CandidateKey,
         pane_files: String
@@ -213,7 +213,7 @@ sqlive_compose::fragment!(
 
 // What was read from the tags of each file of a stored file-tag snapshot, in
 // the files' order, each with the path of its file, as a JSON array.
-sqlive_compose::fragment!(
+coven::fragment!(
     SnapshotFileTags on scan_candidate_tag_snapshot { tag_files: String },
     r#"
     SELECT json_group_array(json_object('relative_path', tags.relative_path,
@@ -239,7 +239,7 @@ sqlive_compose::fragment!(
 // picture's bytes come with a row whose `found` is NULL, and otherwise only
 // when the file the picture came from is, as it was read, one of `found`: a
 // JSON array of files by relative path, size and modification time.
-sqlive_compose::fragment!(
+coven::fragment!(
     TagSnapshot with wanted(at INTEGER, candidate_key BLOB, found TEXT) {
         snapshot_at: i64,
         scan_generation: i64,
@@ -282,7 +282,7 @@ sqlive_compose::fragment!(
 );
 
 // Each stored sidecar, its files riding on it as a JSON array in their order.
-sqlive_compose::fragment!(
+coven::fragment!(
     Sidecars {
         sidecar_folder: Vec<u8>,
         sidecar_root: Vec<u8>,
@@ -318,7 +318,7 @@ sqlive_compose::fragment!(
 // over every entry under the root, as it does with no statistics, and with
 // those coven gathers of a large watched folder. `CROSS JOIN` keeps the
 // coverages the outer loop.
-sqlive_compose::fragment!(
+coven::fragment!(
     FolderReaders with covered(
         at INTEGER, root BLOB, folder BLOB, above TEXT, below_first BLOB, below_past BLOB,
         besides BLOB

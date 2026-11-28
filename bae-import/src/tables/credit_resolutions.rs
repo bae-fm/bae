@@ -19,7 +19,7 @@ use rusqlite::{params, OptionalExtension};
 
 pub mod row_fragments;
 
-sqlive_compose::read!(
+coven::read!(
     writer DueCredit { held: bool },
     r#"
     SELECT DISTINCT due.name_key, due.musicbrainz_artist_id, due.discogs_artist_id,
@@ -37,7 +37,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ChangedCreditAnswer(credits: String),
     r#"
     SELECT fresh.*
@@ -60,7 +60,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCreditAnswer(name_key: &'p str, musicbrainz: Option<&'p str>, discogs: Option<&'p str>),
     r#"
     DELETE FROM import_credit_resolution
@@ -69,7 +69,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCreditAnswer(name_key: &'p str, musicbrainz: Option<&'p str>, discogs: Option<&'p str>),
     r#"
     INSERT INTO import_credit_resolution (name_key, musicbrainz_artist_id, discogs_artist_id)
@@ -77,13 +77,13 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCreditAnswerArtists(resolution: i64),
     r#"DELETE FROM import_credit_resolution_artist WHERE resolution = :resolution"#
 );
 
 // The artists of the JSON array `:artists`, as the answer `:resolution`'s.
-sqlive_compose::write!(
+coven::write!(
     InsertCreditAnswerArtists(resolution: i64, artists: &'p str),
     r#"
     INSERT INTO import_credit_resolution_artist (
@@ -96,7 +96,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(DeleteDueCredits, r#"DELETE FROM import_credit_resolution_due"#);
+coven::write!(DeleteDueCredits, r#"DELETE FROM import_credit_resolution_due"#);
 
 /// Answer every credit the transaction's writes marked due and empty the
 /// list: each one a draft still holds gets the rule's answer, written where

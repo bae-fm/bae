@@ -8,7 +8,7 @@
 
 // The audio files the edits pick for `FILE` lines, a line that plays no audio
 // with a NULL `audio_file_id`.
-sqlive_compose::fragment!(
+coven::fragment!(
     PickedSheetLines(edits: String) {
         sheet_file_id: Option<String>,
         file_reference: Option<String>,
@@ -23,7 +23,7 @@ sqlive_compose::fragment!(
 );
 
 // The sheets the edits ignore.
-sqlive_compose::fragment!(
+coven::fragment!(
     IgnoredSheets(edits: String) { sheet_file_id: Option<String> },
     r#"
     SELECT ignored.value AS sheet_file_id
@@ -33,7 +33,7 @@ sqlive_compose::fragment!(
 
 // Each `FILE` line of the release's sheets with the file its tracks' bodies
 // play from now.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetLineFiles(release: String),
     r#"
     SELECT DISTINCT cut.sheet_file_id, cut.file_reference, played.file_id
@@ -48,7 +48,7 @@ sqlive_compose::fragment!(
 
 // The lines the edits pick, outside the sheets they ignore, onto a file the
 // lines do not play from now.
-sqlive_compose::fragment!(
+coven::fragment!(
     MovedSheetLines(release: String, edits: String) { to_file_id: Option<String> },
     r#"
     WITH lines AS (
@@ -73,7 +73,7 @@ sqlive_compose::fragment!(
 
 // Each track the save deletes, under an ignored sheet or a line that plays no
 // audio, with its sheet and its place in the release's playing order.
-sqlive_compose::fragment!(
+coven::fragment!(
     DroppedSheetTracks(release: String, edits: String),
     r#"
     WITH picks AS (
@@ -97,7 +97,7 @@ sqlive_compose::fragment!(
 // Each file that deleted tracks played and no track that stays plays once the
 // picks are written, which the save adds a track for, with the sheet and the
 // place in the release of the first deleted track that played it.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetAddedFiles(release: String, edits: String) {
         sheet_file_id: String,
         first_position: i64
@@ -136,7 +136,7 @@ sqlive_compose::fragment!(
 // at the tail of that file among them. A deleted track has none, and a track
 // the edits add has one, whole file, marked `added`, whose track id is its
 // file's.
-sqlive_compose::fragment!(
+coven::fragment!(
     LaidSegments(release: String, edits: String) {
         track_id: String,
         segment_index: i64,
@@ -184,7 +184,7 @@ sqlive_compose::fragment!(
 // laid out as a CUE image, each file a track is added for laid out as a
 // whole-file track and each file a line moved off that no segment then reads
 // as one no track plays from.
-sqlive_compose::fragment!(
+coven::fragment!(
     LaidFiles(release: String, edits: String) { source_audio_layout: Option<String> },
     r#"
     WITH moved AS MATERIALIZED (
@@ -219,7 +219,7 @@ sqlive_compose::fragment!(
 // them. A line's options are the audio files it can play from, in file name
 // order, the one it plays from flagged. The stored tracks keep a line its
 // options when the edits drop the tracks it carves.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetLineCaptions(release: String, edits: String) {
         sheet_file_id: String,
         bound_count: i64,

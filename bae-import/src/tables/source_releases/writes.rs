@@ -241,7 +241,7 @@ fn delete_child_rows(sql: &CovenWrite<'_>, catalog: &str, key: &str) -> Result<(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     UpsertSourceRelease(
         catalog: &'p str,
         key: &'p str,
@@ -282,72 +282,72 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseLabelRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_label WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseBarcodeRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_barcode WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseAlbumArtistRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_album_artist WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseLinkRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_link WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseAlbumLinkRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_album_link WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseFormatRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_format WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseRecordRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_record WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseCoverCopyRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_cover_copy WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseCoverRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_cover WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseArchiveGroupRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_archive_group WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseRoleRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_role WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseMediumRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_medium WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSourceReleaseUnfetchedRows(catalog: &'p str, key: &'p str),
     r#"DELETE FROM source_release_unfetched WHERE catalog = :catalog AND release_id = :key"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseLabel(
         catalog: &'p str,
         key: &'p str,
@@ -367,7 +367,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseBarcode(catalog: &'p str, key: &'p str, position: i64, barcode: &'p str),
     r#"
     INSERT INTO source_release_barcode (
@@ -377,7 +377,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseAlbumArtist(
         catalog: &'p str,
         key: &'p str,
@@ -399,7 +399,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseLink(
         catalog: &'p str,
         key: &'p str,
@@ -415,7 +415,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseAlbumLink(
         catalog: &'p str,
         key: &'p str,
@@ -431,7 +431,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseFormat(
         catalog: &'p str,
         key: &'p str,
@@ -447,7 +447,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseRecord(
         catalog: &'p str,
         key: &'p str,
@@ -464,7 +464,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseCover(
         catalog: &'p str,
         key: &'p str,
@@ -483,7 +483,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseCoverCopy(
         catalog: &'p str,
         key: &'p str,
@@ -500,7 +500,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseArchiveGroup(
         catalog: &'p str,
         key: &'p str,
@@ -515,7 +515,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseUnfetched(
         catalog: &'p str,
         key: &'p str,
@@ -531,7 +531,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseMedium(
         catalog: &'p str,
         key: &'p str,
@@ -546,7 +546,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSourceReleaseMediumDisc(
         catalog: &'p str,
         key: &'p str,

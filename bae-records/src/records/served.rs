@@ -10,7 +10,7 @@ use time::UtcDateTime;
 // its album's releases, the year it shows (its pressing's, else its album's),
 // when it was added, its album's title and credits, how many tracks it has and
 // how long they play, its cover's version, and its catalog records.
-sqlive_compose::fragment!(
+coven::fragment!(
     ServedRelease {
         album_order: f64,
         shown_year: Option<i64>,
@@ -40,7 +40,7 @@ sqlive_compose::fragment!(
 // Each audio format's segments as a song outside bae reads them, in order:
 // each one's role, first and end sample, and its file's name, size and
 // container, no file for one the library doesn't hold.
-sqlive_compose::fragment!(
+coven::fragment!(
     ServedSegments on audio_formats {
         struct ServedSegmentFile {
             name: String,
@@ -72,7 +72,7 @@ sqlive_compose::fragment!(
 
 // Each audio format as a song outside bae states it: its rate, depth and
 // channels, the silence bae generates before it, and its segments.
-sqlive_compose::fragment!(
+coven::fragment!(
     ServedAudio {
         sample_rate: std::num::NonZeroU32,
         bits_per_sample: Option<std::num::NonZeroU32>,
@@ -90,7 +90,7 @@ sqlive_compose::fragment!(
 // Each track as a song outside bae shows it: its release, title, length,
 // when it was added, the credits it shows (its own, else its album's), and
 // its audio as a song states it, none for a track that stores no audio.
-sqlive_compose::fragment!(
+coven::fragment!(
     ServedTrack { duration_ms: u64 },
     r#"
     SELECT track.id AS served_track_id, track.release_id, track.title, track.duration_ms,
@@ -106,7 +106,7 @@ sqlive_compose::fragment!(
 // One release as an album outside bae serves it, with each of its tracks in
 // playing order and how such a surface numbers it: one row with no track for a
 // release with none, and no row for a release the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer ServedAlbum(release: String),
     r#"
     SELECT served.*, numbered.*, song.*
@@ -129,7 +129,7 @@ sqlive_compose::read!(
 // One track as a song outside bae serves it, with how such a surface numbers
 // it and its release as an album; no row for a track the library does not
 // hold.
-sqlive_compose::read!(
+coven::read!(
     writer ServedSong(track: String),
     r#"
     SELECT served.*, numbered.*, song.*

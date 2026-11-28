@@ -3,7 +3,7 @@ use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
 // The `album_order` that puts a release last among those of the album `album`.
-sqlive_compose::fragment!(
+coven::fragment!(
     NextAlbumOrder(album: String) { next: i64 },
     r#"
     SELECT COALESCE(MAX(r.album_order) + 1, 0) AS next
@@ -12,7 +12,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertArtist(
         id: &'p str,
         name: &'p str,
@@ -47,7 +47,7 @@ pub(super) fn insert_artist_row(conn: &CovenWrite<'_>, artist: &DbArtist) -> Res
 }
 
 // Give the artist `id` each of these that it has none of.
-sqlive_compose::write!(
+coven::write!(
     FillArtistIds(
         id: &'p str,
         discogs_artist_id: Option<&'p str>,
@@ -81,7 +81,7 @@ pub(super) fn update_artist_external_ids_row(
 // Callers: a records change that files a release under a new album, the test
 // writes, and the debug build's seeded albums.
 #[cfg(any(test, feature = "test-utils", desktop))]
-sqlive_compose::write!(
+coven::write!(
     InsertAlbum(
         id: &'p str,
         title: &'p str,
@@ -108,7 +108,7 @@ pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     UpsertAlbum(
         id: &'p str,
         title: &'p str,
@@ -148,7 +148,7 @@ pub(super) fn insert_album_artist_row(
     insert_album_credit(conn, aa, &aa.created_at.to_rfc3339())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertRelease(
         id: &'p str,
         album_id: String,
@@ -225,12 +225,12 @@ pub fn insert_release_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     ClearReleaseLabels(release_id: &'p str),
     "DELETE FROM release_labels WHERE release_id = :release_id"
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseLabel(
         id: &'p str,
         release_id: &'p str,
@@ -270,12 +270,12 @@ pub(super) fn replace_release_label_rows(
     )
 }
 
-sqlive_compose::write!(
+coven::write!(
     ClearReleaseBarcodes(release_id: &'p str),
     "DELETE FROM release_barcodes WHERE release_id = :release_id"
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseBarcode(id: &'p str, release_id: &'p str, position: i64, barcode: &'p str),
     r#"
     INSERT INTO release_barcodes (id, release_id, position, barcode)
@@ -302,12 +302,12 @@ pub(super) fn replace_release_barcodes(
     )
 }
 
-sqlive_compose::write!(
+coven::write!(
     ClearReleaseMedia(release_id: &'p str),
     "DELETE FROM release_media WHERE release_id = :release_id"
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseMediaCount(
         id: &'p str,
         release_id: &'p str,
@@ -346,12 +346,12 @@ pub(super) fn replace_release_media(
     )
 }
 
-sqlive_compose::write!(
+coven::write!(
     ClearReleaseDiscogsDetails(release_id: &'p str),
     "DELETE FROM release_discogs_details WHERE release_id = :release_id"
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseDiscogsDetail(
         id: &'p str,
         release_id: &'p str,
@@ -393,7 +393,7 @@ pub(super) fn replace_release_discogs_details(
 /// with its id of `row_ids` and its position, numbered from zero.
 fn replace_release_list<R>(
     conn: &CovenWrite<'_>,
-    clear: &impl sqlive_compose::Write,
+    clear: &impl coven::Write,
     rows: &[R],
     row_ids: &[String],
     insert: impl Fn(&R, &str, i64) -> rusqlite::Result<usize>,
@@ -406,7 +406,7 @@ fn replace_release_list<R>(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseMedium(
         id: &'p str,
         release_id: &'p str,
@@ -437,7 +437,7 @@ pub fn insert_release_medium_row(
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetReleaseMedium(id: &'p str, medium: Option<&'static str>, side_count: std::num::NonZeroU8),
     "UPDATE release_mediums SET medium = :medium, side_count = :side_count WHERE id = :id"
 );
@@ -458,10 +458,7 @@ pub(super) fn update_release_medium_row(
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
-    DeleteReleaseMedium(id: &'p str),
-    "DELETE FROM release_mediums WHERE id = :id"
-);
+coven::write!(DeleteReleaseMedium(id: &'p str), "DELETE FROM release_mediums WHERE id = :id");
 
 #[cfg(desktop)]
 pub(super) fn delete_release_medium_row(conn: &CovenWrite<'_>, id: &str) -> Result<(), DbError> {
@@ -470,7 +467,7 @@ pub(super) fn delete_release_medium_row(conn: &CovenWrite<'_>, id: &str) -> Resu
 }
 
 // The track goes after the release's others.
-sqlive_compose::write!(
+coven::write!(
     InsertTrack(
         id: &'p str,
         release_id: &'p str,
@@ -514,13 +511,13 @@ pub fn insert_track_artist_row(conn: &CovenWrite<'_>, ta: &DbTrackArtist) -> Res
 }
 
 #[cfg(any(test, feature = "test-utils", desktop))]
-sqlive_compose::write!(
+coven::write!(
     ClearReleaseRecords(release_id: &'p str),
     "DELETE FROM release_records WHERE release_id = :release_id"
 );
 
 #[cfg(any(test, feature = "test-utils", desktop))]
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseRecord(
         id: String,
         release_id: &'p str,
@@ -565,7 +562,7 @@ pub fn write_release_records(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     ClearAlbumArtists(album_id: &'p str),
     "DELETE FROM album_artists WHERE album_id = :album_id"
 );
@@ -592,7 +589,7 @@ pub fn replace_album_artists(
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     ClearTrackArtists(track_id: &'p str),
     "DELETE FROM track_artists WHERE track_id = :track_id"
 );
@@ -624,7 +621,7 @@ pub(super) fn replace_track_artists(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertAlbumArtist(
         id: &'p str,
         album_id: &'p str,
@@ -661,7 +658,7 @@ fn insert_album_credit(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertTrackArtist(
         id: &'p str,
         track_id: &'p str,

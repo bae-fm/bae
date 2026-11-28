@@ -24,7 +24,7 @@ use super::*;
 use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
 use bae_store::WriteStatements;
 
-sqlive_compose::write!(
+coven::write!(
     InsertSheetPlace(
         sheet_file_id: &'p str,
         place: &'static str,
@@ -37,7 +37,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ReplaceSheetPlace(
         sheet_file_id: &'p str,
         place: &'static str,
@@ -52,7 +52,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSheetBinding(
         sheet_file_id: &'p str,
         file_reference: &'p str,
@@ -64,7 +64,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ReplaceSheetBinding(
         sheet_file_id: &'p str,
         file_reference: &'p str,
@@ -81,7 +81,7 @@ sqlive_compose::write!(
 // The decisions the person made about the release `release`'s sheets, naming
 // each file by its name in the release: the JSON arrays of the bindings of
 // their `FILE` lines and of the sides they are on.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseSheetDecisions(release: String) {
         sheet_bindings: String,
         sheet_places: String
@@ -107,7 +107,7 @@ sqlive_compose::fragment!(
 );
 
 // The decisions the person made about one release's sheets.
-sqlive_compose::read!(
+coven::read!(
     writer OneReleaseSheetDecisions(release: String),
     r#"
     SELECT decided.*

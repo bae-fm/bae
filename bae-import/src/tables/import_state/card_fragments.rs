@@ -1,6 +1,6 @@
 //! The cards of a verdict, as the candidate pane and the runtime read them.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     VerdictCards with owner(content_hash TEXT, identify_run INTEGER) {
         owner_row: String,
         verdict_cards: Option<String>

@@ -201,7 +201,7 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
     to_i64(generation, "folder scan generation")
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer ScanDirectories(watched_folder_path: Vec<u8>),
     r#"
     SELECT recorded.path, recorded.modified_at

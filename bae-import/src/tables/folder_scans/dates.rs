@@ -31,7 +31,7 @@ fn stored_date(
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     StoreFolderDiscovery(
         folder: Vec<u8>,
         first_seen_at: i64,
@@ -125,7 +125,7 @@ impl FolderDiscovery {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     ForgetDiscoveryAtOrBelow(folder: &'p [u8], below_first: &'p [u8], below_past: &'p [u8]),
     r#"
     DELETE FROM folder_discovery

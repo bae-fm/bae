@@ -73,12 +73,12 @@ pub(super) fn album_links_of(
     })
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteGroupAlbumLinks(release_group: &'p str),
     r#"DELETE FROM release_group_album_link WHERE release_group = :release_group"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertGroupAlbumLink(release_group: &'p str, catalog: &'static str, key: &'p str),
     r#"
     INSERT INTO release_group_album_link (release_group, catalog, key)
@@ -91,7 +91,7 @@ sqlive_compose::write!(
 // the other catalogs' albums among them some group was found to be. They are
 // listed album by album in the order of `ord`: a group's albums by catalog
 // and key, an album's groups by id.
-sqlive_compose::fragment!(
+coven::fragment!(
     KeptGroupAlbums with wanted(at INTEGER),
         asked(at INTEGER, ord INTEGER, catalog TEXT, key TEXT)
     {
@@ -120,7 +120,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer KeptForAlbums(albums: String),
     r#"
     SELECT kept.*

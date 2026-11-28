@@ -46,7 +46,7 @@ pub struct ReleaseFilesSnapshot {
 // coven's, so the size orders sort the release's files. A release with no
 // files gives one row with no file, and a release the library does not hold
 // gives none.
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesByName(release: String),
     r#"
     SELECT held.*, file.*
@@ -58,7 +58,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesByNameBackward(release: String),
     r#"
     SELECT held.*, file.*
@@ -70,7 +70,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesBySize(release: String),
     r#"
     SELECT held.*, file.*
@@ -82,7 +82,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesBySizeBackward(release: String),
     r#"
     SELECT held.*, file.*
@@ -94,7 +94,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesByKind(release: String),
     r#"
     SELECT held.*, file.*
@@ -106,7 +106,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesByKindBackward(release: String),
     r#"
     SELECT held.*, file.*

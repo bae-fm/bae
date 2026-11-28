@@ -4,7 +4,7 @@
 use super::fragments::{CurrentSyncStatus, StartFailure};
 use super::*;
 
-sqlive_compose::read!(
+coven::read!(
     writer LibrarySyncStatus,
     r#"
     SELECT current.*

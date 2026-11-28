@@ -38,7 +38,7 @@ pub(super) enum PressingFactsWrite {
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetReleaseYear(release_id: &'p str, year: Option<i32>),
     "UPDATE releases SET year = :year WHERE id = :release_id"
 );
@@ -88,7 +88,7 @@ fn update_release_typed_pressing_on(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     SetReleaseFactColumns(
         release_id: &'p str,
         country: Option<&'static str>,
@@ -122,7 +122,7 @@ fn update_release_fact_columns_on(
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetAlbumFields(id: &'p str, title: &'p str, year: Option<i32>, is_compilation: bool),
     r#"
     UPDATE albums SET title = :title, year = :year, is_compilation = :is_compilation
@@ -143,7 +143,7 @@ pub(super) fn update_album_fields_on(tx: &CovenWrite<'_>, album: &DbAlbum) -> Re
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetTrackTitle(id: &'p str, title: &'p str),
     "UPDATE tracks SET title = :title WHERE id = :id"
 );
@@ -205,10 +205,7 @@ pub(super) fn write_release_metadata_on(
     Ok(())
 }
 
-sqlive_compose::write!(
-    DeleteRelease(release_id: &'p str),
-    "DELETE FROM releases WHERE id = :release_id"
-);
+coven::write!(DeleteRelease(release_id: &'p str), "DELETE FROM releases WHERE id = :release_id");
 
 impl Records {
     #[cfg(any(test, feature = "test-utils"))]
@@ -512,7 +509,7 @@ impl Records {
 // form's `records`, a JSON array, once the form replaced the release's, and
 // else the release's own) and its cover's version; no row when the library
 // holds no such release.
-sqlive_compose::fragment!(
+coven::fragment!(
     EditedHead(release: String, relinked: bool, records: String) {
         has_tracks: bool,
         shows_records: bool

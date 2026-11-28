@@ -469,7 +469,7 @@ async fn progress_lists_the_folders_in_their_order_from_the_index() {
         roots
     );
 
-    use sqlive_compose::Read;
+    use coven::Read;
     let statuses = (super::FolderScanStatusesParams::compiled().sql, vec![]);
     let scanning = (super::ScanningFoldersParams::compiled().sql, Vec::<&str>::new());
     for (statement, values) in [statuses, scanning] {
@@ -563,7 +563,7 @@ async fn the_found_count_is_counted_off_the_found_folders_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
-            let scanning = <super::ScanningFoldersParams as sqlive_compose::Read>::compiled().sql;
+            let scanning = <super::ScanningFoldersParams as coven::Read>::compiled().sql;
             sql.query(&format!("EXPLAIN QUERY PLAN {scanning}"), [], |row| row.get::<_, String>(3))
                 .map_err(bae_store::DbError::from)
         })

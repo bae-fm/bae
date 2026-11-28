@@ -54,14 +54,14 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraft(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_edit WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertDraft(
         content_hash: &'p str,
         album_title: &'p str,
@@ -86,7 +86,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertDraftTrack(
         content_hash: &'p str,
         track_id: &'p str,
@@ -120,7 +120,7 @@ sqlive_compose::write!(
 // Damage a test plants: a draft read from a source that says nobody wrote
 // it.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     DisownDraft(content_hash: &'p str),
     r#"
     UPDATE import_candidate_edit SET author = 'nobody' WHERE content_hash = :content_hash

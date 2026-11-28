@@ -37,7 +37,7 @@ impl FormColumns {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertDraftLabel(
         content_hash: &'p str,
         position: i64,
@@ -54,7 +54,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertDraftBarcode(content_hash: &'p str, position: i64, barcode: &'p str),
     r#"
     INSERT INTO import_candidate_edit_barcode
@@ -63,7 +63,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertDraftMedium(
         content_hash: &'p str,
         position: std::num::NonZeroU16,
@@ -77,7 +77,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteAlbumArtistsFrom(content_hash: &'p str, position: i64),
     r#"
     DELETE FROM import_candidate_album_artist_assignment
@@ -85,7 +85,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertAlbumArtist(
         content_hash: &'p str,
         position: i64,
@@ -114,7 +114,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertTrackArtist(
         content_hash: &'p str,
         track_id: &'p str,
@@ -139,7 +139,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertDraftWork(
         content_hash: &'p str,
         musicbrainz_work_id: &'p str,
@@ -155,7 +155,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertWorkCredit(
         content_hash: &'p str,
         musicbrainz_work_id: &'p str,
@@ -179,7 +179,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertWorkPart(
         content_hash: &'p str,
         position: i64,
@@ -193,7 +193,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseRole(
         content_hash: &'p str,
         position: i64,
@@ -216,7 +216,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertTrackRole(
         content_hash: &'p str,
         track_id: &'p str,
@@ -240,7 +240,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertTrackWork(
         content_hash: &'p str,
         track_id: &'p str,

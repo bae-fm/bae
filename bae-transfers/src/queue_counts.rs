@@ -5,7 +5,7 @@
 use crate::release_queue::{QueueWait, ReleaseQueueCounts, ReleaseQueueProgress};
 
 // Whether the person paused each queue.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueuePause { paused: bool },
     r#"
     SELECT kept.queue, kept.paused
@@ -15,7 +15,7 @@ sqlive_compose::fragment!(
 
 // How many entries of the download queue are in each phase, and whether it
 // holds any entry and any failed one.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadQueueTally {
         queued: u32,
         active: u32,
@@ -35,7 +35,7 @@ sqlive_compose::fragment!(
 
 // Whether coven says the device has a usable network: one row, NULL where
 // nothing tells.
-sqlive_compose::fragment!(
+coven::fragment!(
     NetworkUsable { network_usable: Option<bool> },
     r#"
     SELECT (SELECT usable FROM coven_network) AS network_usable
@@ -45,7 +45,7 @@ sqlive_compose::fragment!(
 // What the download queue is doing: whether it holds an entry waiting or
 // running, whether the person paused it, the release it runs, and whether
 // coven says the device has a usable network.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadQueueWork {
         download_working: bool,
         download_paused: bool,
@@ -76,7 +76,7 @@ impl DownloadQueueWork {
 
 // What the export and save queue is doing, as [`DownloadQueueWork`] reads the
 // download queue; it needs no network.
-sqlive_compose::fragment!(
+coven::fragment!(
     OutputQueueWork { output_working: bool, output_paused: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM output_queue AS held
@@ -98,7 +98,7 @@ impl OutputQueueWork {
 }
 
 // The download queue's counts, its pause, and the network.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredDownloadCounts,
     r#"
     SELECT tally.*, pause.*, network.*

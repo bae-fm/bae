@@ -19,8 +19,6 @@ bae-fragments-build = { workspace = true }
 bae-schema-manifest = { workspace = true }
 
 [dependencies]
-# The macros the read fragments are written with.
-sqlive-compose = { workspace = true }
 # Runs a picture's job under the reporter that tells of a panic in it.
 bae-diagnostics = { workspace = true }
 # The sizes a copy is made at, which the library's rows state too.

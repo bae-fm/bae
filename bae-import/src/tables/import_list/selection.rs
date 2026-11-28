@@ -20,7 +20,7 @@ use crate::{CandidateAction, CandidateKey, ImportListOpening, ImportListViewChan
 // rows and enables it, counting every row, only when every row can join one
 // release; otherwise it counts none. A selection offering nothing, such as one
 // whose keys name no row, gives one row with no command.
-sqlive_compose::read!(
+coven::read!(
     writer Selection(keys: String, commands: String) {
         rows: i64, single_item: Option<String>, single_key: Option<crate::CandidateKey>,
         command: Option<i64>, offering: Option<i64>, enabled: Option<bool>
@@ -108,7 +108,7 @@ pub(super) fn selection_params(keys: &[CandidateKey]) -> SelectionParams {
 // The releases among `keys`, a JSON array of their keys in hex, that the list
 // shows, in its order, each with its item and its folder's name; and, when
 // `acting` names a command's flag, only those that offer the command.
-sqlive_compose::read!(
+coven::read!(
     writer Selected(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
@@ -138,7 +138,7 @@ sqlive_compose::read!(
 );
 
 // Every release the list shows, in its order.
-sqlive_compose::read!(
+coven::read!(
     writer ShownKeys(
         list_order: String,
         tab: Option<String>,
@@ -164,7 +164,7 @@ sqlive_compose::read!(
 // The releases the list shows from the release `first` to the release
 // `last`, both included, in the list's order: those whose places are between
 // the two ends' places, which are one place when the list shows one end alone.
-sqlive_compose::read!(
+coven::read!(
     writer KeysBetween(
         list_order: String,
         tab: Option<String>,
@@ -197,7 +197,7 @@ sqlive_compose::read!(
 
 // Where the release at `key` sits in the list's order; no row when the list
 // does not show it.
-sqlive_compose::read!(
+coven::read!(
     writer ShownPosition(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
@@ -219,7 +219,7 @@ sqlive_compose::read!(
 // Where a list opens for `keys`, a JSON array of release keys in hex: the
 // place of the first of them the list shows, none when it shows none; and
 // those it doesn't show, in their order.
-sqlive_compose::read!(
+coven::read!(
     writer Opening(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
@@ -249,7 +249,7 @@ sqlive_compose::read!(
 // The releases among `keys`, a JSON array of their keys in hex, that a fold
 // hid: in the view's tab and kept by its filters, shown under the folds
 // `folded_before` and in a group the folds `folded` fold shut.
-sqlive_compose::read!(
+coven::read!(
     writer HiddenByFolds(
         tab: String,
         filter: Option<String>,

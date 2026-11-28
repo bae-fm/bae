@@ -37,7 +37,7 @@ pub struct PlaylistDetail {
 // twice: every one, then the person's own, where Add to playlist can put a
 // track (`add_target`). Each row is beside how many its list holds. The read
 // reads `name_sort`, so coven reruns it when the device's language changes.
-sqlive_compose::read!(
+coven::read!(
     writer PlaylistLists { add_target: bool, total: u64 },
     r#"
     SELECT playlist.*, lists.value IS 1 AS add_target,
@@ -51,7 +51,7 @@ sqlive_compose::read!(
 );
 
 // Whether the person can make a playlist.
-sqlive_compose::read!(
+coven::read!(
     writer CanCreatePlaylist,
     r#"
     SELECT viewer.*
@@ -61,7 +61,7 @@ sqlive_compose::read!(
 
 // The playlist `playlist` with its entries; no row when the library holds no
 // such playlist, or `playlist` names none.
-sqlive_compose::read!(
+coven::read!(
     writer PlaylistPage(playlist: Option<String>),
     r#"
     SELECT playlist.*, paged.*

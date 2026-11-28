@@ -1,7 +1,7 @@
 use super::*;
 use crate::test_fixtures::audio::store_audio;
 use crate::test_fixtures::{artist_album_release, test_records, RELEASE_A, TRACK_A, TRACK_B};
-use sqlive_compose::Statement;
+use coven::Statement;
 
 /// `RELEASE_A` with `TRACK_A` then `TRACK_B` on its CD, and no audio.
 async fn two_tracks() -> (bae_store::Store, bae_util::test_files::TestFolder, Records) {

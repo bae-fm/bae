@@ -38,9 +38,9 @@ use bae_store::list_windows::{OrderKey, WindowRead};
 use bae_store::ListWindow;
 use bae_types::credits::CreditLine;
 #[cfg(test)]
-use rusqlite::ToSql;
+use coven::Statement as _;
 #[cfg(test)]
-use sqlive_compose::Statement as _;
+use rusqlite::ToSql;
 
 /// The columns of a window, before they are shaped into the rows the list shows.
 pub(super) type WindowRows = WindowRead<StoredItem>;
@@ -273,14 +273,24 @@ impl WindowStatement {
     /// The read of the rows the statement reads.
     fn reads(self) -> WindowItems {
         match self {
-            Self::NewestFirstTop(params) => coven::ReadAs::new(params, WindowItemRow::NewestFirstTop),
-            Self::OldestFirstTop(params) => coven::ReadAs::new(params, WindowItemRow::OldestFirstTop),
-            Self::PathAscendingTop(params) => coven::ReadAs::new(params, WindowItemRow::PathAscendingTop),
-            Self::PathDescendingTop(params) => coven::ReadAs::new(params, WindowItemRow::PathDescendingTop),
+            Self::NewestFirstTop(params) => {
+                coven::ReadAs::new(params, WindowItemRow::NewestFirstTop)
+            }
+            Self::OldestFirstTop(params) => {
+                coven::ReadAs::new(params, WindowItemRow::OldestFirstTop)
+            }
+            Self::PathAscendingTop(params) => {
+                coven::ReadAs::new(params, WindowItemRow::PathAscendingTop)
+            }
+            Self::PathDescendingTop(params) => {
+                coven::ReadAs::new(params, WindowItemRow::PathDescendingTop)
+            }
             Self::NewestFirst(params) => coven::ReadAs::new(params, WindowItemRow::NewestFirst),
             Self::OldestFirst(params) => coven::ReadAs::new(params, WindowItemRow::OldestFirst),
             Self::PathAscending(params) => coven::ReadAs::new(params, WindowItemRow::PathAscending),
-            Self::PathDescending(params) => coven::ReadAs::new(params, WindowItemRow::PathDescending),
+            Self::PathDescending(params) => {
+                coven::ReadAs::new(params, WindowItemRow::PathDescending)
+            }
         }
     }
 }

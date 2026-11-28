@@ -1,6 +1,6 @@
 use super::*;
 use crate::test_fixtures::{artist_album_release, test_records, write_cover, RELEASE_A, RELEASE_B};
-use sqlive_compose::Statement;
+use coven::Statement;
 
 /// `RELEASE_A` with a log and then a cover image among its files.
 async fn release_of_two_files() -> (bae_store::Store, bae_util::test_files::TestFolder, Records) {

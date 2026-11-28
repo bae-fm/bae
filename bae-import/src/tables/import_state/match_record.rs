@@ -16,7 +16,7 @@ use bae_catalogs::remote_image::{DownscaledCopy, RemoteCover, RemoteImageSet};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_types::pressing::StatedMedia;
 
-sqlive_compose::fragment!(
+coven::fragment!(
     MatchRecord on import_candidate_match {
         record: String
     },
@@ -296,7 +296,7 @@ fn record_json(record: Option<MatchRecord>, owner: &str) -> Result<String, DbErr
         .ok_or_else(|| DbError::unreadable(format!("a stored match of {owner}"), None::<String>))
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer SearchRunMatches(run: i64),
     r#"
     SELECT part.position, found.position AS found_position,

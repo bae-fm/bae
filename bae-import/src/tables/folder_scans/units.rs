@@ -25,7 +25,7 @@ struct SliceColumns<'a> {
     end: Option<i64>,
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertUnit(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -53,7 +53,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSheetOffer(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,

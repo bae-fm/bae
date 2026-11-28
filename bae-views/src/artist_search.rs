@@ -14,7 +14,7 @@ use bae_store::{exactly_one, statement_optional};
 // and `ranked_name_key`, its name's sort key in the device's language. The
 // text finds by library or provider id, or as library search finds artists,
 // by the search pattern `pattern`. Merged-away artists are never found.
-sqlive_compose::fragment!(
+coven::fragment!(
     RankedArtists(text: String, pattern: String) {
         match_rank: i64,
         ranked_name_key: Vec<u8>
@@ -59,7 +59,7 @@ sqlive_compose::fragment!(
 // The window of what the text finds: the artists from the window's first key
 // on, by rank, name and id, each with its key, image and other printed names.
 // The subquery picks the window's artists, so only their rows are read.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistSearchWindow(
         text: String,
         pattern: String,
@@ -89,7 +89,7 @@ sqlive_compose::read!(
 );
 
 // [`ArtistSearchWindow`] from the top of what the text finds.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistSearchTop(
         text: String,
         pattern: String,
@@ -114,7 +114,7 @@ sqlive_compose::read!(
 );
 
 // How many of the artists the text finds come before the row at a key.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistSearchBefore(
         text: String,
         pattern: String,
@@ -133,7 +133,7 @@ sqlive_compose::read!(
 // The key of the artist at a position of what the text finds, or of the last
 // one when it finds fewer; no row when it finds none, since SQLite reads its
 // offset of -1 as 0.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistSearchKeyAt(text: String, pattern: String, position: i64) {
         order_rank: i64,
         order_name: Vec<u8>,
@@ -151,7 +151,7 @@ sqlive_compose::read!(
 );
 
 // How many artists the text finds.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistSearchCount(text: String, pattern: String) { artists: u64 },
     r#"
     SELECT COUNT(*) AS artists

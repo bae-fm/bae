@@ -10,7 +10,7 @@ use crate::tables::watched_folders::relative_below;
 use bae_store::WriteStatements;
 
 // A folder's reading, under the key `:grouping` when none is stored yet.
-sqlive_compose::write!(
+coven::write!(
     StoreAnchoredGrouping(
         grouping: &'p CandidateKey,
         anchor: &'p [u8],
@@ -27,7 +27,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::write!(
+coven::write!(
     PlantUnscannedFolderReading(folder: &'p [u8]),
     r#"
     INSERT INTO release_grouping (key, anchor_folder, combined, author)

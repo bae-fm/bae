@@ -3,7 +3,7 @@
 //! with no key to start from.
 
 // [`super::window_reads::FlatWindowTitle`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopTitle(
         first: String,
         second: String,
@@ -38,7 +38,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowTitleBack`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopTitleBack(
         first: String,
         second: String,
@@ -73,7 +73,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowArtist`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopArtist(
         first: String,
         second: String,
@@ -108,7 +108,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowArtistBack`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopArtistBack(
         first: String,
         second: String,
@@ -143,7 +143,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowYear`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopYear(
         first: String,
         second: String,
@@ -178,7 +178,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowYearBack`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopYearBack(
         first: String,
         second: String,
@@ -213,7 +213,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowAdded`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopAdded(
         first: String,
         second: String,
@@ -248,7 +248,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::FlatWindowAddedBack`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer FlatTopAddedBack(
         first: String,
         second: String,
@@ -283,7 +283,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::GroupedWindowArtist`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedTopArtist(
         first: String,
         second: String,
@@ -322,7 +322,7 @@ sqlive_compose::read!(
 );
 
 // [`super::window_reads::GroupedWindowArtistBack`] from the grid's top.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedTopArtistBack(
         first: String,
         second: String,

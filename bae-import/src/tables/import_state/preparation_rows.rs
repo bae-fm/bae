@@ -101,7 +101,7 @@ impl CandidatePreparationRead {
 // there: the state with its verdict, signals, file decisions, link and lookup
 // choices, the release this device imported from its files, its draft, its
 // cover with the bytes prepared for it, and the album picked for it.
-sqlive_compose::fragment!(
+coven::fragment!(
     Preparation(content_hash: String) {},
     r#"
     SELECT state.*, lines.*, origin.*, draft.*, cover.*, pick.*
@@ -125,7 +125,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer PreparationOf(content_hash: String),
     r#"
     SELECT preparation.*
@@ -134,7 +134,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer LeftOutAudioOf(key: crate::CandidateKey),
     r#"
     SELECT unread.*
@@ -143,7 +143,7 @@ sqlive_compose::read!(
 );
 
 // The first draft track that plays no audio unit of the folder, if any.
-sqlive_compose::read!(
+coven::read!(
     writer DraftTrackWithoutUnit(key: crate::CandidateKey),
     r#"
     SELECT played.*
@@ -154,7 +154,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer PreparationWithCardsOf(content_hash: String),
     r#"
     SELECT preparation.*, cards.*
@@ -257,7 +257,7 @@ fn answers_on(
     }))
 }
 
-sqlive_compose::write!(
+coven::write!(
     AdvanceCandidateRevisions(
         content_hash: &'p str,
         candidate_key: &'p crate::CandidateKey,

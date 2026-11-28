@@ -10,7 +10,7 @@ use crate::resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment,
 // scrub points' blob, empty for a segment that stores none. A release file's
 // `file` always names a record in `coven_files` (coven 17.2), so
 // `release_file` is NULL only when no release file has the segment's id.
-sqlive_compose::fragment!(
+coven::fragment!(
     AudioFormatSegments on audio_formats {
         struct StoredSegmentFile {
             file: coven::FileId,
@@ -49,7 +49,7 @@ sqlive_compose::fragment!(
 );
 
 // A track's audio format, with its segments.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredAudioFormat {
         pregap_samples: Option<u64>,
         generated_pregap_samples: Option<u64>,
@@ -67,7 +67,7 @@ sqlive_compose::fragment!(
 // and its audio format with its segments, no format for a track that stores
 // none. `first_of_release` says whether no track of its release plays before
 // it.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackAudio { duration_ms: u64, first_of_release: bool },
     r#"
     SELECT track.id AS audio_track_id, track.release_id, track.position, track.duration_ms,
@@ -88,7 +88,7 @@ sqlive_compose::fragment!(
 // credits, its album's title, year and credits, its release's year, its
 // number and disc as a surface outside bae states them, and how many tracks
 // the release has.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackTags
     with mediums(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
@@ -117,7 +117,7 @@ sqlive_compose::fragment!(
 );
 
 // One track's audio; no row for a track the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer OneTrackAudio(track: String),
     r#"
     SELECT audio.*
@@ -127,7 +127,7 @@ sqlive_compose::read!(
 );
 
 // One track's tags; no row for a track the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer OneTrackTags(track: String),
     r#"
     SELECT tags.*
@@ -148,7 +148,7 @@ sqlive_compose::read!(
 
 // One track's audio and tags, then the audio and tags of the track after it
 // on its release; no row for a track the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer TrackAndNextForSave(track: String),
     r#"
     SELECT audio.*, tags.*
@@ -179,7 +179,7 @@ sqlive_compose::read!(
 );
 
 // The audio and tags of every track of one release, in playing order.
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseForSave(release: String),
     r#"
     SELECT audio.*, tags.*

@@ -94,7 +94,7 @@ pub(super) enum Written<'a> {
     Returned,
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictCoverCopies(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_match_cover_copy
@@ -102,7 +102,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictMatchLabels(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_match_label
@@ -110,7 +110,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictMatchBarcodes(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_match_barcode
@@ -118,7 +118,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictMatchMediums(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_match_medium
@@ -126,7 +126,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictMatchLinks(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_match_link
@@ -134,7 +134,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictAlbumLinks(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_match_album_link
@@ -157,7 +157,7 @@ pub(super) fn delete_verdict_match_entries(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictMatchesFrom(verdict: super::verdict_rows::VerdictId, position: i64),
     r#"
     DELETE FROM import_candidate_match WHERE verdict_id = :verdict AND position >= :position
@@ -175,7 +175,7 @@ pub(super) fn delete_verdict_matches_from(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSearchMatches(source: &'p str),
     r#"
     DELETE FROM import_candidate_match WHERE search_run IS NOT NULL AND source = :source
@@ -194,7 +194,7 @@ pub(super) fn delete_search_matches_of(
 // A match, written over the one its owner holds at the position. The only
 // rows an insert here can conflict with are that one: the owner's, by
 // (verdict_id, position) or by (search_run, position).
-sqlive_compose::write!(
+coven::write!(
     UpsertMatch(
         verdict_id: Option<super::verdict_rows::VerdictId>,
         search_run: Option<i64>,
@@ -274,7 +274,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertMatchCoverCopy(
         match_id: super::match_rows::MatchId,
         cover_url: &'p str,
@@ -288,7 +288,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertMatchLabel(
         match_id: super::match_rows::MatchId,
         ordinal: i64,
@@ -305,7 +305,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertMatchBarcode(match_id: super::match_rows::MatchId, ordinal: i64, barcode: &'p str),
     r#"
     INSERT INTO import_candidate_match_barcode
@@ -314,7 +314,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertMatchMedium(
         match_id: super::match_rows::MatchId,
         media_kind: &'p str,
@@ -329,7 +329,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertMatchLink(
         match_id: super::match_rows::MatchId,
         ordinal: i64,
@@ -511,7 +511,7 @@ pub(super) fn store_match(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertMatchAlbumLink(
         match_id: super::match_rows::MatchId,
         ordinal: i64,

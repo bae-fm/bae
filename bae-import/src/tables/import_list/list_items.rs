@@ -31,7 +31,7 @@ use bae_store::list_windows::{OrderKey, SortValue};
 // Whether the list shows none of the members of the group of the placement
 // row: its folds fold the group, and it is not the group of the candidate at
 // `opened`, which a reveal shows open whatever the folds say.
-sqlive_compose::fragment!(
+coven::fragment!(
     Shut(folds_only: bool, folded: String, opened: Option<crate::CandidateKey>)
         on import_list_placement { shut: bool },
     r#"
@@ -48,7 +48,7 @@ sqlive_compose::fragment!(
 );
 
 // The items of the list newest first, each with its key.
-sqlive_compose::fragment!(
+coven::fragment!(
     NewestFirstItems(
         tab: Option<String>,
         filter: Option<String>,
@@ -82,7 +82,7 @@ sqlive_compose::fragment!(
 );
 
 // The items of the list oldest first, each with its key.
-sqlive_compose::fragment!(
+coven::fragment!(
     OldestFirstItems(
         tab: Option<String>,
         filter: Option<String>,
@@ -116,7 +116,7 @@ sqlive_compose::fragment!(
 );
 
 // The items of the list by folder, A to Z, each with its key.
-sqlive_compose::fragment!(
+coven::fragment!(
     PathAscendingItems(
         tab: Option<String>,
         filter: Option<String>,
@@ -148,7 +148,7 @@ sqlive_compose::fragment!(
 );
 
 // The items of the list by folder, Z to A, each with its key.
-sqlive_compose::fragment!(
+coven::fragment!(
     PathDescendingItems(
         tab: Option<String>,
         filter: Option<String>,
@@ -182,7 +182,7 @@ sqlive_compose::fragment!(
 // The releases a list shows, each with its place among the list's items, which
 // count its groups' headers: the list `list_order` names, of which the one
 // arm that names it reads a row.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShownReleases(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
@@ -236,7 +236,7 @@ sqlive_compose::fragment!(
 );
 
 // How many items of the list newest first sit before the one at a key.
-sqlive_compose::read!(
+coven::read!(
     writer NewestFirstPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
@@ -302,7 +302,7 @@ sqlive_compose::read!(
 
 // The key of the item of the list newest first at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
-sqlive_compose::read!(
+coven::read!(
     writer NewestFirstKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
@@ -353,7 +353,7 @@ sqlive_compose::read!(
 );
 
 // How many items of the list oldest first sit before the one at a key.
-sqlive_compose::read!(
+coven::read!(
     writer OldestFirstPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
@@ -419,7 +419,7 @@ sqlive_compose::read!(
 
 // The key of the item of the list oldest first at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
-sqlive_compose::read!(
+coven::read!(
     writer OldestFirstKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
@@ -470,7 +470,7 @@ sqlive_compose::read!(
 );
 
 // How many items of the list by folder, A to Z sit before the one at a key.
-sqlive_compose::read!(
+coven::read!(
     writer PathAscendingPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
@@ -521,7 +521,7 @@ sqlive_compose::read!(
 
 // The key of the item of the list by folder, A to Z at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
-sqlive_compose::read!(
+coven::read!(
     writer PathAscendingKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64
@@ -564,7 +564,7 @@ sqlive_compose::read!(
 );
 
 // How many items of the list by folder, Z to A sit before the one at a key.
-sqlive_compose::read!(
+coven::read!(
     writer PathDescendingPosition(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>,
@@ -615,7 +615,7 @@ sqlive_compose::read!(
 
 // The key of the item of the list by folder, Z to A at `position`, read by offset, then
 // that of its last item: the first row is the one a jump takes.
-sqlive_compose::read!(
+coven::read!(
     writer PathDescendingKeyAt(
         tab: Option<String>, filter: Option<String>, filter_text: Option<String>,
         folds_only: bool, folded: String, opened: Option<crate::CandidateKey>, position: i64

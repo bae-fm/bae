@@ -55,7 +55,7 @@ pub enum StorageKind {
 // chunks and headers with the two caches' files; the library's own files; the
 // archives that resets kept, NULL while there is none; and every part's bytes
 // together.
-sqlive_compose::read!(
+coven::read!(
     writer DeviceStorageSums(audio: &'static str) {
         audio_budget: Option<u64>,
         pinned: u64,

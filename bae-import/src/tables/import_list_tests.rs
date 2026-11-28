@@ -749,7 +749,7 @@ pub(crate) async fn scan_finished(
 }
 
 /// SQLite's plan for the compiled statement `statement`, one line per step.
-pub(crate) fn plan_of<S: sqlive_compose::Statement>(
+pub(crate) fn plan_of<S: coven::Statement>(
     sql: &impl bae_store::WriterRead,
     statement: &S,
 ) -> Result<Vec<String>, bae_store::DbError> {

@@ -2,7 +2,7 @@
 
 // Every candidate the scans hold: the key its rows are under, and the files it
 // reads.
-sqlive_compose::fragment!(
+coven::fragment!(
     HeldCandidates,
     r#"
     SELECT scan.watched_folder_path, scan.path, scan.content_hash
@@ -10,7 +10,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ScanContent(key: crate::CandidateKey) {
         content_hash: Option<String>,
         file_edit_revision: i64
@@ -21,7 +21,7 @@ sqlive_compose::fragment!(
     WHERE scan.path = :key
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ScanGrouping(key: crate::CandidateKey) { grouping_key: Option<crate::CandidateKey> },
     r#"
     SELECT scan.grouping_key
@@ -29,7 +29,7 @@ sqlive_compose::fragment!(
     WHERE scan.path = :key
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidatePartRows(key: crate::CandidateKey),
     r#"
     SELECT part.position
@@ -40,7 +40,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateFiles(key: crate::CandidateKey),
     r#"
     SELECT file.position, file.relative_path, file.file_name, file.absolute_path, file.size,
@@ -59,7 +59,7 @@ sqlive_compose::fragment!(
 // The files of the candidate `:key` that bae can show as its pictures: artwork
 // of a format a cover can be made from. The cover picker offers them, and the
 // pane shows them as images and leaves them out of its Files list.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShowableArtwork(key: crate::CandidateKey),
     r#"
     SELECT offered.*
@@ -68,7 +68,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateTagSnapshot(key: crate::CandidateKey),
     r#"
     SELECT snapshot.candidate_path, snapshot.embedded_cover_source_relative_path
@@ -82,7 +82,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateFileTags(key: crate::CandidateKey),
     r#"
     SELECT tags.relative_path, tags.file_size, tags.modified_at_ns
@@ -96,7 +96,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateUnits(key: crate::CandidateKey),
     r#"
     SELECT unit.position, unit.file_kind, unit.file_id, unit.sheet_id, unit.slice_index,
@@ -112,7 +112,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateCueTracks(key: crate::CandidateKey),
     r#"
     SELECT track.sheet_relative_path, track.position, track.start_cue_frames
@@ -126,7 +126,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateSheetAudio(key: crate::CandidateKey),
     r#"
     SELECT bound.sheet_relative_path, bound.file_reference, bound.audio_relative_path
@@ -140,7 +140,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateSheetOffers(key: crate::CandidateKey),
     r#"
     SELECT offered.sheet_relative_path, offered.file_reference, offered.audio_relative_path,
@@ -155,7 +155,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CandidateSheetReferences(key: crate::CandidateKey) {
         sheet: String,
         file_reference: String,
@@ -196,7 +196,7 @@ sqlive_compose::fragment!(
 // for each, with the other columns NULL: its entries, its sidecars,
 // the content hashes in `decided` and the groupings in `anchored`. A read
 // joins what is stored under each key to its row.
-sqlive_compose::fragment!(
+coven::fragment!(
     RootKeys(root: Vec<u8>) with decided(content_hash TEXT), anchored(grouping_key BLOB) {
         item_key: Option<crate::CandidateKey>,
         sidecar_key: Option<Vec<u8>>,

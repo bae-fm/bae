@@ -5,7 +5,7 @@
 // made from (`ContentType::SUPPORTED_COVERS`). The gallery shows these images,
 // and a release's Files list leaves them out, so each image of a release is in
 // exactly one of them.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShowableImageTypes { content_type: String },
     r#"
     SELECT 'image/jpeg' AS content_type
@@ -24,7 +24,7 @@ sqlive_compose::fragment!(
 // audio file no track reads, and an image in a format bae cannot show. The
 // import pane supplies the scan's rows and the library its own, so both list
 // a release's files by this one rule.
-sqlive_compose::fragment!(
+coven::fragment!(
     UnplayedFiles
     with listed(file_id TEXT, showable_image INTEGER),
          track_reads(audio_file_id TEXT, sheet_file_id TEXT)
@@ -41,7 +41,7 @@ sqlive_compose::fragment!(
 
 // Each release file's row, with the columns of `release_files` that
 // [`FileDocuments`] and [`ReleaseFiles`] take as their `files`.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseFileColumns {
         file: coven::FileId,
         source_audio_duration_ms: Option<u64>,
@@ -61,7 +61,7 @@ sqlive_compose::fragment!(
 // records them of the file it references. The row is one table's, each value
 // from coven a subquery, so a read can join it on the right of a LEFT JOIN
 // and still walk the index of `release_files` its order names.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseFileRecord { file_size: Option<u64>, stored: Option<bool> },
     r#"
     SELECT listed.*,
@@ -76,7 +76,7 @@ sqlive_compose::fragment!(
 // Each release file `files` gives, with the columns of `release_files`: its
 // id as `document_file_id`, its name, content type and size, and `file_json`,
 // the JSON object every list of a release's files holds it as.
-sqlive_compose::fragment!(
+coven::fragment!(
     FileDocuments
     with files(
         id TEXT, release_id TEXT, original_filename TEXT, content_type TEXT, created_at TEXT,
@@ -125,7 +125,7 @@ sqlive_compose::fragment!(
 // gives each CUE sheet none of whose tracks stay the JSON of its row, and
 // `carried` lists the files no track plays from in the same order as
 // `others`, each file or such a sheet in its place.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseFiles on releases
     with files(
         id TEXT, release_id TEXT, original_filename TEXT, content_type TEXT, created_at TEXT,
@@ -197,7 +197,7 @@ sqlive_compose::fragment!(
 // [`ShowableImageTypes`]'s rows, which a test compares with the formats a
 // cover can be made from.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer ShownImageTypes,
     r#"
     SELECT shown.*

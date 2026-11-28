@@ -26,7 +26,7 @@ const PERFORMED_WORKS: &str = "WITH RECURSIVE performed(id) AS ( \
         SELECT p.parent_work_id FROM work_parts p JOIN performed ON p.child_work_id = performed.id \
     ) SELECT id FROM performed";
 
-sqlive_compose::write!(
+coven::write!(
     DeleteEmptiedAlbum(album: &'p str),
     r#"
     DELETE FROM albums WHERE id = :album
@@ -34,7 +34,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteUnperformedWork(work: &'p str),
     r#"
     DELETE FROM works WHERE id = :work AND NOT EXISTS (
@@ -47,7 +47,7 @@ sqlive_compose::write!(
 );
 
 // An artist a merge names stays: its credits resolve through the merge.
-sqlive_compose::write!(
+coven::write!(
     DeleteUncreditedArtist(artist: &'p str),
     r#"
     DELETE FROM artists WHERE id = :artist

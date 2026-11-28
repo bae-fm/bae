@@ -175,7 +175,7 @@ impl InvalidColumns {
 }
 
 // The scan row of the folder that failed validation stored at `key`.
-sqlive_compose::read!(
+coven::read!(
     writer InvalidScan(key: CandidateKey),
     r#"
     SELECT listed.*
@@ -229,7 +229,7 @@ fn invalid_row_of(
 // The files of the folder that failed validation stored at `key`, in name
 // order, each with whether the preview player holds the whole of it, which is
 // the stretch an audio file of this pane plays.
-sqlive_compose::read!(
+coven::read!(
     writer SkippedPaneFiles(key: CandidateKey) {
         relative_path: String,
         absolute_path: Vec<u8>,

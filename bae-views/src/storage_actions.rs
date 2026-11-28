@@ -62,7 +62,7 @@ pub struct DbStorageActions {
 // file another device holds, or a pin or a move to this device with no storage,
 // and the app shows coven's reason. coven queues a move with no storage
 // connected rather than refusing it, so the offer of Upload waits for storage.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseStorageActions {
         can_upload: bool,
         can_pin: bool,

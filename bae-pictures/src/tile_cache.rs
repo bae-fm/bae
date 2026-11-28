@@ -23,7 +23,7 @@ use crate::{
 };
 
 // The size of each picture's tiles that the cache keeps.
-sqlive_compose::fragment!(
+coven::fragment!(
     CachedTileBytes,
     r#"
     SELECT tiles.bytes
@@ -437,7 +437,7 @@ fn pyramid_from(rows: Vec<(u32, u32, String)>) -> Result<Option<Pyramid>, DbErro
         .transpose()
 }
 
-sqlive_compose::write!(
+coven::write!(
     MarkTilesUsed(folder: &'p str),
     r#"
     UPDATE cached_tiles SET used = (SELECT MAX(used) + 1 FROM cached_tiles)
@@ -445,7 +445,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     KeepTiles(folder: &'p str, width: u32, height: u32, format: &'static str, bytes: i64),
     r#"
     INSERT INTO cached_tiles (folder, width, height, format, bytes, used)
@@ -456,7 +456,7 @@ sqlive_compose::write!(
 
 // The least recently used rows that don't fit `budget` with the more recently
 // used ones, never the most recently used row.
-sqlive_compose::write!(
+coven::write!(
     DeleteTilesOverBudget(budget: i64),
     r#"
     DELETE FROM cached_tiles WHERE folder IN (
@@ -468,7 +468,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(DeleteAllTiles, r#"DELETE FROM cached_tiles"#);
+coven::write!(DeleteAllTiles, r#"DELETE FROM cached_tiles"#);
 
 /// Mark `folder`'s row as the most recently used, and return the pyramid it
 /// describes; none when there is no row.

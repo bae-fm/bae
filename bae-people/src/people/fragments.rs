@@ -10,7 +10,7 @@ use bae_store::DbError;
 // with its avatar's stored file, none for a profile with no avatar. An
 // avatar's reference always names a record in `coven_files`, which coven
 // deletes only with the last reference (coven 17.2).
-sqlive_compose::fragment!(
+coven::fragment!(
     Profile {
         id: coven::MemberId,
         private_circle: coven::CircleId,
@@ -25,7 +25,7 @@ sqlive_compose::fragment!(
 
 // The stars the person using this device gave each track they rated: the
 // `stars` relation of a read that shows them their own.
-sqlive_compose::fragment!(
+coven::fragment!(
     OwnTrackStars { track_id: Option<String> },
     r#"
     SELECT rated.track_id, rated.stars
@@ -41,7 +41,7 @@ sqlive_compose::fragment!(
 // device, `others` each other person's, in name then id order, and
 // `has_raters` whether either shows one. SQLite finds the album's ratings
 // through `ratings_album`.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumRatingsShown(album: String) {
         struct ShownRating { name: String, stars: i64 }
         mine: Option<i64>,
@@ -99,7 +99,7 @@ impl AlbumRatingsShown {
 
 // [`AlbumRatingsShown`]'s row, whose plan a test reads.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer AlbumRatingsRead(album: String),
     r#"
     SELECT ratings.*
@@ -121,7 +121,7 @@ impl Profile {
 // Each play's place in History's order, newest first (when it began, then its
 // id), and whose it is. `history_order` and `history_person_order` index that
 // order over everyone's plays and over one person's.
-sqlive_compose::fragment!(
+coven::fragment!(
     PlayPlace,
     r#"
     SELECT play.started_at, play.id, play.person_id
@@ -131,7 +131,7 @@ sqlive_compose::fragment!(
 
 // Each play as History of everyone's plays lists it. `opens_day`: it is the
 // newest play of its day, which `history_day` finds.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedPlay { opens_day: bool },
     r#"
     SELECT play.started_at, play.id, play.person_id, play.track_id, play.played_on,
@@ -145,7 +145,7 @@ sqlive_compose::fragment!(
 
 // Each play as History of one person's plays lists it. `opens_day`: it is that
 // person's newest play of its day, which `history_person_day` finds.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedPersonPlay { opens_day: bool },
     r#"
     SELECT play.started_at, play.id, play.person_id, play.track_id, play.played_on,
@@ -160,7 +160,7 @@ sqlive_compose::fragment!(
 
 // Whether any of the tracks `asked` has what a person keeps of it: a rating,
 // a play in the history or a playlist entry. Deleting the track deletes them.
-sqlive_compose::fragment!(
+coven::fragment!(
     TracksHaveKeptData with asked(track_id TEXT) { kept: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM asked

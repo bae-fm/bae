@@ -18,7 +18,7 @@ fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
 }
 
 // The step of the apply `:apply`, while it waits on a read.
-sqlive_compose::read!(
+coven::read!(
     writer StepOfApply(apply: String),
     r#"
     SELECT waiting.step, waiting.catalog
@@ -47,7 +47,7 @@ fn step_of(
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     KeepApplyStep(apply: &'p str, step: &'static str, catalog: &'static str),
     r#"
     INSERT INTO import_catalog_apply_step (apply_id, step, catalog)
@@ -56,12 +56,12 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteApplyStep(apply: &'p str),
     r#"DELETE FROM import_catalog_apply_step WHERE apply_id = :apply"#
 );
 
-sqlive_compose::write!(DeleteAllApplySteps, r#"DELETE FROM import_catalog_apply_step"#);
+coven::write!(DeleteAllApplySteps, r#"DELETE FROM import_catalog_apply_step"#);
 
 impl ImportTables {
     /// Write that `apply` waits on `step` now, in place of any step its row

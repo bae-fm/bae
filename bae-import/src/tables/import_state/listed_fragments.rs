@@ -5,7 +5,7 @@
 
 // Each content hash whose state is stored, at the file edit revision the
 // state describes.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedState,
     r#"
     SELECT state.content_hash AS state_hash, state.edit_revision AS state_revision
@@ -14,7 +14,7 @@ sqlive_compose::fragment!(
 );
 
 // The failure each content's last import left.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedFailure,
     r#"
     SELECT failure.content_hash AS failed_hash, failure.error AS failed_error
@@ -23,7 +23,7 @@ sqlive_compose::fragment!(
 );
 
 // What is running for each candidate.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedStanding,
     r#"
     SELECT standing.candidate_key AS standing_candidate, standing.identification,
@@ -33,7 +33,7 @@ sqlive_compose::fragment!(
 );
 
 // Each draft's provenance.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedProvenance,
     r#"
     SELECT provenance.content_hash AS provenance_hash, provenance.kind AS provenance_kind,
@@ -46,7 +46,7 @@ sqlive_compose::fragment!(
 // Each candidate's release link: a pressing's partners in the other catalogs,
 // by catalog, an album's album in each catalog, in catalog order, and the
 // stored records it claims, in the order surfaces list them, as JSON arrays.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedLink { link_partners: String, link_albums: String, link_records: String },
     r#"
     SELECT link.content_hash AS link_hash, link.kind AS link_kind, link.source AS link_source,
@@ -69,7 +69,7 @@ sqlive_compose::fragment!(
 
 // Each candidate's chosen cover, with the copies the catalog serves of a
 // remote one as a JSON array.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedCover { cover_copies: String },
     r#"
     SELECT cover.content_hash AS cover_hash, cover.kind AS cover_kind,

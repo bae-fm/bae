@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 // The tracks of the JSON array `tracks` that the library holds, each with its
 // `place` in the order a given list puts them: the array's.
-sqlive_compose::fragment!(
+coven::fragment!(
     GivenTracks(tracks: String) { place: i64 },
     r#"
     SELECT track.id AS track_id, row_number() OVER (ORDER BY given.key) AS place
@@ -16,7 +16,7 @@ sqlive_compose::fragment!(
 
 // [`GivenTracks`] in the order a picked list puts them: the order their
 // releases list them, by release, then stored position.
-sqlive_compose::fragment!(
+coven::fragment!(
     PickedTracks(tracks: String) { place: i64 },
     r#"
     SELECT track.id AS track_id,
@@ -26,7 +26,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer HeldGivenTracks(tracks: &'p str),
     r#"
     SELECT held.track_id
@@ -35,7 +35,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer HeldPickedTracks(tracks: &'p str),
     r#"
     SELECT held.track_id
@@ -46,7 +46,7 @@ sqlive_compose::read!(
 
 // Every id of a picked list in its order, those the library lacks first: they
 // have no place.
-sqlive_compose::read!(
+coven::read!(
     writer NamedPickedTracks(tracks: &'p str) { track_id: String },
     r#"
     SELECT named.value AS track_id

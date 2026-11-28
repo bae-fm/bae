@@ -90,7 +90,7 @@ impl SetupRow {
     }
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer LibraryStorageSetup,
     r#"
     SELECT current.*

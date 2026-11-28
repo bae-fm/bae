@@ -54,7 +54,7 @@ pub const NO_SHEET_EDITS: &str = "{}";
 // The names of the files the picks of `edits` move lines of the release
 // `release`'s sheets onto, each once, as a JSON array in name order; NULL when
 // the picks move no line.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetFilesToRead(release: String, edits: String) { names: Option<String> },
     r#"
     WITH moved AS (
@@ -145,7 +145,7 @@ fn track_changes_of(
 
 // What the edits `edits` do to the tracks of the release `release`.
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
-sqlive_compose::read!(
+coven::read!(
     writer OneSheetChanges(release: String, edits: String),
     r#"
     SELECT changes.*
@@ -275,7 +275,7 @@ pub struct ReboundAudio {
 // Give each of the release's files the layout the edits `edits` lay it out
 // with.
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     LayOutSheetFiles(release: String, edits: String),
     r#"
     UPDATE release_files
@@ -289,13 +289,13 @@ sqlive_compose::write!(
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     DeleteTrackAudio(track_id: &'p str),
     "DELETE FROM audio_formats WHERE track_id = :track_id"
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetTrackLength(id: &'p str, release_id: &'p str, duration_ms: i64),
     r#"
     UPDATE tracks SET duration_ms = :duration_ms
@@ -305,7 +305,7 @@ sqlive_compose::write!(
 
 // `tracks` is a JSON array of track ids.
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     DeleteDroppedTracks(release_id: &'p str, tracks: String),
     r#"
     DELETE FROM tracks
@@ -314,7 +314,7 @@ sqlive_compose::write!(
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetAlbumLoudness(
         release_id: &'p str,
         album_loudness_lufs: Option<f64>,

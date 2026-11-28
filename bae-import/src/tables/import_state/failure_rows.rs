@@ -41,14 +41,14 @@ pub(crate) fn failure_of(error: String, failed_at: &str) -> Result<ImportFailure
     })
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteImportFailure(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_failure WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertImportFailure(content_hash: &'p str, error: &'p str, failed_at: String),
     r#"
     INSERT INTO import_candidate_failure (content_hash, error, failed_at)

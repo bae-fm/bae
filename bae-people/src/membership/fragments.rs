@@ -4,7 +4,7 @@
 //! rating systems read spreads whether the member is an admin, and the people
 //! reads spread the member.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     SelfIsAdmin { self_is_admin: bool },
     r#"
     SELECT COUNT(*) > 0 AS self_is_admin
@@ -13,7 +13,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Member {
         member_id: coven::MemberId,
         removed: bool,
@@ -52,7 +52,7 @@ sqlive_compose::fragment!(
 );
 
 // The members who remain in the library, in member-id order.
-sqlive_compose::read!(
+coven::read!(
     writer CurrentMembers,
     r#"
     SELECT member.*

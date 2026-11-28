@@ -1,7 +1,7 @@
 //! A stored catalog release as one row: its own columns, and one fragment for
 //! each table under it, whose rows are one JSON array.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Labels on source_release {
         struct StoredLabel {
             name: Option<String>,
@@ -21,7 +21,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Barcodes on source_release { barcodes: json<Vec<String>> },
     r#"
     SELECT json_group_array(barcode.barcode ORDER BY barcode.position) AS barcodes
@@ -30,7 +30,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumArtists on source_release {
         struct StoredAlbumArtist {
             artist: crate::tables::source_releases::tracklist::StoredArtist,
@@ -50,7 +50,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Links on source_release {
         struct StoredLink { catalog: String, key: String }
         links: json<Vec<StoredLink>>
@@ -63,7 +63,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumLinkRows on source_release {
         album_link_rows: json<Vec<crate::tables::album_link_rows::AlbumLinkRow>>
     },
@@ -75,7 +75,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Formats on source_release {
         struct StoredFormat { medium: Option<String>, quantity: u32 }
         formats: json<Vec<StoredFormat>>
@@ -89,7 +89,7 @@ sqlive_compose::fragment!(
 );
 
 // The records, in the order surfaces list their catalogs.
-sqlive_compose::fragment!(
+coven::fragment!(
     Records on source_release {
         struct StoredReleaseRecord {
             catalog: String,
@@ -108,7 +108,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Covers on source_release {
         struct StoredReleaseCover {
             scope: String,
@@ -135,7 +135,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ArchiveGroups on source_release { archive_groups: json<Vec<String>> },
     r#"
     SELECT json_group_array(archive.group_id ORDER BY archive.position) AS archive_groups
@@ -144,7 +144,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseRoles on source_release {
         release_roles: json<Vec<crate::tables::source_releases::tracklist::StoredRole>>
     },
@@ -161,7 +161,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Mediums on source_release {
         struct StoredReleaseMedium { medium: Option<String>, disc_ids: Vec<String> }
         mediums: json<Vec<StoredReleaseMedium>>
@@ -181,7 +181,7 @@ sqlive_compose::fragment!(
 
 // A track's printed name is its credit's own, so a display credit's artist
 // states no `credited_as`.
-sqlive_compose::fragment!(
+coven::fragment!(
     Entries on source_release {
         struct StoredEntry {
             entry: i64,
@@ -232,7 +232,7 @@ sqlive_compose::fragment!(
 
 // Each work node with its relations in the order of their positions: a
 // credit, or the node of a part.
-sqlive_compose::fragment!(
+coven::fragment!(
     Works on source_release {
         struct StoredWork {
             node: i64,
@@ -281,7 +281,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     Unfetched on source_release {
         struct StoredUnfetched { document: String, key: String, reason: String }
         unfetched: json<Vec<StoredUnfetched>>
@@ -296,7 +296,7 @@ sqlive_compose::fragment!(
 );
 
 // One stored release with every row under it, as its own documents state it.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredRelease {
         album_first_year: Option<i32>,
         year: Option<i32>,

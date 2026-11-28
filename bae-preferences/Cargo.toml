@@ -35,8 +35,6 @@ bae-util = { workspace = true }
 # The store's id, its transfer limits, and its read and write contexts.
 coven = { workspace = true }
 rusqlite = { workspace = true }
-# The macros the preferences' read fragments are written with.
-sqlive-compose = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 

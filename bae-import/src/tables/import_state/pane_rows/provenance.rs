@@ -28,14 +28,14 @@ fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> 
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteDraftProvenance(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_draft_provenance WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertDraftProvenance(
         content_hash: &'p str,
         kind: &'static str,
@@ -50,7 +50,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertDraftProvenance(
         content_hash: &'p str,
         kind: &'static str,

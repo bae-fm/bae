@@ -21,21 +21,21 @@ use bae_catalogs::source_release::{claimed_records, pick_covers, SourceRelease};
 use bae_store::statement_rows;
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     DeleteClaimedRecords(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_claimed_record WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteOfferedCovers(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_offered_cover WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertClaimedRecord(
         content_hash: &'p str,
         position: i64,
@@ -50,7 +50,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertOfferedCover(content_hash: &'p str, position: i64, source: &'p str, cover: String),
     r#"
     INSERT INTO import_candidate_offered_cover (content_hash, position, source, cover)
@@ -151,7 +151,7 @@ pub(crate) fn store_claims_of_releases_on(
 
 // The candidates whose link claims a release that has one of `albums` among
 // its own albums.
-sqlive_compose::read!(
+coven::read!(
     writer LinksClaimingAlbums(albums: String) { content_hash: String },
     r#"
     WITH changed (catalog, key) AS (
@@ -261,7 +261,7 @@ impl ImportTables {
 // `row_fragments::OfferedCovers` of the content `:content_hash`, in the order offered,
 // which tests read.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer OfferedCoversOf(content_hash: String),
     r#"
     SELECT offered.*

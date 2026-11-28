@@ -38,7 +38,7 @@ pub(crate) struct OwnedPicture {
     pub(crate) kept: Option<PictureCopy>,
 }
 
-sqlive_compose::write!(
+coven::write!(
     StorePictureCopy(
         watched_folder_path: &'p [u8],
         candidate_path: &'p [u8],
@@ -237,7 +237,7 @@ impl ImportTables {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     ForgetCopiesForHash(content_hash: &'p str),
     r#"
     DELETE FROM import_picture_copy
@@ -255,7 +255,7 @@ pub(super) fn forget_for_hash_on(sql: &CovenWrite<'_>, content_hash: &str) -> Re
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     ForgetCopiesForFolder(candidate_path: Vec<u8>),
     r#"DELETE FROM import_picture_copy WHERE candidate_path = :candidate_path"#
 );

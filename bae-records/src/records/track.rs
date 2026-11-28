@@ -2,7 +2,7 @@ use super::*;
 
 // Each track the library holds among those the JSON array `ids` names.
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer HeldTrackIds(ids: String),
     r#"
     SELECT track.id
@@ -16,7 +16,7 @@ sqlive_compose::read!(
 // order, and a track's is itself. A row with no `track_id` is for an album
 // whose primary release has no track, `album_id` naming it, or for an id of
 // no album and no track.
-sqlive_compose::read!(
+coven::read!(
     writer NamedTrackIds(ids: String) {
         asked_id: Option<String>,
         track_id: Option<String>,

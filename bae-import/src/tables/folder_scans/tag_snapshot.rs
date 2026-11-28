@@ -17,7 +17,7 @@ use crate::tables::release_groupings::CandidateEntry;
 use bae_store::{statement_optional, statement_rows};
 use bae_util::content_type::ContentType;
 
-sqlive_compose::read!(
+coven::read!(
     writer TagSnapshotAt(key: crate::CandidateKey),
     r#"
     SELECT tags.*
@@ -26,7 +26,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer EntryTagSnapshotAt(key: crate::CandidateKey),
     r#"
     SELECT entry.*, tags.*
@@ -39,7 +39,7 @@ sqlive_compose::read!(
 // Match a candidate still at one scan generation and file edit revision: the
 // write changes its row to what it holds, and the count says whether one
 // matched.
-sqlive_compose::write!(
+coven::write!(
     MatchScannedCandidate(
         watched_folder_path: Vec<u8>,
         path: &'p crate::CandidateKey,
@@ -53,7 +53,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertTagSnapshot(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,
@@ -73,7 +73,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertFileTag(
         watched_folder_path: &'p [u8],
         candidate_path: &'p crate::CandidateKey,

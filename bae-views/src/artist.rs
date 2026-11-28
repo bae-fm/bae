@@ -125,7 +125,7 @@ fn artist_detail_rows_of(
 
 // The artist `artist` as the artist list shows it, with the other printed
 // names it goes by; no row for an artist the list doesn't show.
-sqlive_compose::read!(
+coven::read!(
     writer ArtistPageHead(artist: String),
     r#"
     SELECT shown.*, names.*
@@ -166,7 +166,7 @@ impl ArtistDetailRows {
 // albums whose credit lists (`album_artists`) show it, and its image's
 // version. A track's credits (`track_artists`) list no artist. Various Artists
 // is an `artists` row like any other and lists like one.
-sqlive_compose::fragment!(
+coven::fragment!(
     ListedArtist,
     r#"
     SELECT listing.artist_id AS listed_id, listing.album_count, artist.*, image.*
@@ -194,7 +194,7 @@ impl ListedArtist {
 // The first `limit` artists library search finds for `pattern`, in name
 // order, ties going by id, each with its place in that order, from 1, how many
 // artists these are, and the artist as the artist list shows it.
-sqlive_compose::fragment!(
+coven::fragment!(
     FoundArtists(pattern: Option<String>, limit: i64) { place: i64, listed: i64 },
     r#"
     SELECT ROW_NUMBER() OVER (ORDER BY picked.name_sort_key, picked.artist_id) AS place,

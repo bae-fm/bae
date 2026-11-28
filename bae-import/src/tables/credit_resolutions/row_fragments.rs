@@ -1,7 +1,7 @@
 //! The credit resolutions' rows that other domains' fragments spread to reach
 //! them.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredCreditAnswers { artists: String },
     r#"
     SELECT resolution.name_key, resolution.musicbrainz_artist_id, resolution.discogs_artist_id,(

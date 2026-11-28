@@ -3,7 +3,7 @@
 //! skipped; and a candidate's entry with where it stands, which composes that
 //! with the scan's rows, the standing and the release imported from it.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     GroupingOfCandidate(key: crate::CandidateKey) {
         grouping_of_key: crate::CandidateKey,
         taken_in: bool,
@@ -22,7 +22,7 @@ sqlive_compose::fragment!(
     LEFT JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     EnteredCandidate(key: crate::CandidateKey),
     r#"
     SELECT scan.*, grouping.*, standing.*, imported.*
@@ -40,7 +40,7 @@ sqlive_compose::fragment!(
 // Each grouping in `keys`: the folder it is anchored at, if any, how it reads
 // and who decided that, and the releases a grouping with no anchor takes in,
 // as a JSON array in play order.
-sqlive_compose::fragment!(
+coven::fragment!(
     Groupings with keys(grouping_key BLOB) {
         struct StoredMember { key: hex }
         stored_key: crate::CandidateKey,

@@ -270,7 +270,7 @@ pub(crate) fn load_standing_on(
 // How far the batch of identifications in flight has got, `identified` ended
 // of `admitted`, both 0 with no batch open, which stores no count row; and how
 // many candidates an import holds, whatever step it has reached.
-sqlive_compose::read!(
+coven::read!(
     writer ImportCountsRead { identified: u32, admitted: u32, imports_in_flight: u32 },
     r#"
     SELECT COALESCE(batch.ended, 0) AS identified,
@@ -314,7 +314,7 @@ pub(crate) fn end_file_work_unless_of_on(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     JoinIdentificationBatch(candidate_key: &'p crate::CandidateKey),
     r#"
     INSERT INTO import_identification_batch (candidate_key, ended) VALUES (:candidate_key, 0)
@@ -322,14 +322,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     EndBatchIdentification(candidate_key: &'p crate::CandidateKey),
     r#"
     UPDATE import_identification_batch SET ended = 1 WHERE candidate_key = :candidate_key
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ClearIdentificationBatch,
     r#"
     DELETE FROM import_identification_batch
@@ -376,14 +376,14 @@ fn count_on(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteStanding(candidate_key: &'p crate::CandidateKey),
     r#"
     DELETE FROM import_candidate_standing WHERE candidate_key = :candidate_key
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UpsertStanding(
         candidate_key: &'p crate::CandidateKey,
         identification: Option<&'static str>,
@@ -411,7 +411,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ClearStandings,
     r#"
     DELETE FROM import_candidate_standing
@@ -779,7 +779,7 @@ impl ImportTables {
 
 // Where every candidate something is running for stands.
 #[cfg(test)]
-sqlive_compose::read!(
+coven::read!(
     writer EveryStanding,
     r#"
     SELECT standing.*

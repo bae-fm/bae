@@ -5,7 +5,7 @@
 use crate::read_statement::{at_most_one, row_count};
 use crate::DbError;
 use coven::{BulkSqlContext, CommitSql, CovenWrite, JoiningWrite, MemberWrite};
-use sqlive_compose::{Write, WriteReturning};
+use coven::{Write, WriteReturning};
 
 /// A context that writes, which runs generated writes.
 pub trait WriteStatements {

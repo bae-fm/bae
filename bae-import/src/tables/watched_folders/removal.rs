@@ -2,7 +2,7 @@ use super::*;
 use crate::CandidateKey;
 use std::path::{Path, PathBuf};
 
-sqlive_compose::write!(
+coven::write!(
     UnwatchFolder(path: Vec<u8>),
     r#"DELETE FROM watched_import_folders WHERE path = :path"#
 );

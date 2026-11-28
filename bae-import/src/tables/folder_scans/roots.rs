@@ -4,7 +4,7 @@
 
 use super::*;
 
-sqlive_compose::write!(
+coven::write!(
     NextScanGeneration,
     r#"
     UPDATE folder_scan_generation_sequence SET last_generation = last_generation + 1
@@ -20,7 +20,7 @@ pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, D
 }
 
 #[cfg(test)]
-sqlive_compose::write!(DeleteGenerationCounter, r#"DELETE FROM folder_scan_generation_sequence"#);
+coven::write!(DeleteGenerationCounter, r#"DELETE FROM folder_scan_generation_sequence"#);
 
 #[cfg(test)]
 impl ImportTables {
@@ -37,7 +37,7 @@ impl ImportTables {
 }
 
 // A root's row as a new scan generation opens it, with no outcome yet.
-sqlive_compose::write!(
+coven::write!(
     BeginRootScan(watched_folder_path: Vec<u8>, generation: i64, volume: &'static str),
     r#"
     INSERT INTO folder_scan_roots (watched_folder_path, generation, status, detail, volume)
@@ -48,7 +48,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetRootGeneration(watched_folder_path: &'p [u8], generation: i64),
     r#"
     UPDATE folder_scan_roots SET generation = :generation
@@ -56,7 +56,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     CompleteRootScan(watched_folder_path: Vec<u8>, generation: i64),
     r#"
     UPDATE folder_scan_roots SET status = 'complete', detail = NULL,
@@ -65,7 +65,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     LeaveRootUnwatched(
         watched_folder_path: Vec<u8>,
         generation: i64,
@@ -80,7 +80,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     FailRootScan(watched_folder_path: Vec<u8>, generation: i64, detail: String),
     r#"
     UPDATE folder_scan_roots SET status = 'failed', detail = :detail,
@@ -89,14 +89,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteRootDirectories(watched_folder_path: &'p [u8]),
     r#"DELETE FROM folder_scan_directory WHERE watched_folder_path = :watched_folder_path"#
 );
 
 // The directories recorded for a root at or below one folder, by the byte
 // range of the paths below it.
-sqlive_compose::write!(
+coven::write!(
     DeleteDirectoriesAtOrBelow(
         watched_folder_path: &'p [u8],
         folder: &'p [u8],
@@ -110,7 +110,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertScanDirectory(watched_folder_path: &'p [u8], path: Vec<u8>, modified_at: i64),
     r#"
     INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at)

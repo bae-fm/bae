@@ -21,7 +21,7 @@ pub struct LibraryPicture {
 
 // The format of one release's cover copies and the coven files of both; no
 // row for a release with no cover.
-sqlive_compose::read!(
+coven::read!(
     writer OneCoverCopies(release: String) {
         browse_file: coven::FileId,
         large_file: coven::FileId,
@@ -35,7 +35,7 @@ sqlive_compose::read!(
 
 // The format and coven file of one artist's image; no row for an artist with
 // no image.
-sqlive_compose::read!(
+coven::read!(
     writer OneArtistPicture(artist: String) {
         file: coven::FileId,
     },
@@ -47,7 +47,7 @@ sqlive_compose::read!(
 );
 
 // One release's cover's version; no row for a release with no cover.
-sqlive_compose::read!(
+coven::read!(
     writer OneCoverVersion(release: String),
     r#"
     SELECT cover.*
@@ -393,7 +393,7 @@ impl Records {
 // The audio and track sheet rows of the release `release`, in its file order,
 // with the path of each one's original on this device (`coven_user_files`
 // lists only those), NULL where it has none.
-sqlive_compose::read!(
+coven::read!(
     writer AudioAndSheetOriginals(release: String) { original_path: Option<Vec<u8>> },
     r#"
     SELECT record.*, original.path AS original_path
@@ -407,7 +407,7 @@ sqlive_compose::read!(
 // Each cover's version, by the release it is the cover of: the version of its
 // browse copy. `source_file` is the release file the cover is made from, NULL
 // for a cover made from no file of the release.
-sqlive_compose::fragment!(
+coven::fragment!(
     CoverVersion { version: Option<String> },
     r#"
     SELECT cover.id, cover.source_file,
@@ -426,7 +426,7 @@ impl CoverVersion {
 }
 
 // Each artist image's version, by the artist it is the image of.
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistImageVersion { version: Option<String> },
     r#"
     SELECT image.id,
@@ -461,7 +461,7 @@ pub fn image_file_on<Q: bae_store::WriterRead>(
 
 // Whether this device keeps each of the release `:release`'s files whole, as
 // `coven_pins` says.
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFilesKeptRead(release: String) { kept: bool },
     r#"
     SELECT f.id, pin.file IS NOT NULL AS kept

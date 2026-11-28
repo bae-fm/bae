@@ -6,7 +6,7 @@ use bae_store::list_windows::SortValue;
 // The composer list's rows from a key on, at most `limit` of them, for each
 // first term. Each term is returned ahead of the row, so coven reruns a full
 // window only for a write at or before its last row.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerWindowByName(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -57,7 +57,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerWindowByNameDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -108,7 +108,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerWindowByWorks(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -159,7 +159,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerWindowByWorksDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -210,7 +210,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerWindowByReleases(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -261,7 +261,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerWindowByReleasesDescending(
         field_2: Option<String>,
         field_3: Option<String>,

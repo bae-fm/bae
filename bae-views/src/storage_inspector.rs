@@ -214,7 +214,7 @@ impl rusqlite::types::FromSql for DownloadPhase {
 // and where the file stands. A pin checks coven's pinned and downloading files.
 // A move checks the copies coven has placed and the one it is downloading into
 // the chosen folder.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseFileDownload { download_kind: DownloadKind, download_state: DownloadPhase },
     r#"
     SELECT file.file_id AS download_file_id, file.release_id AS download_release_id,
@@ -245,7 +245,7 @@ sqlive_compose::fragment!(
 
 // Each file waiting in this device's upload queue: whether this process is
 // sending it now, and the record of what it waits for.
-sqlive_compose::fragment!(
+coven::fragment!(
     QueuedUpload {
         uploading_file: coven::FileId,
         sending: bool,
@@ -259,7 +259,7 @@ sqlive_compose::fragment!(
 
 // Each record of what coven's work waits for, with the text of the error behind
 // it when coven keeps it.
-sqlive_compose::fragment!(
+coven::fragment!(
     KeptPending {
         record: coven::PendingRecord,
         cause: Option<String>,
@@ -275,7 +275,7 @@ sqlive_compose::fragment!(
 // move), its entries in the download and export queues, and, while the download
 // queue pins it, how many of its files are downloading, waiting and kept. No
 // row for a release the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer InspectedRelease(release: String) {
         struct PinCounts { downloading: u32, waiting: u32, kept: u32 }
         pins: json<Option<PinCounts>>,
@@ -309,7 +309,7 @@ sqlive_compose::read!(
 // queue and the record that upload names. Apart from its upload, the file
 // carries the record of the move that found its original missing or changed,
 // matched by its path.
-sqlive_compose::read!(
+coven::read!(
     writer InspectedFiles(release: String),
     r#"
     SELECT file.*, download.*, upload.*, upload_record.*, move_record.*

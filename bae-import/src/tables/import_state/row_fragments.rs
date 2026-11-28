@@ -4,7 +4,7 @@
 // The album's credits and the tracks' are two fragments. SQLite plans a read
 // of a fragment of one table as a read of that table, and runs a union of the
 // two as a compound subquery.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumCreditNames {
         name_key: Option<String>
     },
@@ -15,7 +15,7 @@ sqlive_compose::fragment!(
     WHERE held.assignment_kind = 'credit'
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackCreditNames {
         name_key: Option<String>
     },
@@ -26,7 +26,7 @@ sqlive_compose::fragment!(
     WHERE held.assignment_kind = 'credit'
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftCreditRows(key: crate::CandidateKey) {
         part: i64,
         track_id: Option<String>,
@@ -62,7 +62,7 @@ sqlive_compose::fragment!(
     ) AND t.artist_assignment_kind = 'explicit'
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftTrackRecord on import_candidate_track {
         record: String
     },
@@ -111,7 +111,7 @@ sqlive_compose::fragment!(
             ))) AS record
 "#);
 
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftTrackRows(key: crate::CandidateKey),
     r#"
     SELECT track.content_hash, track.track_id, track.position, track.title, track.medium,
@@ -127,7 +127,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::fragment!(
+coven::fragment!(
     DraftMediumRows(key: crate::CandidateKey),
     r#"
     SELECT medium.position, medium.content_hash, medium.medium, medium.side_count
@@ -143,7 +143,7 @@ sqlive_compose::fragment!(
 // The covers each candidate's linked pressing offers its picker, by the
 // candidate's content hash, each cover as `RemoteCover` JSON. A candidate has
 // them only while its draft is the one bae read from that pressing.
-sqlive_compose::fragment!(
+coven::fragment!(
     OfferedCovers,
     r#"
     SELECT offered.content_hash AS offered_hash, offered.position, offered.source, offered.cover

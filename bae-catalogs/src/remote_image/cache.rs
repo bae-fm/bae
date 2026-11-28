@@ -250,7 +250,7 @@ fn write_file(dir: &Path, path: &Path, entry: &DiskImageEntry) -> std::io::Resul
     Ok(bytes)
 }
 
-sqlive_compose::write!(
+coven::write!(
     MarkImageUsed(file: &'p str),
     r#"
     UPDATE cached_image SET used = (SELECT MAX(used) + 1 FROM cached_image)
@@ -258,7 +258,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     KeepImage(file: &'p str, bytes: i64),
     r#"
     INSERT INTO cached_image (file, bytes, used)
@@ -269,7 +269,7 @@ sqlive_compose::write!(
 
 // The least recently used rows that don't fit `budget` with the more recently
 // used ones.
-sqlive_compose::write!(
+coven::write!(
     DeleteImagesOverBudget(budget: i64),
     r#"
     DELETE FROM cached_image WHERE file IN (
@@ -281,12 +281,9 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
-    DeleteImage(file: &'p str),
-    r#"DELETE FROM cached_image WHERE file = :file"#
-);
+coven::write!(DeleteImage(file: &'p str), r#"DELETE FROM cached_image WHERE file = :file"#);
 
-sqlive_compose::write!(DeleteAllImages, r#"DELETE FROM cached_image"#);
+coven::write!(DeleteAllImages, r#"DELETE FROM cached_image"#);
 
 /// Mark `file`'s row as the most recently used; whether there is one.
 fn mark_used(sql: &CovenWrite<'_>, file: &str) -> Result<bool, DbError> {

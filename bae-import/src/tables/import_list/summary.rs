@@ -13,7 +13,7 @@ use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
 // Every tab's count: the releases and folders that failed validation it
 // lists, which is every placement row but a group's header.
-sqlive_compose::fragment!(
+coven::fragment!(
     TabCounts { pending: i64, done: i64, skipped: i64 },
     r#"
     SELECT COALESCE(SUM(count) FILTER (WHERE tab = 'pending'), 0) AS pending,
@@ -36,7 +36,7 @@ impl TabCounts {
 
 // Whether bae watches any folder, and whether Found has any group: a group's
 // header is a placement row of its own, which the counts count.
-sqlive_compose::read!(
+coven::read!(
     writer Summary { has_watched_folders: bool, has_groups: bool },
     r#"
     SELECT EXISTS (
@@ -52,7 +52,7 @@ sqlive_compose::read!(
 // them, with how many of Found's releases each holds: `all` holds every one
 // and the others each hold those in their states. The person cannot choose an
 // entry that holds no releases.
-sqlive_compose::read!(
+coven::read!(
     writer FilterEntries(entries: String, all: String) {
         entry: Option<String>, count: i64, selectable: bool
     },
@@ -86,7 +86,7 @@ sqlive_compose::read!(
 // `entries` is a JSON array of the entries the list keeps, every one of them
 // while no entry narrows it, which the group counts are searched by. Only
 // Found has groups.
-sqlive_compose::read!(
+coven::read!(
     writer KeptCount(
         tab: String, filter: Option<String>, entries: String, folds_only: bool, folded: String
     ) { rows: i64, shown: Option<i64> },
@@ -119,7 +119,7 @@ sqlive_compose::read!(
 // The entries of the search index whose shown text matches the pattern of
 // `filter_text`, every tab's, as the index finds them: what a search's counts
 // read instead of testing every row of the tab.
-sqlive_compose::fragment!(
+coven::fragment!(
     SearchFound(filter_text: String) { found_entry: i64 },
     r#"
     SELECT s.rowid AS found_entry
@@ -133,7 +133,7 @@ sqlive_compose::fragment!(
 // included (`shown`), and how many items it holds (`rows`), both over the
 // rows its search finds, which are read once: the kept releases outside the
 // groups it folds shut, and the headers of the groups holding a kept release.
-sqlive_compose::read!(
+coven::read!(
     writer SearchCount(
         tab: String, filter: Option<String>, filter_text: String, folds_only: bool,
         folded: String
@@ -297,7 +297,7 @@ fn count_of(
 // Where the candidate at `opened` shows once revealed: its tab, its group,
 // and how many items sit before it among its tab's, in the list's order with
 // the filters cleared and its group opened.
-sqlive_compose::read!(
+coven::read!(
     writer Revealed(
         list_order: String, tab: Option<String>, filter: Option<String>,
         filter_text: Option<String>, folds_only: bool, folded: String,
@@ -376,7 +376,7 @@ pub(super) fn reveal(
 
 // The first candidate being identified, Found's first, in the order each
 // read names, every tab's rows unfiltered and no group folded.
-sqlive_compose::read!(
+coven::read!(
     writer NewestFirstIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
@@ -392,7 +392,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer OldestFirstIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
@@ -408,7 +408,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer PathAscendingIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key
@@ -423,7 +423,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer PathDescendingIdentifying { key: crate::CandidateKey },
     r#"
     SELECT p.key

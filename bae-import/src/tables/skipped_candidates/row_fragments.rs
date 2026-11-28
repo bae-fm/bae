@@ -1,7 +1,7 @@
 //! The skipped candidates' rows that other domains' fragments spread to reach
 //! them.
 
-sqlive_compose::fragment!(
+coven::fragment!(
     SkippedFolder,
     r#"
     SELECT skipped.candidate_path

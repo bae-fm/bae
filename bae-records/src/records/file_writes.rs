@@ -4,7 +4,7 @@ use super::*;
 use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseFile(
         id: &'p str,
         release_id: &'p str,
@@ -73,7 +73,7 @@ pub fn insert_release_file_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertAudioFormat(
         id: &'p str,
         track_id: &'p str,
@@ -118,7 +118,7 @@ pub fn insert_audio_format_row(conn: &CovenWrite<'_>, af: &DbAudioFormat) -> Res
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertAudioSegment(
         id: &'p str,
         audio_format_id: &'p str,
@@ -161,7 +161,7 @@ pub fn insert_audio_segment_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertScrubPoints(audio_segment_id: &'p str, points: Vec<u8>),
     r#"
     INSERT INTO audio_segment_scrub_points (audio_format_segment_id, points)
@@ -180,7 +180,7 @@ pub fn insert_scrub_points_row(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertCarvedTrack(track_id: &'p str, sheet_file_id: &'p str, file_reference: &'p str),
     r#"
     INSERT INTO carved_tracks (track_id, sheet_file_id, file_reference)

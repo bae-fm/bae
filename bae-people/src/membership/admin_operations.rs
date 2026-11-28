@@ -31,7 +31,7 @@ pub(super) enum AdminTarget {
 // acknowledges it. Every place also lists a change whose operation coven lists
 // with a kind no place shows, so that decoding it fails the read wherever the
 // person looks.
-sqlive_compose::fragment!(
+coven::fragment!(
     PlaceChanges(place: &'static str, member: Option<coven::MemberId>) {
         struct AdminOperation {
             operation: i64,
@@ -68,7 +68,7 @@ sqlive_compose::fragment!(
 );
 
 // A place's admin changes, and whether it has one.
-sqlive_compose::read!(
+coven::read!(
     writer PlaceAdminChanges(place: &'static str, member: Option<coven::MemberId>) {
         place_has_change: bool
     },
@@ -187,7 +187,7 @@ fn fresh_change_outcome(outcome: coven::FreshChangeOutcome) -> coven::ChangeOutc
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertAdminOperation(
         operation: i64,
         member: Option<coven::MemberId>,
@@ -201,7 +201,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteAdminOperation(operation: i64),
     r#"DELETE FROM admin_operations WHERE operation = :operation"#
 );

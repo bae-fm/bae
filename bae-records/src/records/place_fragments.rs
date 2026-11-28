@@ -8,7 +8,7 @@
 // side, how many sided sides come before it on its release, and how many
 // mediums its release holds. A record, a cassette and every other carrier
 // `bae_types::pressing::Medium::is_sided` names is played side by side.
-sqlive_compose::fragment!(
+coven::fragment!(
     PlacedMediums
     with mediums(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
@@ -47,7 +47,7 @@ sqlive_compose::fragment!(
 // order, `side` its side on its medium, counted from one, `number` its number
 // on that side, and `carrier` its medium's carrier key where the source
 // states one.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackPlaces
     with mediums(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
@@ -94,7 +94,7 @@ sqlive_compose::fragment!(
 // join over every count of sides a medium can have gives each medium its
 // sides: a recursive count would hide from coven which rows a statement
 // reads.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetSideChoices
     with mediums(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER
@@ -124,7 +124,7 @@ sqlive_compose::fragment!(
 // is on, as a [`SheetSideChoices`] row names it: that side of a medium played
 // side by side, else the medium's first side, since every side of another
 // medium shares the disc's heading.
-sqlive_compose::fragment!(
+coven::fragment!(
     PlacedWithSheetSides
     with placed(
         track_id TEXT, position INTEGER, medium_position INTEGER, side INTEGER, number INTEGER,
@@ -162,7 +162,7 @@ sqlive_compose::fragment!(
 
 // The choices of a CUE sheet's caption over the mediums the caller gives
 // ([`SheetSideChoices`]), as one JSON array in order.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetSideChoicesJson
     with mediums(
         id TEXT, release_id TEXT, position INTEGER, medium TEXT, side_count INTEGER

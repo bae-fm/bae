@@ -108,7 +108,7 @@ enum FillSource {
 // the row that leads first, which `lead_track` or `lead_position` names by its
 // track or its place, and the rest in random order; any other takes them in
 // the source's order.
-sqlive_compose::fragment!(
+coven::fragment!(
     PlayOrder(shuffled: bool, lead_track: Option<String>, lead_position: Option<i64>)
     with sourced(track_id TEXT, ordered INTEGER) { track_id: String, ordered: i64, played: i64 },
     r#"
@@ -127,7 +127,7 @@ sqlive_compose::fragment!(
 // order: the table, its shuffled index and its track index then grow at their
 // end. A lane not shuffled reads in the order it was numbered in, so its two
 // orders agree.
-sqlive_compose::write!(
+coven::write!(
     FillFromRelease(
         release: &'p str,
         base: i64,
@@ -150,7 +150,7 @@ sqlive_compose::write!(
 );
 
 // [`FillFromRelease`] with the tracks of several releases.
-sqlive_compose::write!(
+coven::write!(
     FillFromReleases(
         releases: &'p str,
         base: i64,
@@ -174,7 +174,7 @@ sqlive_compose::write!(
 );
 
 // [`FillFromRelease`] with a list's tracks.
-sqlive_compose::write!(
+coven::write!(
     FillFromTracks(
         tracks: &'p str,
         base: i64,
@@ -195,7 +195,7 @@ sqlive_compose::write!(
 );
 
 // [`FillFromRelease`] with every library track.
-sqlive_compose::write!(
+coven::write!(
     FillFromLibrary(
         base: i64,
         shuffled: bool,
@@ -218,7 +218,7 @@ sqlive_compose::write!(
 
 // What the filled lane plays from, its playing row's places and the next free
 // entry number.
-sqlive_compose::write!(
+coven::write!(
     PlayFilledLane(
         source_kind: &'static str,
         source_release_id: Option<&'p str>,

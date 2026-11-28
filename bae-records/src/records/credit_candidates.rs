@@ -13,7 +13,7 @@ use std::convert::Infallible;
 // finds, and `named` what `ArtistsNamed` finds. `picked_held` says
 // whether the library holds the artist `picked_id`. No artist goes by an empty
 // `name_key`.
-sqlive_compose::fragment!(
+coven::fragment!(
     CreditCandidates with credits(
         position INTEGER, picked_id TEXT, name_key TEXT,
         musicbrainz_artist_id TEXT, discogs_artist_id TEXT,
@@ -85,7 +85,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer CreditCandidatesOfCredits(credits: String),
     r#"
     SELECT candidate.*

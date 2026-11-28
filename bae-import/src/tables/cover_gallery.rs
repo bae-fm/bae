@@ -138,7 +138,7 @@ pub struct CoverGallery {
 // covers under all or their catalog, image files under all or the release's
 // files, each file in name order. The release focuses its saved cover, or the
 // file the cover is made from, unless the request names another.
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseGallery(
         release: String,
         filter: &'static str,
@@ -182,17 +182,17 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteReleaseCoverFetch(release: &'p str),
     r#"DELETE FROM release_cover_fetch WHERE release_id = :release"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseCoverFetch(release: &'p str, linked: bool),
     r#"INSERT INTO release_cover_fetch (release_id, linked) VALUES (:release, :linked)"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertReleaseCoverEntry(release: &'p str, position: i64, source: &'static str, cover: &'p str),
     r#"
     INSERT INTO release_cover_entry (release_id, position, source, cover)

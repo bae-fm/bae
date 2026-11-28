@@ -6,7 +6,7 @@
 // pattern: those whose name or sort name holds it, and the artist each other
 // printed name holding it shows as. Each part reads its search table's index;
 // the artist picker finds by these too.
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistsFound(pattern: Option<String>) { artist_id: Option<String> },
     r#"
     SELECT named.artist_id FROM artist_search AS named WHERE named.name GLOB :pattern
@@ -27,7 +27,7 @@ sqlive_compose::fragment!(
 // shows or the other name a credit prints, holds it. Each part reads its search
 // table's index, so the read costs what the search finds. An album two parts
 // find is listed twice, so the list is only read through `IN` or `DISTINCT`.
-sqlive_compose::fragment!(
+coven::fragment!(
     AlbumsFound(pattern: Option<String>) { album_id: Option<String> },
     r#"
     SELECT titled.album_id FROM album_search AS titled WHERE titled.title GLOB :pattern

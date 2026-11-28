@@ -8,10 +8,10 @@ use bae_records::records::track_display::DisplayedTrack;
 #[cfg(test)]
 pub(crate) use card::ArtistAlbums;
 pub(crate) use card::{artist_albums_of, AlbumAppearanceRow, ArtistAlbumsParams, ArtistAlbumsRow};
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) use listing::{album_counts_on, every_album_on};
 #[cfg(test)]
 pub(crate) use listing::albums_before_on;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) use listing::{album_counts_on, every_album_on};
 pub(crate) use listing::{
     album_key_at_on, album_page_read, album_window_of, album_window_read, albums_before_read,
     albums_in_order_on, subscribe_album_counts, subscribe_album_sections, unshown_albums_read,
@@ -334,7 +334,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
 }
 
 // The track `track` of the release `release`, as playback shows a track.
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseTrack(release: String, track: String),
     r#"
     SELECT shown.*
@@ -365,7 +365,7 @@ pub(crate) fn release_track(
 // The album `album` above its releases: its row, its credits and whether it
 // has releases to choose among, and the library's rating system for albums with
 // the ratings it shows; no row for an album the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer AlbumDetailHead(album: String),
     r#"
     SELECT album.*, detailed.*, ratings.*
@@ -477,7 +477,7 @@ pub struct AlbumDetailProjection {
 // A page of the album `album`'s tracks: those of its primary release at the
 // places from `offset` on, in playing order, at most `limit`. A release holds
 // one track at each position, so the position tells every two tracks apart.
-sqlive_compose::read!(
+coven::read!(
     writer AlbumTrackPage(album: String, offset: i64, limit: i64),
     r#"
     SELECT shown.*
@@ -491,7 +491,7 @@ sqlive_compose::read!(
 );
 
 // How many tracks the album `album` lists: its primary release's.
-sqlive_compose::read!(
+coven::read!(
     writer AlbumTrackCount(album: String) { tracks: u64 },
     r#"
     SELECT COUNT(*) AS tracks

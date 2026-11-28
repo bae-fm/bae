@@ -275,7 +275,7 @@ impl Decided {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     InsertLabel(
         id: &'p str,
         name: &'p str,
@@ -290,7 +290,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetLabelIds(
         id: &'p str,
         musicbrainz_label_id: Option<&'p str>,

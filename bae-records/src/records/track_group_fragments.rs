@@ -2,7 +2,7 @@
 //! whether any performs a work.
 
 // No person's stars: the `stars` relation of a read that shows none.
-sqlive_compose::fragment!(
+coven::fragment!(
     NoTrackStars { track_id: Option<String>, stars: Option<i64> },
     r#"
     SELECT NULL AS track_id, NULL AS stars
@@ -15,7 +15,7 @@ sqlive_compose::fragment!(
 // with its tracks' lengths added up, whether the release has more than one
 // group, where its second column starts, and its tracks with their credits,
 // works and the stars `stars` gives each.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackGroups on releases
     with stars(track_id TEXT, stars INTEGER) { track_groups: String },
     r#"
@@ -76,7 +76,7 @@ sqlive_compose::fragment!(
 );
 
 // How long the release's tracks play.
-sqlive_compose::fragment!(
+coven::fragment!(
     TotalDuration on releases { total_duration_ms: i64 },
     r#"
     SELECT COALESCE(SUM(held.duration_ms), 0) AS total_duration_ms
@@ -86,7 +86,7 @@ sqlive_compose::fragment!(
 );
 
 // Whether any of the release's tracks performs a work.
-sqlive_compose::fragment!(
+coven::fragment!(
     PerformsWorks on releases { performs_works: bool },
     r#"
     SELECT COUNT(*) > 0 AS performs_works

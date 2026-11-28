@@ -19,7 +19,7 @@ use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use std::path::PathBuf;
 
 // The `preferences` row.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredPreferences {
         discogs_key: Option<crate::DiscogsValidation>,
         replay_gain_mode: crate::ReplayGainMode,
@@ -62,7 +62,7 @@ sqlive_compose::fragment!(
 
 // The save presets whose ids `wanted` holds, in the order the settings list
 // them: one row, whatever the number of presets.
-sqlive_compose::fragment!(
+coven::fragment!(
     SavePresetsAmong with wanted(id TEXT) {
         struct SavePresetColumns {
             id: String,
@@ -84,7 +84,7 @@ sqlive_compose::fragment!(
 );
 
 // Every save preset.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredSavePresets,
     r#"
     SELECT every.*
@@ -95,7 +95,7 @@ sqlive_compose::fragment!(
 
 // The pieces of the file name pattern and of the folder name pattern, each in
 // order: one row, whatever their number.
-sqlive_compose::fragment!(
+coven::fragment!(
     StoredNamePatterns {
         struct NameTokenColumns { value: Option<String>, text: Option<String> }
         filename_tokens: json<Vec<NameTokenColumns>>,
@@ -116,7 +116,7 @@ sqlive_compose::fragment!(
 // coven's sync status row holds it, none while no storage is set up; then this
 // person's access as the library records it, their member row's `account` and
 // `access_key_id`.
-sqlive_compose::fragment!(
+coven::fragment!(
     RecordedStorage {
         location: Option<coven::StorageConfig>,
         account: Option<String>,
@@ -131,7 +131,7 @@ sqlive_compose::fragment!(
 
 // This device's preferences: the `preferences` row, every save preset and the
 // name patterns' pieces, in one row.
-sqlive_compose::fragment!(
+coven::fragment!(
     PreferenceRows,
     r#"
     SELECT stored.*, presets.*, patterns.*
@@ -141,7 +141,7 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer PreferencesRead,
     r#"
     SELECT preferences.* FROM @crate::row::PreferenceRows AS preferences
@@ -150,7 +150,7 @@ sqlive_compose::read!(
 
 // What the settings screens show: this device's preferences, the preset the
 // last save used, and the storage coven's views record.
-sqlive_compose::read!(
+coven::read!(
     writer SettingsRead,
     r#"
     SELECT preferences.*, last_saved.*, recorded.*
@@ -162,7 +162,7 @@ sqlive_compose::read!(
 );
 
 // The preset `id`, none once no preset has the id.
-sqlive_compose::read!(
+coven::read!(
     writer SavePresetRead(id: String),
     r#"
     SELECT presets.*
@@ -172,7 +172,7 @@ sqlive_compose::read!(
 
 // Every save preset, with the id of the one a save panel shows chosen when
 // the person has selected `selected`.
-sqlive_compose::read!(
+coven::read!(
     writer SaveChoiceRead(selected: String) { chosen_id: Option<String> },
     r#"
     SELECT presets.*,
@@ -183,9 +183,9 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::write!(DeleteSavePresets, r#"DELETE FROM save_preset"#);
+coven::write!(DeleteSavePresets, r#"DELETE FROM save_preset"#);
 
-sqlive_compose::write!(
+coven::write!(
     InsertSavePreset(
         id: &'p str,
         position: i64,
@@ -200,22 +200,22 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(DeleteFilenameTokens, r#"DELETE FROM save_filename_token"#);
+coven::write!(DeleteFilenameTokens, r#"DELETE FROM save_filename_token"#);
 
-sqlive_compose::write!(
+coven::write!(
     InsertFilenameToken(position: i64, value: Option<&'static str>, text: Option<&'p str>),
     r#"INSERT INTO save_filename_token (position, value, text) VALUES (:position, :value, :text)"#
 );
 
-sqlive_compose::write!(DeleteFolderTokens, r#"DELETE FROM save_folder_token"#);
+coven::write!(DeleteFolderTokens, r#"DELETE FROM save_folder_token"#);
 
-sqlive_compose::write!(
+coven::write!(
     InsertFolderToken(position: i64, value: Option<&'static str>, text: Option<&'p str>),
     r#"INSERT INTO save_folder_token (position, value, text) VALUES (:position, :value, :text)"#
 );
 
 // Every column of the `preferences` row.
-sqlive_compose::write!(
+coven::write!(
     UpdatePreferences(
         discogs_key: Option<&'static str>,
         replay_gain_mode: &'static str,

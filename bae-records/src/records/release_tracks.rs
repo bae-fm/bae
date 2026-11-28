@@ -146,7 +146,7 @@ pub(super) fn track_groups_of_json(json: &str) -> Result<Vec<DbTrackGroup>, DbEr
 // order, leaving out a track the library does not hold. Each side is lettered
 // among all of its release's mediums, so the fragment places every track of
 // the named tracks' releases.
-sqlive_compose::read!(
+coven::read!(
     writer NamedTrackPlaces(tracks: String),
     r#"
     SELECT place.*
@@ -214,7 +214,7 @@ fn side_of_columns(kind: &str, ordinal: i64) -> Result<TrackSide, String> {
 
 // Where each place the JSON array `places` gives sits, in their order, on the
 // mediums the JSON array `mediums` gives, which no table holds.
-sqlive_compose::read!(
+coven::read!(
     writer GivenSidePlaces(mediums: String, places: String) { side_kind: String, side_ordinal: i64 },
     r#"
     WITH placed AS (

@@ -9,7 +9,7 @@ use bae_store::{statement_optional, DbError, ListWindow, WindowRead};
 use coven::SqlReadContext;
 
 // The downloads list's order: each entry's place, in the order queued.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadQueuePlace,
     r#"
     SELECT kept.position
@@ -22,7 +22,7 @@ sqlive_compose::fragment!(
 // before its last row only when the statement returns its order's column
 // ahead of any `*`, which no column of a spread can be: the order is read from
 // the table.
-sqlive_compose::read!(
+coven::read!(
     writer DownloadWindow(from: i64, limit: i64),
     r#"
     SELECT queued.position, entry.*, release.*, album.*
@@ -40,7 +40,7 @@ sqlive_compose::read!(
 );
 
 // [`DownloadWindow`] from the list's top.
-sqlive_compose::read!(
+coven::read!(
     writer DownloadTop(limit: i64),
     r#"
     SELECT queued.position, entry.*, release.*, album.*
@@ -57,7 +57,7 @@ sqlive_compose::read!(
 );
 
 // How many entries the downloads list has.
-sqlive_compose::read!(
+coven::read!(
     writer DownloadListLength { entries: u64 },
     r#"
     SELECT COUNT(*) AS entries
@@ -66,7 +66,7 @@ sqlive_compose::read!(
 );
 
 // How many entries come before the place `position`.
-sqlive_compose::read!(
+coven::read!(
     writer DownloadsBefore(position: i64) { entries: u64 },
     r#"
     SELECT COUNT(*) AS entries
@@ -78,7 +78,7 @@ sqlive_compose::read!(
 // The place of the entry at `index`, counted from the list's top, or of the
 // last entry when the list ends before it. SQLite reads the offset -1 of an
 // empty list as 0, where there is no row.
-sqlive_compose::read!(
+coven::read!(
     writer DownloadPlaceAt(index: i64),
     r#"
     SELECT entry.*

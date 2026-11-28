@@ -7,7 +7,7 @@
 // storage row says so: a pin once every file is pinned, a move to this device
 // once the release is no longer stored in the cloud. A release the library no
 // longer holds has no storage row, so it counts no bytes and is never done.
-sqlive_compose::fragment!(
+coven::fragment!(
     DownloadBatchRelease { bytes: i64, held: bool, done: bool },
     r#"
     SELECT member.*,

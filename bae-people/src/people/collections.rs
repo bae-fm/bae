@@ -8,7 +8,7 @@ use crate::collections::{
 use crate::people::{PersonProfile, Sharing};
 use bae_store::WriteStatements;
 
-sqlive_compose::write!(
+coven::write!(
     KeepRating(
         id: &'p str,
         person: coven::MemberId,
@@ -23,9 +23,9 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(DeleteRating(id: &'p str), r#"DELETE FROM ratings WHERE id = :id"#);
+coven::write!(DeleteRating(id: &'p str), r#"DELETE FROM ratings WHERE id = :id"#);
 
-sqlive_compose::write!(
+coven::write!(
     InsertPlaylist(
         id: &'p str,
         person: coven::MemberId,
@@ -38,14 +38,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetPlaylist(id: &'p str, name: &'p str, audience: &'p coven::Audience),
     r#"UPDATE playlists SET name = :name, audience = :audience WHERE id = :id"#
 );
 
-sqlive_compose::write!(DeletePlaylist(id: &'p str), r#"DELETE FROM playlists WHERE id = :id"#);
+coven::write!(DeletePlaylist(id: &'p str), r#"DELETE FROM playlists WHERE id = :id"#);
 
-sqlive_compose::write!(
+coven::write!(
     InsertPlaylistEntry(playlist: &'p str, entry: &'p str, track: &'p str, position: i64),
     r#"
     INSERT INTO playlist_entries (playlist_id, position_id, track_id, position)
@@ -54,7 +54,7 @@ sqlive_compose::write!(
 );
 
 // An entry after the playlist's last one.
-sqlive_compose::write!(
+coven::write!(
     AppendPlaylistEntry(playlist: &'p str, entry: &'p str, track: &'p str),
     r#"
     INSERT INTO playlist_entries (playlist_id, position_id, track_id, position)
@@ -64,14 +64,14 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeletePlaylistEntry(playlist: &'p str, entry: &'p str),
     r#"DELETE FROM playlist_entries WHERE playlist_id = :playlist AND position_id = :entry"#
 );
 
 // The entry `entry` at place `to` among the playlist's others, and every entry
 // numbered from 0 in that order.
-sqlive_compose::write!(
+coven::write!(
     MovePlaylistEntry(playlist: &'p str, entry: &'p str, to: i64),
     r#"
     WITH others AS (
@@ -90,7 +90,7 @@ sqlive_compose::write!(
 
 // The playlist's entries numbered from 0, with `entries` numbers left free
 // before the entry now at place `at`.
-sqlive_compose::write!(
+coven::write!(
     MakeRoomForPlaylistEntries(playlist: &'p str, at: i64, entries: i64),
     r#"
     WITH placed AS (
@@ -392,7 +392,7 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
 
 // One playlist's entries, in order; `playlist_entries_position` serves the
 // lookup and the order.
-sqlive_compose::read!(
+coven::read!(
     writer EntriesOfPlaylist(playlist: String),
     r#"
     SELECT entry.position_id, entry.track_id

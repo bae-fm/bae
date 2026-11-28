@@ -27,7 +27,7 @@ pub(crate) fn subscribe_playback_track_infos(
 }
 
 // The display of one track; no row for a track the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer OneTrackDisplay(track: String),
     r#"
     SELECT track.*

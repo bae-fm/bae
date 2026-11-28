@@ -23,12 +23,12 @@ impl bae_util::task_failure::ReportedBug for PrimaryReleaseError {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteAlbumReleases(album_id: &'p str),
     "DELETE FROM releases WHERE album_id = :album_id"
 );
 
-sqlive_compose::write!(
+coven::write!(
     MakePrimaryRelease(album_id: &'p str, release_id: &'p str),
     r#"
     UPDATE releases

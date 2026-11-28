@@ -9,7 +9,7 @@ use super::*;
 // order every list of them shows (natural order of their names, case aside,
 // id breaking a tie), and the coven file of its cover's browse copy; no row
 // for a release the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer OneReleaseWithFiles(release: String) {
         files: String,
         cover_file: Option<coven::FileId>,
@@ -32,7 +32,7 @@ sqlive_compose::read!(
 
 // The file `file` of the release `release`; no row when the release has no
 // such file.
-sqlive_compose::read!(
+coven::read!(
     writer FileOfRelease(release: String, file: String),
     r#"
     SELECT listed.*
@@ -44,7 +44,7 @@ sqlive_compose::read!(
 );
 
 // The release file `file`, of whichever release holds it.
-sqlive_compose::read!(
+coven::read!(
     writer ReleaseFileById(file: String),
     r#"
     SELECT record.*

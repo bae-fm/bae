@@ -6,7 +6,7 @@ use bae_util::timestamp::StoredTimestamp as _;
 use std::time::Duration;
 
 // A play's row, which a later write of the same play only lengthens.
-sqlive_compose::write!(
+coven::write!(
     RecordPlay(
         id: &'p str,
         person: coven::MemberId,

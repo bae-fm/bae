@@ -31,7 +31,7 @@ impl StorageRowParts {
 // sorts by storage and when it was added, from its listing row; its storage
 // row, the storage actions it offers, its entry in the download queue and its
 // media; its own cover's version; and its album's summary.
-sqlive_compose::fragment!(
+coven::fragment!(
     StorageListRow { storage_order: i64, release_cover_version: Option<String> },
     r#"
     SELECT kept.release_id AS row_release_id, kept.storage_order,

@@ -95,7 +95,7 @@ impl LaneOrder {
     }
 }
 
-sqlive_compose::write!(
+coven::write!(
     LiftUpNext(lift: i64, low: i64, high: i64),
     r#"
     UPDATE playback_manual SET position = position + :lift
@@ -103,7 +103,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     LiftOrdered(lift: i64, low: i64, high: i64),
     r#"
     UPDATE playback_context SET ordered = ordered + :lift
@@ -111,7 +111,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     LiftShuffled(lift: i64, low: i64, high: i64),
     r#"
     UPDATE playback_context SET shuffled = shuffled + :lift
@@ -119,7 +119,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     LowerUpNext(lift: i64, delta: i64, from: i64),
     r#"
     UPDATE playback_manual SET position = position - :lift + :delta
@@ -127,7 +127,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     LowerOrdered(lift: i64, delta: i64, from: i64),
     r#"
     UPDATE playback_context SET ordered = ordered - :lift + :delta
@@ -135,7 +135,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     LowerShuffled(lift: i64, delta: i64, from: i64),
     r#"
     UPDATE playback_context SET shuffled = shuffled - :lift + :delta
@@ -143,27 +143,24 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     PlaceInUpNext(entry: i64, place: i64),
     r#"UPDATE playback_manual SET position = :place WHERE entry = :entry"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     PlaceInOrdered(entry: i64, place: i64),
     r#"UPDATE playback_context SET ordered = :place WHERE entry = :entry"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     PlaceInShuffled(entry: i64, place: i64),
     r#"UPDATE playback_context SET shuffled = :place WHERE entry = :entry"#
 );
 
-sqlive_compose::write!(
-    SetOrderedCursor(place: i64),
-    r#"UPDATE playback_queue SET ordered_cursor = :place"#
-);
+coven::write!(SetOrderedCursor(place: i64), r#"UPDATE playback_queue SET ordered_cursor = :place"#);
 
-sqlive_compose::write!(
+coven::write!(
     SetShuffledCursor(place: i64),
     r#"UPDATE playback_queue SET shuffled_cursor = :place"#
 );

@@ -4,7 +4,7 @@
 // The track's own credits as a JSON array in list order, each the artist it
 // shows after merges, the other printed name it names and its join; no row for
 // a track with none.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackOwnCredits on tracks { credits: String },
     r#"
     SELECT json_group_array(json_object(
@@ -28,7 +28,7 @@ sqlive_compose::fragment!(
 );
 
 // The credits the track shows, as a JSON array: its own, else its album's.
-sqlive_compose::fragment!(
+coven::fragment!(
     TrackCredits on tracks { credits: String },
     r#"
     SELECT COALESCE(
@@ -44,7 +44,7 @@ sqlive_compose::fragment!(
 
 // The credits each track shows ([`TrackCredits`]),
 // for a read that joins them to its tracks.
-sqlive_compose::fragment!(
+coven::fragment!(
     ShownTrackCredits,
     r#"
     SELECT credited.id AS track_id,
@@ -56,7 +56,7 @@ sqlive_compose::fragment!(
 // The names of the artists credited on the work in a writing role, each once
 // as the artist it shows after merges, joined by ", " in credit order; NULL
 // when the work has no artists.
-sqlive_compose::fragment!(
+coven::fragment!(
     WorkComposerNames on works { composer_names: Option<String> },
     r#"
     SELECT GROUP_CONCAT(credited.name, ', ' ORDER BY credited.position) AS composer_names
@@ -86,7 +86,7 @@ impl WorkComposerNames {
 // track's own credits and 1 for a work's, and `track_position` and the two
 // positions are the credit's places in the order a release lists them. Each
 // names the artist it shows after merges and the name it prints.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseCreditLines {
         release_id: String,
         part: i64,
@@ -150,7 +150,7 @@ sqlive_compose::fragment!(
 // holding a role over the same tracks are one row, in the order of their first
 // credit, and rows go in the order of their first credit. A row whose role
 // covers every track lists no tracks.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseCredits on releases { credit_rows: String },
     r#"
     WITH own_mediums AS (
@@ -216,7 +216,7 @@ sqlive_compose::fragment!(
 );
 
 // Whether the release has any credit its detail lists.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseHasCredits on releases { has_credits: bool },
     r#"
     SELECT COUNT(*) > 0 AS has_credits

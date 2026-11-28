@@ -8,7 +8,7 @@
 //! whether the list shows no member of the group after it.
 
 // The window of the list newest first.
-sqlive_compose::read!(
+coven::read!(
     writer NewestFirstWindow(
         tab: String,
         filter: Option<String>,
@@ -137,7 +137,7 @@ sqlive_compose::read!(
 );
 
 // The window of the list oldest first.
-sqlive_compose::read!(
+coven::read!(
     writer OldestFirstWindow(
         tab: String,
         filter: Option<String>,
@@ -266,7 +266,7 @@ sqlive_compose::read!(
 );
 
 // The window of the list by folder, A to Z.
-sqlive_compose::read!(
+coven::read!(
     writer PathAscendingWindow(
         tab: String,
         filter: Option<String>,
@@ -359,7 +359,7 @@ sqlive_compose::read!(
 );
 
 // The window of the list by folder, Z to A.
-sqlive_compose::read!(
+coven::read!(
     writer PathDescendingWindow(
         tab: String,
         filter: Option<String>,

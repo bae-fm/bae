@@ -22,7 +22,7 @@ use super::window_reads::*;
 
 // The flat grid's counts: its albums, each of which is one row, and whether
 // the library holds a track.
-sqlive_compose::read!(
+coven::read!(
     writer FlatAlbumCounts { albums: u64, can_shuffle: bool },
     r#"
     SELECT (SELECT COUNT(*) FROM album_listing AS listing) AS albums,
@@ -34,7 +34,7 @@ sqlive_compose::read!(
 // The counts of the grid grouped by artist: its albums; its rows, one for
 // each album under each of its artists, the sum of the artists' album counts;
 // and whether the library holds a track.
-sqlive_compose::read!(
+coven::read!(
     writer GroupedAlbumCounts { albums: u64, appearances: u64, can_shuffle: bool },
     r#"
     SELECT (SELECT COUNT(*) FROM album_listing AS listing) AS albums,
@@ -96,7 +96,7 @@ fn flat_counts_of(row: FlatAlbumCountsRow) -> AlbumCounts {
 // The sections of the grid grouped by artist with the artists ascending: each
 // artist in the grouped order with its name, where its albums start in the
 // grid's rows, how many there are and the version of its picture.
-sqlive_compose::read!(
+coven::read!(
     writer AscendingArtistSections { first_position: u64, image_version: Option<String> },
     r#"
     SELECT artist.artist_id, artist.name,
@@ -113,7 +113,7 @@ sqlive_compose::read!(
 );
 
 // [`AscendingArtistSections`] with the artists descending.
-sqlive_compose::read!(
+coven::read!(
     writer DescendingArtistSections { first_position: u64, image_version: Option<String> },
     r#"
     SELECT artist.artist_id, artist.name,
@@ -179,7 +179,7 @@ fn section(
 
 // The ids of `requested`, a JSON array of album ids, that the grid does not
 // show, in id order: the grid shows an album that has a listing row.
-sqlive_compose::read!(
+coven::read!(
     writer UnshownAlbums(requested: String) { album_id: String },
     r#"
     SELECT requested.value AS album_id

@@ -2,7 +2,7 @@
 
 use super::*;
 use bae_store::test_fixtures::temp_db;
-use sqlive_compose::Returning as _;
+use coven::Returning as _;
 
 #[tokio::test]
 async fn a_library_with_nothing_recorded_reads_as_not_synced() {

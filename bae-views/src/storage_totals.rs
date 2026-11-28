@@ -6,7 +6,7 @@ use super::*;
 
 // How many releases the library holds and their files' total size, from the
 // stored totals' two rows.
-sqlive_compose::read!(
+coven::read!(
     writer AllStorageTotals { release_count: Option<u64>, total_size: Option<u64> },
     r#"
     SELECT SUM(held.release_count) AS release_count, SUM(held.total_size) AS total_size
@@ -16,7 +16,7 @@ sqlive_compose::read!(
 
 // How many releases hold the `stored` value `stored` and their files' total
 // size, from its stored totals.
-sqlive_compose::read!(
+coven::read!(
     writer KeptStorageTotals(stored: i64) { release_count: u64, total_size: u64 },
     r#"
     SELECT held.release_count, held.total_size

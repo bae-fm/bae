@@ -21,7 +21,7 @@ pub enum SortLanguageError {
 
 // The language this device orders names in, as the one `name_sort` row holds
 // it.
-sqlive_compose::fragment!(
+coven::fragment!(
     NameSortLanguage,
     r#"
     SELECT sort.language
@@ -29,16 +29,13 @@ sqlive_compose::fragment!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetNameSort(language: &'p str, data_version: u32),
     "UPDATE name_sort SET language = :language, data_version = :data_version"
 );
 
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::write!(
-    AgeNameKeys(data_version: u32),
-    "UPDATE name_sort SET data_version = :data_version"
-);
+coven::write!(AgeNameKeys(data_version: u32), "UPDATE name_sort SET data_version = :data_version");
 
 impl super::Records {
     /// Order this device's names in the language `tag`: the lists that keep

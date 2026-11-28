@@ -25,7 +25,7 @@ const SCHEMA: &str = "
 ";
 
 const RECORDS: &str = r##"
-sqlive_compose::fragment!(
+coven::fragment!(
     BookTitle(id: String),
     r#"SELECT book.title AS title FROM probe_books AS book WHERE book.id = :id"#
 );
@@ -36,7 +36,7 @@ sqlive_compose::fragment!(
 fn refusals(people: &str) -> Vec<String> {
     let compiled = compile_crate(Input {
         crate_name: "bae-music".to_owned(),
-        macros_crate: "sqlive_compose".to_owned(),
+        macros_crate: "coven".to_owned(),
         source_reader: &|path| match path {
             "src/lib.rs" => Ok("mod people;\nmod records;\n".to_owned()),
             "src/people.rs" => Ok(people.to_owned()),
@@ -58,7 +58,7 @@ fn refusals(people: &str) -> Vec<String> {
 #[test]
 fn a_read_that_names_another_domains_table_is_refused_with_the_domain() {
     let refused = refusals(
-        r##"sqlive_compose::read!(
+        r##"coven::read!(
     Rated(id: String),
     r#"SELECT review.stars AS stars, book.title AS title FROM probe_reviews AS review
        JOIN probe_books AS book ON book.id = review.book_id WHERE review.book_id = :id"#
@@ -75,7 +75,7 @@ fn a_read_that_names_another_domains_table_is_refused_with_the_domain() {
 #[test]
 fn a_write_that_reads_another_domains_table_is_refused_with_the_domain() {
     let refused = refusals(
-        r##"sqlive_compose::write!(
+        r##"coven::write!(
     RateEveryBook(stars: i64),
     r#"INSERT INTO probe_reviews (book_id, stars) SELECT book.id, :stars FROM probe_books AS book"#
 );
@@ -91,7 +91,7 @@ fn a_write_that_reads_another_domains_table_is_refused_with_the_domain() {
 #[test]
 fn a_read_that_spreads_another_domains_fragment_passes() {
     let refused = refusals(
-        r##"sqlive_compose::read!(
+        r##"coven::read!(
     Rated(id: String),
     r#"SELECT review.stars AS stars, book.* FROM probe_reviews AS review
        JOIN @crate::records::BookTitle(id: :id) AS book ON 1 WHERE review.book_id = :id"#

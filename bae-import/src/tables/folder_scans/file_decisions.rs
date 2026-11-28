@@ -6,7 +6,7 @@ use super::*;
 use crate::tables::PreparationRefusal;
 use std::collections::HashMap;
 
-sqlive_compose::write!(
+coven::write!(
     SetFileEditRevision(
         watched_folder_path: Vec<u8>,
         path: &'p crate::CandidateKey,
@@ -89,7 +89,7 @@ pub(crate) fn settle_candidate_files(
     Ok(settled)
 }
 
-sqlive_compose::read!(
+coven::read!(
     writer ReleasesReadingFiles(content_hash: String, file_edit_revision: i64),
     r#"
     SELECT release.*

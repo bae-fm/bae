@@ -14,7 +14,7 @@ use bae_store::statement_optional;
 
 // What a save of a form of the release `release` starts from. No row for a
 // release the library does not hold.
-sqlive_compose::read!(
+coven::read!(
     writer SaveInputs(release: String, unedited: String, relinked: bool, records: String, edits: String),
     r#"
     SELECT shown.*, save.*, decided.*

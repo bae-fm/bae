@@ -63,7 +63,7 @@ pub(crate) fn file_evidence_of_json(json: &str) -> Result<Vec<crate::FileEvidenc
         .collect()
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSignals(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_signals WHERE content_hash = :content_hash
@@ -73,7 +73,7 @@ sqlive_compose::write!(
 // The signals' header row, written over the one its owner holds. The only
 // rows an insert here can conflict with are that one: the owner's, by
 // content_hash or by identify_run.
-sqlive_compose::write!(
+coven::write!(
     UpsertSignals(
         content_hash: Option<String>,
         identify_run: Option<i64>,
@@ -108,21 +108,21 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSignalValues(signals_id: SignalsId),
     r#"
     DELETE FROM import_candidate_signal_value WHERE signals_id = :signals_id
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteSignalTextLines(signals_id: SignalsId),
     r#"
     DELETE FROM import_candidate_text_line WHERE signals_id = :signals_id
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertSignalValue(
         signals_id: SignalsId,
         list: &'p str,
@@ -137,7 +137,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertTextLine(signals_id: SignalsId, position: i64, text: &'p str, origin: &'p str),
     r#"
     INSERT INTO import_candidate_text_line
@@ -148,7 +148,7 @@ sqlive_compose::write!(
 
 // Damage a test plants: every text line of the signals of a candidate gone.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     LoseTextLines(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_text_line
@@ -160,7 +160,7 @@ sqlive_compose::write!(
 // Damage a test plants: every catalog number of the signals of a candidate
 // gone.
 #[cfg(test)]
-sqlive_compose::write!(
+coven::write!(
     LoseCatalogNumbers(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_signal_value

@@ -264,7 +264,7 @@ impl Records {
 }
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     SetTrackRow(
         id: &'p str,
         release_id: &'p str,
@@ -283,19 +283,19 @@ sqlive_compose::write!(
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     ClearTrackArtistRoles(track_id: &'p str),
     "DELETE FROM track_artist_roles WHERE track_id = :track_id"
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     ClearTrackWorks(track_id: &'p str),
     "DELETE FROM track_works WHERE track_id = :track_id"
 );
 
 #[cfg(desktop)]
-sqlive_compose::write!(
+coven::write!(
     ClearReleaseArtistRoles(release_id: &'p str),
     "DELETE FROM release_artist_roles WHERE release_id = :release_id"
 );

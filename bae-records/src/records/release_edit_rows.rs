@@ -16,7 +16,7 @@ use super::*;
 // array `editor_tracks` of its tracks' audio in release order
 // ([`StoredEditorTrack`]), which no sheet edit changes: `unedited` is
 // [`UNEDITED`]. No row for a release the library does not hold.
-sqlive_compose::fragment!(
+coven::fragment!(
     EditorRelease(release: String, unedited: String) { editor_tracks: String },
     r#"
     SELECT detail.*, facts.*, album.*,
@@ -47,7 +47,7 @@ sqlive_compose::fragment!(
 );
 
 // One release as its editor opens on it.
-sqlive_compose::read!(
+coven::read!(
     writer OneEditorRelease(release: String, unedited: String),
     r#"
     SELECT shown.*
@@ -64,7 +64,7 @@ pub const UNEDITED: &str = "{}";
 // the JSON array `added` of the files a save adds a track for, each a
 // `{file_id, name}` in the order their first deleted track sat, and the
 // release's first medium.
-sqlive_compose::fragment!(
+coven::fragment!(
     SheetChanges(release: String, edits: String) {
         dropped: String,
         added: String,
@@ -88,7 +88,7 @@ sqlive_compose::fragment!(
 // The audio of the release `release`'s tracks: the JSON arrays of their audio
 // formats and of those formats' segments, in release order, and of the tracks
 // a CUE sheet carves.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseAudio(release: String) {
         audio_formats: String,
         audio_segments: String,
@@ -137,7 +137,7 @@ sqlive_compose::fragment!(
 // release's own ([`FiledByRecords`](super::fragments::FiledByRecords)); what
 // the form's edits do to its CUE sheets' tracks; its tracks' audio; and its
 // files, as `FileDocuments` writes them.
-sqlive_compose::fragment!(
+coven::fragment!(
     ReleaseSaveRows(release: String, relinked: bool, records: String, edits: String) {
         files: String
     },
@@ -396,7 +396,7 @@ impl ReleaseSaveRows {
 
 // The audio of one release's tracks.
 #[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
+coven::read!(
     writer OneReleaseAudio(release: String),
     r#"
     SELECT audio.*

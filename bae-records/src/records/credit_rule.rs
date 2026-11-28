@@ -4,7 +4,7 @@
 //! decides between, `ArtistsHoldingIds` and `ArtistsNamed`, are fragments the
 //! write that decides spreads too (`credit_candidates`).
 
-sqlive_compose::fragment!(
+coven::fragment!(
     CreditAnswers with credits(name_key TEXT, musicbrainz_artist_id TEXT, discogs_artist_id TEXT)
         {
             name_key: Option<String>,
@@ -157,7 +157,7 @@ impl CreditAnswers {
 // catalog holds it, or when the id names its row (its column may have been
 // filled in or edited since). Each is followed through any merge to the artist
 // it shows as.
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistsHoldingIds with ids(catalog TEXT, catalog_id TEXT)
         { catalog: String, catalog_id: String, artist_id: String },
     r#"
@@ -183,7 +183,7 @@ sqlive_compose::fragment!(
 // One row for each folded name of `names` and shown artist that goes by it, as
 // its own name or as one of its other printed names; a printed name an
 // absorbed artist held names the artist it shows as.
-sqlive_compose::fragment!(
+coven::fragment!(
     ArtistsNamed with names(name_key TEXT) { name_key: String, artist_id: String },
     r#"
     SELECT asked.name_key, shown.artist_id

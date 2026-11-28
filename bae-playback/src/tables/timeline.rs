@@ -35,7 +35,7 @@ pub async fn playback_timeline(store: &Store) -> Result<PlaybackTimeline, DbErro
     playback_timeline_of(store.read_row(TimelineLinesParams {}).await?)
 }
 
-sqlive_compose::write!(
+coven::write!(
     SetPlaybackTimeline(
         track_id: Option<&'p str>,
         position_ms: Option<u64>,
@@ -59,7 +59,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     ResetPlaybackTimeline,
     r#"
     UPDATE playback_timeline
@@ -107,7 +107,7 @@ pub(super) fn reset_playback_timeline_on(sql: &coven::BulkSqlContext<'_>) -> rus
 }
 
 // The playing track's line, while the playing track has reported a position.
-sqlive_compose::fragment!(
+coven::fragment!(
     LibraryTimelineLine {
         track_id: String,
         position_ms: u64,
@@ -125,7 +125,7 @@ sqlive_compose::fragment!(
 );
 
 // The preview clip's line, while a preview is loaded.
-sqlive_compose::fragment!(
+coven::fragment!(
     PreviewTimelineLine {
         preview_path: Vec<u8>,
         preview_start_sample: u64,
@@ -147,7 +147,7 @@ sqlive_compose::fragment!(
 
 // Where playback is: the playing track's line and the preview's, each absent
 // while it is not set.
-sqlive_compose::read!(
+coven::read!(
     writer TimelineLines,
     r#"
     SELECT library.*, preview.*

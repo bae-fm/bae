@@ -65,7 +65,7 @@ impl ListSortField for ComposerSortField {
 
 // The composer list's rows at the places from `offset`, at most `limit` of
 // them, for each first term.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerRowsByName(field_2: Option<String>, field_3: Option<String>, offset: i64, limit: i64),
     r#"
     SELECT shown.*
@@ -82,7 +82,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerRowsByNameDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -104,7 +104,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerRowsByWorks(field_2: Option<String>, field_3: Option<String>, offset: i64, limit: i64),
     r#"
     SELECT shown.*
@@ -121,7 +121,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerRowsByWorksDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -143,7 +143,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerRowsByReleases(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -165,7 +165,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerRowsByReleasesDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -188,7 +188,7 @@ sqlive_compose::read!(
 );
 
 // How many composers come before the row at a key, for each first term.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerBeforeByName(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -214,7 +214,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerBeforeByNameDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -240,7 +240,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerBeforeByWorks(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -266,7 +266,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerBeforeByWorksDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -292,7 +292,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerBeforeByReleases(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -318,7 +318,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerBeforeByReleasesDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -347,7 +347,7 @@ sqlive_compose::read!(
 // The key of the row at the place `index`, or of the last row when the list
 // ends before it, for each first term. SQLite reads the offset -1 of an empty
 // list as 0, where there is no row.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerKeyAtByName(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -381,7 +381,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerKeyAtByNameDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -415,7 +415,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerKeyAtByWorks(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -449,7 +449,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerKeyAtByWorksDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -483,7 +483,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerKeyAtByReleases(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -517,7 +517,7 @@ sqlive_compose::read!(
 "#
 );
 
-sqlive_compose::read!(
+coven::read!(
     writer ComposerKeyAtByReleasesDescending(
         field_2: Option<String>,
         field_3: Option<String>,
@@ -552,7 +552,7 @@ sqlive_compose::read!(
 );
 
 // How many composers the list has.
-sqlive_compose::read!(
+coven::read!(
     writer ComposerListLength { entries: i64 },
     r#"
     SELECT COUNT(*) AS entries

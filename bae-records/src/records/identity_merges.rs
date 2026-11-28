@@ -21,7 +21,7 @@ pub(crate) struct ArtistMerge<'a> {
 
 // Give the artist `to` an image row that names the same coven file as the
 // artist `from`'s.
-sqlive_compose::write!(
+coven::write!(
     ShareArtistImage(to: &'p str, from: &'p str),
     r#"
     INSERT INTO artist_images (id, file, content_type)
@@ -29,17 +29,17 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteArtistImage(artist_id: &'p str),
     "DELETE FROM artist_images WHERE id = :artist_id"
 );
 
-sqlive_compose::write!(
+coven::write!(
     MoveArtistMerges(survivor: &'p str, absorbed: &'p str),
     "UPDATE artist_merges SET into_artist_id = :survivor WHERE into_artist_id = :absorbed"
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertArtistMerge(absorbed: &'p str, survivor: &'p str),
     "INSERT INTO artist_merges (id, into_artist_id) VALUES (:absorbed, :survivor)"
 );
@@ -85,7 +85,7 @@ pub(crate) struct LabelMerge<'a> {
     pub musicbrainz_label_id: Option<&'a str>,
 }
 
-sqlive_compose::write!(
+coven::write!(
     FillLabelIds(
         id: &'p str,
         musicbrainz_label_id: Option<&'p str>,
@@ -99,12 +99,12 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     MoveLabelMerges(survivor: &'p str, absorbed: &'p str),
     "UPDATE label_merges SET into_label_id = :survivor WHERE into_label_id = :absorbed"
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertLabelMerge(absorbed: &'p str, survivor: &'p str),
     "INSERT INTO label_merges (id, into_label_id) VALUES (:absorbed, :survivor)"
 );

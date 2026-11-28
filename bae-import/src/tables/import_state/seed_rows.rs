@@ -6,7 +6,7 @@
 use super::*;
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateStateIfNew(content_hash: &'p str, candidate_key: &'p crate::CandidateKey),
     r#"
     INSERT INTO import_candidate_state (content_hash, candidate_key)
@@ -15,7 +15,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SetCandidateStateKey(content_hash: &'p str, candidate_key: &'p crate::CandidateKey),
     r#"
     UPDATE import_candidate_state SET candidate_key = :candidate_key
@@ -23,7 +23,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateFolder(content_hash: &'p str, folder: Vec<u8>),
     r#"
     INSERT INTO import_candidate_folder (content_hash, folder)
@@ -77,14 +77,14 @@ pub(crate) fn ensure_candidate_state(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     DeleteCandidateState(content_hash: &'p str),
     r#"
     DELETE FROM import_candidate_state WHERE content_hash = :content_hash
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertCandidateState(content_hash: &'p str, candidate_key: &'p crate::CandidateKey),
     r#"
     INSERT INTO import_candidate_state (content_hash, candidate_key)
@@ -109,7 +109,7 @@ pub(crate) fn restart_state_on(
     Ok(())
 }
 
-sqlive_compose::write!(
+coven::write!(
     ForgetCandidateFolders(folder: &'p [u8], below_first: &'p [u8], below_past: &'p [u8]),
     r#"
     DELETE FROM import_candidate_folder
@@ -117,7 +117,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeleteStatesFoundNowhere(content_hashes: String),
     r#"
     DELETE FROM import_candidate_state

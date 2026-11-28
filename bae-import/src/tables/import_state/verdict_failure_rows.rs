@@ -10,14 +10,14 @@ use bae_catalogs::search::SourceFailure;
 use bae_identify::IdentifyFailure;
 use bae_store::WriteStatements as _;
 
-sqlive_compose::write!(
+coven::write!(
     DeleteVerdictFailures(verdict: super::verdict_rows::VerdictId),
     r#"
     DELETE FROM import_candidate_verdict_failure WHERE verdict_id = :verdict
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertVerdictFailure(
         verdict: super::verdict_rows::VerdictId,
         position: i64,

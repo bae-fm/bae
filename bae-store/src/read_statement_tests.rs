@@ -1,6 +1,6 @@
 use crate::{statement_optional, statement_row, DbError, Schema, SchemaPart};
 use bae_util::test_channels::HANG_GUARD;
-use sqlive_compose::{Read, Returning, Statement};
+use coven::{Read, Returning, Statement};
 
 static NOTES: &[SchemaPart] = &[SchemaPart::new(&[
     "CREATE TABLE notes (id INTEGER PRIMARY KEY, topic TEXT NOT NULL, body TEXT NOT NULL) STRICT;",

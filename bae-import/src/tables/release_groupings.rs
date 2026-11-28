@@ -37,14 +37,14 @@ pub(crate) use entry::{
 pub(crate) use facts::GroupingFacts;
 pub use folder_readings::FolderReadingRefusal;
 
-sqlive_compose::write!(
+coven::write!(
     DeleteGrouping(key: &'p crate::CandidateKey),
     r#"DELETE FROM release_grouping WHERE key = :key"#
 );
 
 // The grouping `:key` sits in `:parent_folder` from now on, and reads none of
 // its files yet.
-sqlive_compose::write!(
+coven::write!(
     MoveGrouping(parent_folder: Option<&'p [u8]>, key: &'p crate::CandidateKey),
     r#"
     UPDATE release_grouping SET parent_folder = :parent_folder, reads_parent_files = 0
@@ -52,7 +52,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     UnblockGrouping(reads_parent_files: bool, key: &'p crate::CandidateKey),
     r#"
     UPDATE release_grouping
@@ -62,7 +62,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     BlockGrouping(
         kind: &'static str,
         subject: &'p str,
@@ -76,12 +76,12 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     SkipGrouping(skipped: bool, key: &'p crate::CandidateKey),
     r#"UPDATE release_grouping SET skipped = :skipped WHERE key = :key AND skipped != :skipped"#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertPickedGrouping(key: &'p crate::CandidateKey),
     r#"
     INSERT INTO release_grouping (key, anchor_folder, combined, author)
@@ -89,7 +89,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     InsertGroupingMember(
         grouping: &'p crate::CandidateKey,
         position: i64,
@@ -102,7 +102,7 @@ sqlive_compose::write!(
 "#
 );
 
-sqlive_compose::write!(
+coven::write!(
     DeletePickedGrouping(key: &'p crate::CandidateKey),
     r#"DELETE FROM release_grouping WHERE key = :key AND anchor_folder IS NULL"#
 );

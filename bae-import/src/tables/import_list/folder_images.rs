@@ -42,7 +42,7 @@ pub struct FolderImagesSnapshot {
 // in the order the scan stored them, and the image the lightbox shows with the
 // file ids before and after it, wrapping around the ends. The lightbox shows
 // the image `:focus` names while the folder holds it, else the first.
-sqlive_compose::read!(
+coven::read!(
     writer LightboxImages(key: crate::CandidateKey, focus: Option<String>) {
         struct LightboxImage { id: String, name: String, path: hex, size: u64, modified_at_ns: i64 }
         struct LightboxAround { previous: String, next: String }

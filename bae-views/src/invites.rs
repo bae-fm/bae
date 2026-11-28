@@ -55,7 +55,7 @@ impl InviteEntry {
 // path while no request has arrived, and the admin's decision once one has),
 // and the name its request shows. A request shows the name a new person typed,
 // or for a member getting access again the name of their profile.
-sqlive_compose::fragment!(
+coven::fragment!(
     OpenInviteRows {
         invite_id: String,
         stage: String,
@@ -86,7 +86,7 @@ sqlive_compose::fragment!(
 // operation ended with a sharing refusal nobody has dismissed, with how it
 // ended: `coven_operations` lists an invite only once a sharing refusal ends
 // it.
-sqlive_compose::read!(
+coven::read!(
     writer ListedInvites { listed_operation: i64, outcome: Option<coven::InviteOutcome> },
     r#"
     SELECT listed.operation AS listed_operation, listed.outcome, open.*
@@ -105,7 +105,7 @@ sqlive_compose::read!(
 
 // The open invite whose id, as canonical UUID text, is `:invite`, while it is
 // open.
-sqlive_compose::read!(
+coven::read!(
     writer InviteOfId(invite: String),
     r#"
     SELECT open.*
@@ -117,7 +117,7 @@ sqlive_compose::read!(
 // The first open invite, in the order coven started their operations, whose
 // join request waits for the admin's decision, leaving out the invites whose
 // ids the JSON array `:closed` holds.
-sqlive_compose::read!(
+coven::read!(
     writer FirstWaitingRequest(closed: String),
     r#"
     SELECT open.*
