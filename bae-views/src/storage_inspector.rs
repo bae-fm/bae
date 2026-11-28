@@ -426,7 +426,8 @@ impl LibraryViews {
                 Ok(coven::Maybe(release_id.as_deref().map(storage_inspector_read)))
             })
             .process(|release_id, rows| {
-                let (Some(release_id), Some((release, files))) = (release_id, rows) else {
+                let Some((release_id, (release, files))) = bae_store::requested(release_id, rows)
+                else {
                     return Ok(None);
                 };
                 let rows = InspectorRows { release_id: release_id.clone(), release, files };

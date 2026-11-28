@@ -34,6 +34,19 @@ pub fn statement_optional<Q: Read<Handle = Writer>>(
     at_most_one::<Q, _>(statement_rows(sql, statement)?)
 }
 
+/// A live query's optional request beside the rows of the `coven::Maybe`
+/// read made from it: both when the request is set, neither when it isn't.
+/// coven runs the reads exactly when the request is set, so a request with no
+/// rows, or rows with no request, is a bug.
+pub fn requested<Q, Rows>(request: &Option<Q>, rows: Option<Rows>) -> Option<(&Q, Rows)> {
+    match (request, rows) {
+        (Some(request), Some(rows)) => Some((request, rows)),
+        (None, None) => None,
+        (Some(_), None) => panic!("a live query's request has no rows"),
+        (None, Some(_)) => panic!("a live query read rows for no request"),
+    }
+}
+
 /// The row among `rows`, all that the statement `Q` returned, where it
 /// returns at most one; a second row is an error.
 pub fn at_most_one<Q, Row>(rows: Vec<Row>) -> Result<Option<Row>, DbError> {

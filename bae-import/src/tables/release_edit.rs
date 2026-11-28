@@ -156,7 +156,7 @@ impl ImportTables {
                 Ok(coven::Maybe(form.as_ref().map(release_edit_draft_read).transpose()?))
             })
             .process(|form, reads| {
-                let (Some(form), Some(reads)) = (form, reads) else {
+                let Some((form, reads)) = bae_store::requested(form, reads) else {
                     return Ok(None);
                 };
                 let rows = release_edit_draft_rows_of(form, reads)?;

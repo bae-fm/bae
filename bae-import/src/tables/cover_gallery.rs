@@ -274,7 +274,7 @@ impl ImportTables {
                 Ok(coven::Maybe(request.as_ref().map(cover_gallery_read)))
             })
             .process(|request, galleries| {
-                let (Some(request), Some(galleries)) = (request, galleries) else {
+                let Some((request, galleries)) = bae_store::requested(request, galleries) else {
                     return Ok(None);
                 };
                 let (walk, fetched) =
