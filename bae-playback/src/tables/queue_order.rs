@@ -3,7 +3,7 @@
 //! which shifts the places between where it left and where it lands, and a
 //! context lane's cursor with them.
 
-use super::queue::{locate_on, queue_row_on, row_key, QueueRow};
+use super::queue::{locate_on, queue_row_on, row_key, QueueCursors};
 use super::*;
 use crate::{QueueEntryId, QueueLane};
 use bae_store::{statement_optional, statement_row, WriteStatements, WriterRead};
@@ -54,13 +54,13 @@ impl LaneOrder {
         })
     }
 
-    /// The playing row's place in the order, as `queue` holds it; Up Next has
-    /// no playing row.
-    fn cursor(self, queue: &QueueRow) -> Option<Option<i64>> {
+    /// The playing row's place in the order, among `cursors`; Up Next has no
+    /// playing row.
+    fn cursor(self, cursors: &QueueCursors) -> Option<i64> {
         match self {
             Self::UpNext => None,
-            Self::Ordered => Some(queue.ordered_cursor),
-            Self::Shuffled => Some(queue.shuffled_cursor),
+            Self::Ordered => Some(cursors.ordered),
+            Self::Shuffled => Some(cursors.shuffled),
         }
     }
 
@@ -360,9 +360,8 @@ fn move_entry_on(
             (to - 1, Some((from + 1, to - 1, -1)))
         }
     };
-    if let Some(cursor) = order.cursor(&queue_row_on(sql)?) {
-        let cursor = cursor
-            .ok_or_else(|| DbError::unreadable("the cursor of a lane holding entries", "NULL"))?;
+    let cursors = queue_row_on(sql)?.cursors;
+    if let Some(cursor) = cursors.as_ref().and_then(|cursors| order.cursor(cursors)) {
         let moved_cursor = if cursor == from {
             landing
         } else {

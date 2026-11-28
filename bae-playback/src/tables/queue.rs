@@ -16,15 +16,6 @@ use crate::{QueueEntry, QueueEntryId, QueueLane, RepeatMode};
 use bae_store::{statement_optional, statement_row, WriteStatements, WriterRead};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
-impl QueueLane {
-    fn entry_id(self, entry: i64) -> QueueEntryId {
-        match self {
-            QueueLane::Manual => QueueEntryId::Manual(entry),
-            QueueLane::Context => QueueEntryId::Context(entry),
-        }
-    }
-}
-
 /// The lane an entry id names and the entry number of its row there.
 pub(super) fn row_key(id: &QueueEntryId) -> (QueueLane, i64) {
     match id {
@@ -425,44 +416,38 @@ impl PlaybackQueueTables {
     }
 }
 
+// The playing row's place in each of the context lane's orders, while it has
+// one; the schema keeps the two NULL together, exactly while the lane is
+// empty.
+coven::fragment!(
+    QueueCursors,
+    r#"
+    SELECT queue.ordered_cursor AS ordered, queue.shuffled_cursor AS shuffled
+    FROM playback_queue AS queue
+    WHERE queue.ordered_cursor IS NOT NULL AND queue.shuffled_cursor IS NOT NULL
+"#
+);
+
 // The `playback_queue` row's columns the lane changes read.
 coven::read!(
     writer QueueState { shuffled: bool },
     r#"
-    SELECT queue.ordered_cursor, queue.shuffled_cursor, queue.shuffled, queue.next_entry
+    SELECT queue.shuffled, queue.next_entry, cursors.*
     FROM playback_queue AS queue
+    LEFT JOIN @crate::tables::queue::QueueCursors AS cursors ON 1
 "#
 );
 
-/// The `playback_queue` row's columns the lane changes read.
-pub(super) struct QueueRow {
-    /// The playing row's place in the context lane's own order.
-    pub(super) ordered_cursor: Option<i64>,
-    /// The playing row's place in the shuffled order.
-    pub(super) shuffled_cursor: Option<i64>,
-    pub(super) shuffled: bool,
-    pub(super) next_entry: i64,
-}
-
-impl QueueRow {
+impl QueueStateRow {
     /// The playing row's place in the order the lane reads in.
     fn cursor(&self) -> Option<i64> {
-        if self.shuffled {
-            self.shuffled_cursor
-        } else {
-            self.ordered_cursor
-        }
+        let cursors = self.cursors.as_ref()?;
+        Some(if self.shuffled { cursors.shuffled } else { cursors.ordered })
     }
 }
 
-pub(super) fn queue_row_on(sql: &impl WriterRead) -> Result<QueueRow, DbError> {
-    let row = statement_row(sql, &QueueStateParams {})?;
-    Ok(QueueRow {
-        ordered_cursor: row.ordered_cursor,
-        shuffled_cursor: row.shuffled_cursor,
-        shuffled: row.shuffled,
-        next_entry: row.next_entry,
-    })
+pub(super) fn queue_row_on(sql: &impl WriterRead) -> Result<QueueStateRow, DbError> {
+    statement_row(sql, &QueueStateParams {})
 }
 
 /// Make the context row `entry` the playing one, in both of the lane's orders.
@@ -576,7 +561,7 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
 fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     if let Some(front) = statement_optional(sql, &UpNextFrontParams {})? {
         sql.run(&DeleteUpNextAtParams { position: front.position })?;
-        let id = QueueLane::Manual.entry_id(front.entry);
+        let id = QueueEntryId::Manual(front.entry);
         return Ok(Some(QueueEntry { id, track_id: front.track_id }));
     }
     let row = queue_row_on(sql)?;
