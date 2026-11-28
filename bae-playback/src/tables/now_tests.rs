@@ -317,12 +317,7 @@ async fn the_row_holds_a_loads_wait_on_storage_while_it_lasts() {
         .await
         .unwrap();
     assert_eq!(waits(now(&db).await.playback.state), None, "a playing track waits on nothing");
-    let column: Option<bool> = db
-        .read(|sql| {
-            Ok(sql.query_row("SELECT waits_on_storage FROM playback_now", [], |row| row.get(0))?)
-        })
-        .await
-        .unwrap();
+    let column = db.read_row(NowWaitsOnStorageParams {}).await.unwrap().waits_on_storage;
     assert_eq!(column, None, "playing clears the wait");
 }
 
@@ -330,25 +325,10 @@ async fn the_row_holds_a_loads_wait_on_storage_while_it_lasts() {
 #[tokio::test]
 async fn the_schema_holds_a_wait_on_storage_only_while_loading() {
     let (db, _tmp, tracks) = release_db(1).await;
-    let track_id = tracks[0].clone();
-    for sql in [
-        format!(
-            "UPDATE playback_now SET state = 'playing', track_id = '{track_id}', \
-                 waits_on_storage = 0"
-        ),
-        format!(
-            "UPDATE playback_now SET state = 'loading', track_id = '{track_id}', prepared = 1, \
-                 waits_on_storage = NULL"
-        ),
-        "UPDATE playback_now SET waits_on_storage = 1".to_string(),
-    ] {
-        let statement = sql.clone();
-        let refused = db
-            .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
-            .await
-            .is_err();
-        assert!(refused, "{sql}");
-    }
+    let track = tracks[0].clone();
+    assert!(refuses(&db, PlayingWaitingOnStorageParams { track: track.clone() }).await);
+    assert!(refuses(&db, LoadingWithoutWaitParams { track }).await);
+    assert!(refuses(&db, StoppedWaitingOnStorageParams {}).await);
 }
 
 /// The schema holds a receiver in the failure exactly when the failure is an
@@ -357,26 +337,10 @@ async fn the_schema_holds_a_wait_on_storage_only_while_loading() {
 #[tokio::test]
 async fn the_schema_names_a_receiver_only_for_a_lost_pairing() {
     let (db, _tmp, _tracks) = release_db(1).await;
-    let receiver = "failure_receiver_id = 'AA01', failure_receiver_name = 'Kitchen', \
-         failure_receiver_kind = 'airplay', failure_receiver_address = '192.168.1.9', \
-         failure_receiver_takes_volume = 1";
-    let lost_sql = "UPDATE playback_now SET failure = 'audio_output', \
-         failure_problem = 'airplay_pairing_lost'";
-    let refused_sql = "UPDATE playback_now SET failure = 'audio_output', \
-         failure_problem = 'airplay_refused'";
-    for sql in [
-        lost_sql.to_string(),
-        format!("{lost_sql}, failure_receiver_id = 'AA01'"),
-        format!("{lost_sql}, failure_receiver_name = 'Kitchen'"),
-        format!("{lost_sql}, {}", receiver.replace(", failure_receiver_takes_volume = 1", "")),
-        format!("{refused_sql}, {receiver}"),
-        format!("{refused_sql}, failure_receiver_model = 'AudioAccessory5,1'"),
-    ] {
-        let statement = sql.clone();
-        let refused = db
-            .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
-            .await
-            .is_err();
-        assert!(refused, "{sql}");
-    }
+    assert!(refuses(&db, PairingLostWithoutReceiverParams {}).await);
+    assert!(refuses(&db, PairingLostWithReceiverIdOnlyParams {}).await);
+    assert!(refuses(&db, PairingLostWithReceiverNameOnlyParams {}).await);
+    assert!(refuses(&db, PairingLostWithoutTakesVolumeParams {}).await);
+    assert!(refuses(&db, RefusedNamingReceiverParams {}).await);
+    assert!(refuses(&db, RefusedNamingModelParams {}).await);
 }

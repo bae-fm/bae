@@ -37,41 +37,18 @@ async fn upcoming(db: &Store) -> Vec<String> {
     manual.into_iter().chain(queue_upcoming(db).await.unwrap()).map(|item| item.track_id).collect()
 }
 
-async fn rejects(db: &Store, sql: &str) -> bool {
-    let sql = sql.to_string();
-    db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.is_err()
-}
-
 /// What the context lane plays from, whether it is shuffled and where it
 /// stands are NULL together; a release is named exactly when the lane plays
 /// one; a position is never negative.
 #[tokio::test]
 async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     let (db, _tmp, _tracks) = release_db(1).await;
-    assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library'").await);
-    assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library', shuffled = 1").await);
-    assert!(
-        rejects(&db, "UPDATE playback_queue SET source_kind = 'release', shuffled = 0, ordered_cursor = 1, shuffled_cursor = 1")
-            .await
-    );
-    assert!(
-        rejects(
-            &db,
-            "UPDATE playback_queue \
-             SET source_kind = 'releases', source_release_id = 'release', shuffled = 0, \
-                 ordered_cursor = 1, shuffled_cursor = 1"
-        )
-        .await
-    );
-    assert!(rejects(&db, "UPDATE playback_queue SET source_release_id = 'release'").await);
-    assert!(
-        rejects(
-            &db,
-            "INSERT INTO playback_state (id, current_entry, current_track_id, position_ms) \
-             VALUES ('current', NULL, NULL, -1)"
-        )
-        .await
-    );
+    assert!(refuses(&db, SourceWithoutCursorParams {}).await);
+    assert!(refuses(&db, ShuffledSourceWithoutCursorParams {}).await);
+    assert!(refuses(&db, ReleaseSourceWithoutReleaseParams {}).await);
+    assert!(refuses(&db, ReleasesSourceNamingReleaseParams {}).await);
+    assert!(refuses(&db, ReleaseWithoutSourceParams {}).await);
+    assert!(refuses(&db, NegativeResumePositionParams {}).await);
 }
 
 /// The same track queued twice shows twice, in order, each with its own
@@ -147,29 +124,14 @@ async fn deleting_the_playing_track_keeps_the_lane_s_place() {
 /// What the `playback_queue` row says the context lane plays from: its
 /// source's kind and release, whether it is shuffled, and its cursor.
 async fn context_head(db: &Store) -> (Option<String>, Option<String>, Option<bool>, Option<i64>) {
-    db.read(|sql| {
-        Ok(sql.query_row(
-            "SELECT source_kind, source_release_id, shuffled, ordered_cursor \
-             FROM playback_queue",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )?)
-    })
-    .await
-    .unwrap()
+    let head = db.read_row(ContextHeadParams {}).await.unwrap();
+    (head.source_kind, head.source_release_id, head.shuffled, head.ordered_cursor)
 }
 
 /// Every row of the context lane with its two places, by entry.
 async fn lane_rows(db: &Store) -> Vec<(i64, i64, i64)> {
-    db.read(|sql| {
-        Ok(sql.query(
-            "SELECT entry, ordered, shuffled FROM playback_context ORDER BY entry",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )?)
-    })
-    .await
-    .unwrap()
+    let rows = db.read_rows(LaneRowsParams {}).await.unwrap();
+    rows.into_iter().map(|row| (row.entry, row.ordered, row.shuffled)).collect()
 }
 
 /// Turning shuffle off changes the mode and nothing in the lane: the lane
@@ -264,24 +226,24 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
     assert_eq!(context_head(&db).await, (None, None, Some(false), None));
 }
 
+/// The text `query` reads from the schema's own table, on a bare library of
+/// the schema: the schema's shape, which no library row holds.
+fn schema_texts(query: &str) -> Vec<String> {
+    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    crate::TEST_SCHEMA.open_bare_library(&connection);
+    let mut statement = connection.prepare(query).unwrap();
+    statement.query_map([], |row| row.get(0)).unwrap().map(Result::unwrap).collect()
+}
+
 /// No trigger runs on the context lane's rows: a play takes out and puts in
 /// up to a library's worth of them, and a trigger would run once for each
 /// row taken out and keep SQLite from emptying the table without visiting
 /// its rows.
 #[tokio::test]
 async fn the_context_lane_has_no_trigger() {
-    let (db, _tmp, _tracks) = release_db(0).await;
-    let triggers: Vec<String> = db
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT name FROM sqlite_master \
-                 WHERE type = 'trigger' AND tbl_name = 'playback_context'",
-                [],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap();
+    let triggers = schema_texts(
+        "SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'playback_context'",
+    );
     assert!(triggers.is_empty(), "{triggers:?}");
 }
 
@@ -546,17 +508,10 @@ async fn an_up_next_row_is_named_by_its_entry() {
 #[tokio::test]
 async fn the_queue_tables_hold_no_foreign_key_and_a_deleted_track_still_leaves() {
     let (db, _tmp, tracks) = single_track_releases_db(3).await;
-    let definitions: Vec<String> = db
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT sql FROM sqlite_master \
-                 WHERE type = 'table' AND name IN ('playback_context', 'playback_manual')",
-                [],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap();
+    let definitions = schema_texts(
+        "SELECT sql FROM sqlite_master \
+         WHERE type = 'table' AND name IN ('playback_context', 'playback_manual')",
+    );
     assert_eq!(definitions.len(), 2);
     assert!(definitions.iter().all(|sql| !sql.contains("REFERENCES")), "{definitions:?}");
 

@@ -4,6 +4,17 @@
 use super::*;
 pub(super) use bae_records::test_fixtures::*;
 pub(super) use bae_store::test_fixtures::*;
+use bae_store::WriteStatements;
+
+/// Whether the library refuses `write`, a write of a row the schema forbids.
+pub(super) async fn refuses<W: coven::Write + Send + 'static>(db: &Store, write: W) -> bool {
+    db.call(move |sql| {
+        sql.run(&write)?;
+        Ok(())
+    })
+    .await
+    .is_err()
+}
 
 /// The queue rows of `track_ids` queued in Up Next, as the queue value shows
 /// them.

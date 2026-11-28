@@ -405,12 +405,18 @@ impl PlaybackQueueTables {
     pub async fn context_order(&self) -> Result<Vec<String>, DbError> {
         self.store
             .read(|sql| {
-                let column = if queue_row_on(&sql)?.shuffled { "shuffled" } else { "ordered" };
-                Ok(sql.query(
-                    &format!("SELECT track_id FROM playback_context ORDER BY {column}"),
-                    [],
-                    |row| row.get(0),
-                )?)
+                let rows = if queue_row_on(&sql)?.shuffled {
+                    bae_store::statement_rows(&sql, &LaneTracksShuffledParams {})?
+                        .into_iter()
+                        .map(|row| row.track_id)
+                        .collect()
+                } else {
+                    bae_store::statement_rows(&sql, &LaneTracksOrderedParams {})?
+                        .into_iter()
+                        .map(|row| row.track_id)
+                        .collect()
+                };
+                Ok(rows)
             })
             .await
     }
@@ -696,6 +702,84 @@ pub fn lose_up_next_for_test(directory: &std::path::Path) {
         "DROP TABLE playback_manual;",
     );
 }
+
+// Queue rows the schema refuses: what the lane plays from without where it
+// stands or with the wrong release, and a negative resume position. No write of
+// the domain writes one.
+#[cfg(test)]
+coven::write!(SourceWithoutCursor, r#"UPDATE playback_queue SET source_kind = 'library'"#);
+
+#[cfg(test)]
+coven::write!(
+    ShuffledSourceWithoutCursor,
+    r#"UPDATE playback_queue SET source_kind = 'library', shuffled = 1"#
+);
+
+#[cfg(test)]
+coven::write!(
+    ReleaseSourceWithoutRelease,
+    r#"
+    UPDATE playback_queue
+    SET source_kind = 'release', shuffled = 0, ordered_cursor = 1, shuffled_cursor = 1
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    ReleasesSourceNamingRelease,
+    r#"
+    UPDATE playback_queue
+    SET source_kind = 'releases', source_release_id = 'release', shuffled = 0,
+        ordered_cursor = 1, shuffled_cursor = 1
+"#
+);
+
+#[cfg(test)]
+coven::write!(ReleaseWithoutSource, r#"UPDATE playback_queue SET source_release_id = 'release'"#);
+
+#[cfg(test)]
+coven::write!(
+    NegativeResumePosition,
+    r#"
+    INSERT INTO playback_state (id, current_entry, current_track_id, position_ms)
+    VALUES ('current', NULL, NULL, -1)
+"#
+);
+
+// Every track of the context lane, in each of its orders.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer LaneTracksOrdered,
+    r#"SELECT lane.track_id FROM playback_context AS lane ORDER BY lane.ordered"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer LaneTracksShuffled,
+    r#"SELECT lane.track_id FROM playback_context AS lane ORDER BY lane.shuffled"#
+);
+
+// What the `playback_queue` row says the context lane plays from: its source's
+// kind and release, whether it is shuffled, and its cursor.
+#[cfg(test)]
+coven::read!(
+    writer ContextHead { shuffled: Option<bool> },
+    r#"
+    SELECT queue.source_kind, queue.source_release_id, queue.shuffled, queue.ordered_cursor
+    FROM playback_queue AS queue
+"#
+);
+
+// Every row of the context lane with its two places, by entry.
+#[cfg(test)]
+coven::read!(
+    writer LaneRows,
+    r#"
+    SELECT lane.entry, lane.ordered, lane.shuffled
+    FROM playback_context AS lane
+    ORDER BY lane.entry
+"#
+);
 
 #[cfg(test)]
 #[path = "queue_tests.rs"]

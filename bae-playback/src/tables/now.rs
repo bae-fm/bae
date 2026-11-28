@@ -826,6 +826,91 @@ pub fn lose_playback_level_for_test(directory: &std::path::Path) {
     );
 }
 
+// States the schema refuses: a wait on storage while playback is not loading,
+// and a loading track with no wait. No write of the domain writes one.
+#[cfg(test)]
+coven::write!(
+    PlayingWaitingOnStorage(track: String),
+    r#"
+    UPDATE playback_now SET state = 'playing', track_id = :track, waits_on_storage = 0
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    LoadingWithoutWait(track: String),
+    r#"
+    UPDATE playback_now
+    SET state = 'loading', track_id = :track, prepared = 1, waits_on_storage = NULL
+"#
+);
+
+#[cfg(test)]
+coven::write!(StoppedWaitingOnStorage, r#"UPDATE playback_now SET waits_on_storage = 1"#);
+
+// Failures the schema refuses: a lost pairing without its whole receiver, and
+// a refusal that names one.
+#[cfg(test)]
+coven::write!(
+    PairingLostWithoutReceiver,
+    r#"UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_pairing_lost'"#
+);
+
+#[cfg(test)]
+coven::write!(
+    PairingLostWithReceiverIdOnly,
+    r#"
+    UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_pairing_lost',
+        failure_receiver_id = 'AA01'
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    PairingLostWithReceiverNameOnly,
+    r#"
+    UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_pairing_lost',
+        failure_receiver_name = 'Kitchen'
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    PairingLostWithoutTakesVolume,
+    r#"
+    UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_pairing_lost',
+        failure_receiver_id = 'AA01', failure_receiver_name = 'Kitchen',
+        failure_receiver_kind = 'airplay', failure_receiver_address = '192.168.1.9'
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    RefusedNamingReceiver,
+    r#"
+    UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_refused',
+        failure_receiver_id = 'AA01', failure_receiver_name = 'Kitchen',
+        failure_receiver_kind = 'airplay', failure_receiver_address = '192.168.1.9',
+        failure_receiver_takes_volume = 1
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    RefusedNamingModel,
+    r#"
+    UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_refused',
+        failure_receiver_model = 'AudioAccessory5,1'
+"#
+);
+
+// Whether playback waits on storage, as the row holds it.
+#[cfg(test)]
+coven::read!(
+    writer NowWaitsOnStorage { waits_on_storage: Option<bool> },
+    r#"SELECT now.waits_on_storage FROM playback_now AS now"#
+);
+
 #[cfg(test)]
 #[path = "now_tests.rs"]
 mod tests;

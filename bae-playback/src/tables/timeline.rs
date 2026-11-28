@@ -186,6 +186,44 @@ fn playback_timeline_of(row: TimelineLinesRow) -> Result<PlaybackTimeline, DbErr
     Ok(PlaybackTimeline { library, preview })
 }
 
+// Lines the schema refuses: each sets part of a line, or a length or an end
+// without its line. No write of the domain writes one.
+#[cfg(test)]
+coven::write!(TimelineTrackWithoutPosition, r#"UPDATE playback_timeline SET track_id = 'track-1'"#);
+
+#[cfg(test)]
+coven::write!(
+    TimelineLineWithoutMoving,
+    r#"UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0"#
+);
+
+#[cfg(test)]
+coven::write!(
+    TimelineLineWithoutSeekMark,
+    r#"UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0, moving = 1"#
+);
+
+#[cfg(test)]
+coven::write!(TimelineSeekMarkWithoutLine, r#"UPDATE playback_timeline SET started_at_seek = 0"#);
+
+#[cfg(test)]
+coven::write!(TimelineLengthWithoutLine, r#"UPDATE playback_timeline SET duration_ms = 1000"#);
+
+#[cfg(test)]
+coven::write!(
+    TimelinePreviewWithoutMoving,
+    r#"
+    UPDATE playback_timeline SET preview_path = x'2f61', preview_start_sample = 0,
+        preview_position_ms = 0, preview_duration_ms = 1000
+"#
+);
+
+#[cfg(test)]
+coven::write!(
+    TimelinePreviewEndWithoutPreview,
+    r#"UPDATE playback_timeline SET preview_end_sample = 10"#
+);
+
 #[cfg(test)]
 #[path = "timeline_tests.rs"]
 mod tests;

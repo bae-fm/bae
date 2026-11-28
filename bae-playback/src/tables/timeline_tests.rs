@@ -67,21 +67,11 @@ async fn starting_playback_leaves_no_line() {
 #[tokio::test]
 async fn the_schema_refuses_half_a_line() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    for sql in [
-        "UPDATE playback_timeline SET track_id = 'track-1'",
-        "UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0",
-        "UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0, moving = 1",
-        "UPDATE playback_timeline SET started_at_seek = 0",
-        "UPDATE playback_timeline SET duration_ms = 1000",
-        "UPDATE playback_timeline SET preview_path = x'2f61', preview_start_sample = 0, \
-             preview_position_ms = 0, preview_duration_ms = 1000",
-        "UPDATE playback_timeline SET preview_end_sample = 10",
-    ] {
-        let statement = sql.to_string();
-        let refused = db
-            .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
-            .await
-            .is_err();
-        assert!(refused, "{sql}");
-    }
+    assert!(refuses(&db, TimelineTrackWithoutPositionParams {}).await);
+    assert!(refuses(&db, TimelineLineWithoutMovingParams {}).await);
+    assert!(refuses(&db, TimelineLineWithoutSeekMarkParams {}).await);
+    assert!(refuses(&db, TimelineSeekMarkWithoutLineParams {}).await);
+    assert!(refuses(&db, TimelineLengthWithoutLineParams {}).await);
+    assert!(refuses(&db, TimelinePreviewWithoutMovingParams {}).await);
+    assert!(refuses(&db, TimelinePreviewEndWithoutPreviewParams {}).await);
 }
