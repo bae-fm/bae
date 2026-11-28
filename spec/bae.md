@@ -2643,8 +2643,8 @@ and why the form can't be saved, when it can't. *Save* writes the form;
 is open: how each credit stands to the library, the album's title and credits,
 and the cover show what the library holds after any write that changes them,
 including a write that merges an artist or renames the album, with no edit.
-One live query reads the draft with two composed statements in one snapshot,
-because SQLite refuses to prepare it as one statement. One statement reads the
+One live query reads the draft with two composed statements in one snapshot.
+One statement reads the
 release as the editor shows it, the album's artist field, whether a track the
 save deletes has kept data, the files a save reads first and the release's
 files. The other reads the album a save files the release under, beside the
@@ -6446,7 +6446,7 @@ the desktop's secret service.
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin for the apps and as CSS custom properties for the website |
 | bae-schema-manifest | the build step that writes each crate's schema parts from its `schema.toml` |
-| bae-fragments-build | the build step that each crate holding a `fragment!`, a `read!` or a `write!` runs: it checks the crate's `fragment!`, `read!` and `write!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, with each `read!` statement's scope plan, which coven's sqlive-compose builds against the desktop's schema, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table of a domain whose homes don't hold the call's file |
+| bae-fragments-build | the build step that each crate holding a `fragment!`, a `read!` or a `write!` runs: it checks the crate's `fragment!`, `read!` and `write!` calls against the library's schema on coven's readable objects (a phone's schema too, for a crate a phone holds), writes the Rust they include, with each `read!` statement's scope plan, which coven's sqlive-compose builds against the desktop's schema, hands the crate's fragments to the crates that spread them, and fails the build when a call reads a table of a domain whose homes don't hold the call's file. It prepares every statement with SQLite built as the app's, with an expression depth limit of 4,000, so a statement that SQLite would refuse, because it reads a WITH table after 4,000 tables or nests an expression deeper, fails the build and never the app |
 | bae-uniffi-bindgen | the bindings generator |
 
 bae-cast stands between bae-playback, which holds the renderer session, and
