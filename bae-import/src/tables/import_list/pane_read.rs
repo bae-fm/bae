@@ -61,9 +61,9 @@ coven::read!(
         ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::PickedLibraryStatus(keys: (SELECT :key AS candidate_key)) AS status
         ON imported.imported_key IS NULL
-    LEFT JOIN @crate::tables::import_state::fragments::CandidateAlbum(key: :key) AS album
+    LEFT JOIN @crate::tables::import_state::fragments::CandidateAlbum(keys: (SELECT :key AS candidate_key)) AS album
         ON imported.imported_key IS NULL
-    LEFT JOIN @crate::tables::import_state::fragments::CoverChoice(key: :key) AS cover
+    LEFT JOIN @crate::tables::import_state::fragments::CoverChoice(keys: (SELECT :key AS candidate_key)) AS cover
         ON imported.imported_key IS NULL
     LEFT JOIN @bae_playback::tables::now::PreviewedWindow AS previewed
         ON imported.imported_key IS NULL
