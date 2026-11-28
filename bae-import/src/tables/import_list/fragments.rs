@@ -84,6 +84,24 @@ coven::fragment!(
     )
 "#);
 
+// The artist fields of the candidate's draft: the album's, part 0, then each
+// track's that names its own, part 1, each with how its credits stand.
+coven::fragment!(
+    DraftArtistFields(key: crate::CandidateKey) { part: i64, track_id: Option<String>, field: String },
+    r#"
+    SELECT standing.part, standing.track_id, standing.field
+    FROM @bae_records::records::artist_standing::ArtistFieldStanding(
+        raw: (SELECT credit.part, credit.track_id, credit.position, credit.assignment_kind,
+                   credit.artist_id, credit.name, credit.sort_name,
+                   credit.musicbrainz_artist_id, credit.discogs_artist_id,
+                   credit.credit_key, credit.credited_as, credit.join_phrase
+               FROM @crate::tables::import_state::row_fragments::DraftCreditRows AS credit
+               WHERE credit.candidate_key = :key),
+        credit_answer:
+            @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers
+        ) AS standing
+"#);
+
 coven::fragment!(
     Mapping(key: crate::CandidateKey) {
         mapping_key: crate::CandidateKey,
@@ -92,17 +110,8 @@ coven::fragment!(
     r#"
     SELECT :key AS mapping_key, (
             WITH artist_field AS MATERIALIZED (
-            SELECT part, track_id, field
-            FROM @bae_records::records::artist_standing::ArtistFieldStanding(
-                raw: (SELECT credit.part, credit.track_id, credit.position, credit.assignment_kind,
-                           credit.artist_id, credit.name, credit.sort_name,
-                           credit.musicbrainz_artist_id, credit.discogs_artist_id,
-                           credit.credit_key, credit.credited_as, credit.join_phrase
-                       FROM @crate::tables::import_state::row_fragments::DraftCreditRows AS credit
-                       WHERE credit.candidate_key = :key),
-                credit_answer:
-                    @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers
-                ) AS standing
+            SELECT standing.part, standing.track_id, standing.field
+            FROM @crate::tables::import_list::fragments::DraftArtistFields(key: :key) AS standing
             ), candidate AS (
             SELECT scan.content_hash
             FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
@@ -339,17 +348,8 @@ coven::fragment!(
     r#"
     SELECT :key AS artist_field_key, (
             WITH artist_field AS MATERIALIZED (
-            SELECT part, track_id, field
-            FROM @bae_records::records::artist_standing::ArtistFieldStanding(
-                raw: (SELECT credit.part, credit.track_id, credit.position, credit.assignment_kind,
-                           credit.artist_id, credit.name, credit.sort_name,
-                           credit.musicbrainz_artist_id, credit.discogs_artist_id,
-                           credit.credit_key, credit.credited_as, credit.join_phrase
-                       FROM @crate::tables::import_state::row_fragments::DraftCreditRows AS credit
-                       WHERE credit.candidate_key = :key),
-                credit_answer:
-                    @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers
-                ) AS standing
+            SELECT standing.part, standing.track_id, standing.field
+            FROM @crate::tables::import_list::fragments::DraftArtistFields(key: :key) AS standing
         ) SELECT field
         FROM artist_field
         WHERE part = 0
