@@ -294,7 +294,7 @@ fn storage_counts_read(scope: &StorageScope) -> coven::ReadAs<crate::storage_tot
         StorageScope::Found { pattern, stored } => {
             let statement =
                 found_reads::FoundTotalsParams { search: Some(pattern.clone()), stored: *stored };
-            coven::ReadAs::new(statement, |found| (Some(found.found), Some(found.total_size)))
+            coven::ReadAs::new(statement, |found| Some((found.found, found.total_size)))
         }
     }
 }
