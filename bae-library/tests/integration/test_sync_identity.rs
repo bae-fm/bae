@@ -88,8 +88,9 @@ async fn remote_release_in(device: &TestDevice, album_id: &str) -> String {
     release.id
 }
 
-async fn texts(db: &bae_store::Store, query: &str) -> Vec<String> {
-    db.query_texts_for_test(query).await.unwrap()
+/// The catalog records `db` holds for the release `release_id`.
+async fn records_of(db: &bae_store::Store, release_id: &str) -> Vec<ReleaseRecord> {
+    bae_records::test_fixtures::test_records(db).get_release_records(release_id).await.unwrap()
 }
 
 /// The artists the artist browse lists.
@@ -137,7 +138,7 @@ async fn releases_on_both(devices: &TwoDevices, release_ids: &[&str]) {
     let wanted = release_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
     devices
         .settle("every release on both devices", async |_, database| {
-            let present = texts(database, "SELECT id FROM releases").await;
+            let present = bae_library::test_reads::release_ids(database).await;
             wanted.iter().all(|id| present.contains(id))
         })
         .await;
@@ -239,7 +240,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
         releases_on_both(devices, &[&releases[0], &releases[1]]).await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                texts(db, "SELECT id FROM works").await.len(),
+                bae_library::test_reads::work_ids(db).await.len(),
                 1,
                 "one MusicBrainz work is one library work on every device"
             );
@@ -301,12 +302,9 @@ fn the_same_record_set_on_two_devices_merges() {
             Some(MB_GROUP.to_string()),
         );
         devices.a().manager().set_records(&release_id, vec![musicbrainz.clone()]).await.unwrap();
-        let records_of =
-            format!("SELECT catalog FROM release_records WHERE release_id = '{release_id}'");
-        let first = records_of.clone();
         devices
             .settle("the first record on both devices", async |_, database| {
-                texts(database, &first).await.len() == 1
+                records_of(database, &release_id).await.len() == 1
             })
             .await;
 
@@ -327,7 +325,7 @@ fn the_same_record_set_on_two_devices_merges() {
         devices
             .converge("SELECT id || ' ' || release_id || ' ' || catalog FROM release_records")
             .await;
-        assert_eq!(texts(devices.a().store(), &records_of).await.len(), 2);
+        assert_eq!(records_of(devices.a().store(), &release_id).await.len(), 2);
         assert_nothing_held(devices).await;
     });
 }
@@ -486,8 +484,8 @@ fn a_release_added_to_an_album_deleted_apart_goes_with_the_album_on_both_devices
 
         devices
             .settle("no release or album on either device", async |_, database| {
-                texts(database, "SELECT id FROM releases").await.is_empty()
-                    && texts(database, "SELECT id FROM albums").await.is_empty()
+                bae_library::test_reads::release_ids(database).await.is_empty()
+                    && bae_library::test_reads::album_ids(database).await.is_empty()
             })
             .await;
         for db in [devices.a().store(), devices.b().store()] {

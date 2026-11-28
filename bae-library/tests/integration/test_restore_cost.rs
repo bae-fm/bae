@@ -148,17 +148,7 @@ async fn restore_cost(library: Library) {
         opened.manager().write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
         pass(&handle, &clock).await;
     }
-    let edited: String = opened
-        .store()
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT id FROM releases WHERE album_id = (SELECT id FROM albums ORDER BY id LIMIT 1)",
-                [],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap();
+    let edited = bae_library::test_reads::first_album_release(opened.store()).await;
     for edit in 0..library.edits {
         let title = format!("Renamed {edit}");
         opened
@@ -204,15 +194,12 @@ async fn restore_cost(library: Library) {
     .await
     .unwrap();
     let restored_in = restoring.elapsed();
-    let tracks = restored
-        .read(|sql| {
-            let count =
-                sql.query_row("SELECT count(*) FROM tracks", [], |row| row.get::<_, i64>(0))?;
-            Ok::<_, coven::CovenError>(count)
-        })
-        .await
-        .unwrap();
-    assert_eq!(tracks, (library.albums * TRACKS) as i64);
+    let tracks = bae_library::test_reads::track_count(&bae_store::test_devices::store_under(
+        restored.clone(),
+        clock.clone() as coven::ClockRef,
+    ))
+    .await;
+    assert_eq!(tracks, (library.albums * TRACKS) as u64);
     eprintln!(
         "restored {tracks} tracks in {restored_in:?} (floor {floor}, latency {:?})",
         library.latency

@@ -11,26 +11,12 @@ use crate::manager::tests::*;
 async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .store
-        .query_texts_for_test(
-            "SELECT r.id || ': stored ' \
-                 || COALESCE(s.pinned_count || ' of ' || s.file_count, 'nothing') \
-                 || ', listed ' || COALESCE(l.pinned_count || ' of ' || l.file_count, 'nothing') \
-                 || ', probed ' || probe.pinned || ' of ' || probe.files \
-             FROM releases r \
-             LEFT JOIN release_storage s ON s.release_id = r.id \
-             LEFT JOIN release_listing l ON l.release_id = r.id \
-             JOIN (SELECT r2.id AS release_id, \
-                     (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id) AS files, \
-                     (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id \
-                        AND EXISTS (SELECT 1 FROM coven_pins p WHERE p.file = f.file)) AS pinned \
-                   FROM releases r2) probe ON probe.release_id = r.id \
-             WHERE s.release_id IS NULL OR s.pinned_count <> probe.pinned \
-                OR s.file_count <> probe.files \
-                OR l.release_id IS NULL OR l.pinned_count <> s.pinned_count \
-                OR l.file_count <> s.file_count",
-        )
+        .read_rows(crate::test_reads::PinDisagreementsParams {})
         .await
         .unwrap()
+        .into_iter()
+        .map(|row| row.disagreement)
+        .collect()
 }
 
 /// The releases whose every file `coven_pins` lists, probed file by
@@ -38,16 +24,11 @@ async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
 async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
     manager
         .store
-        .query_texts_for_test(
-            "SELECT r.id FROM releases r \
-             WHERE EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) \
-               AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id \
-                   AND NOT EXISTS (SELECT 1 FROM coven_pins p \
-                                   WHERE p.file = f.file))",
-        )
+        .read_rows(crate::test_reads::ProbedPinnedReleasesParams {})
         .await
         .unwrap()
         .into_iter()
+        .map(|row| row.release_id)
         .collect()
 }
 
@@ -197,18 +178,12 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
 /// against the first place coven's queue holds for its files.
 async fn storage_row(store: &bae_store::Store, release: &str) -> Vec<String> {
     store
-        .query_texts_for_test(&format!(
-            "SELECT s.file_count || ' files, ' || s.total_size || ' bytes, stored ' || s.stored \
-                 || ', ' || s.pinned_count || ' pinned, ' || s.queued_count || ' queued, ' \
-                 || CASE WHEN s.first_queued_position IS (\
-                        SELECT MIN(queued.position) FROM release_files f \
-                        JOIN coven_upload_queue queued ON queued.file = f.file \
-                        WHERE f.release_id = s.release_id) \
-                    THEN 'first place as queued' ELSE 'first place not as queued' END \
-             FROM release_storage s WHERE s.release_id = '{release}'"
-        ))
+        .read_rows(crate::test_reads::StorageRowTextParams { release: release.into() })
         .await
         .unwrap()
+        .into_iter()
+        .map(|row| row.row)
+        .collect()
 }
 
 /// A release another device imported and moved to the cloud arrives with its

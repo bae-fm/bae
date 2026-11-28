@@ -366,6 +366,17 @@ fn storage_ids_on(sql: &SqlReadContext<'_>, scope: &StorageScope) -> Result<Vec<
         .collect())
 }
 
+// Each release's listing row's counts as it copies them from its storage row,
+// which other domains' tests compare to that row.
+#[cfg(any(test, feature = "test-utils"))]
+coven::fragment!(
+    ListedStorageCounts,
+    r#"
+    SELECT listing.release_id, listing.file_count, listing.pinned_count, listing.queued_count
+    FROM release_listing AS listing
+"#
+);
+
 #[cfg(test)]
 #[path = "storage_tests.rs"]
 mod tests;

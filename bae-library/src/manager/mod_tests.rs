@@ -668,13 +668,11 @@ pub(super) async fn inspector_rows_until(
 pub(super) async fn all_files_kept(manager: &LibraryManager, release_id: &str) -> bool {
     manager
         .store
-        .query_texts_for_test(&format!(
-            "SELECT f.id FROM release_files f WHERE f.release_id = '{release_id}' \
-               AND NOT EXISTS (SELECT 1 FROM coven_pins p WHERE p.file = f.file)"
-        ))
+        .read_row(crate::test_reads::UnpinnedFilesParams { release: release_id.into() })
         .await
         .unwrap()
-        .is_empty()
+        .unpinned
+        == 0
 }
 
 /// The first inspector `rows` gives from now that `accept` takes.

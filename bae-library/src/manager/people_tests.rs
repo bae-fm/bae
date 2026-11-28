@@ -198,7 +198,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         .await;
         let listed = laptop
             .store()
-            .query_texts_for_test("SELECT kind FROM coven_operations WHERE kind = 'RenameStore'")
+            .read_rows(crate::test_reads::OperationsOfKindParams { kind: "RenameStore".into() })
             .await
             .unwrap();
         assert!(listed.is_empty(), "{listed:?}");

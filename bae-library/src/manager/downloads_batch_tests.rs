@@ -216,19 +216,12 @@ async fn pins_and_moves_to_this_device_are_counted_apart() {
 
 /// The release's whole size, as its storage row holds it.
 async fn release_size(manager: &LibraryManager, release: &str) -> u64 {
-    let release = release.to_string();
-    let size: i64 = manager
+    manager
         .store
-        .read(move |sql| {
-            Ok(sql.query_row(
-                "SELECT total_size FROM release_storage WHERE release_id = ?1",
-                [release],
-                |row| row.get(0),
-            )?)
-        })
+        .read_row(crate::test_reads::StoredSizeAndMoveParams { release: release.into() })
         .await
-        .unwrap();
-    u64::try_from(size).expect("a release's size is never negative")
+        .unwrap()
+        .total_size
 }
 
 /// The Pinning line's bar is the share of its batch's bytes pinned: none

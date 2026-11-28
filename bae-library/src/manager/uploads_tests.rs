@@ -17,19 +17,12 @@ pub(super) async fn stored_move_files(
     manager: &LibraryManager,
     release_id: &str,
 ) -> (Option<String>, Option<String>) {
-    let release_id = release_id.to_string();
-    manager
+    let stored = manager
         .store
-        .read(move |sql| {
-            Ok(sql.query_row(
-                "SELECT failed_move_file, missing_original_file FROM release_storage \
-                 WHERE release_id = ?1",
-                [release_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?)
-        })
+        .read_row(crate::test_reads::StoredSizeAndMoveParams { release: release_id.into() })
         .await
-        .unwrap()
+        .unwrap();
+    (stored.failed_move_file, stored.missing_original_file)
 }
 
 /// Cancelling a move needs no original: nothing was switched, so the release
@@ -713,25 +706,15 @@ async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     };
     assert_eq!(receipt.release_ids, ids[..4].to_vec());
     assert_eq!(failure.release_ids, vec![ids[4].clone()]);
-    let moves: i64 = manager
-        .store
-        .read({
-            let ids = ids[..4].to_vec();
-            move |sql| {
-                let mut moves = 0;
-                for id in &ids {
-                    moves += sql.query_row(
-                        "SELECT COUNT(DISTINCT u.move) FROM coven_uploads AS u \
-                         JOIN release_files AS f ON f.file = u.file WHERE f.release_id = ?1",
-                        [id],
-                        |row| row.get::<_, i64>(0),
-                    )?;
-                }
-                Ok(moves)
-            }
-        })
-        .await
-        .unwrap();
+    let mut moves = 0;
+    for id in &ids[..4] {
+        moves += manager
+            .store
+            .read_row(crate::test_reads::MovesOfReleaseParams { release: id.clone() })
+            .await
+            .unwrap()
+            .moves;
+    }
     assert_eq!(moves, 4, "each release's files move under a move of its own");
     for id in &ids[..4] {
         assert!(has_pending_uploads(manager, id).await);

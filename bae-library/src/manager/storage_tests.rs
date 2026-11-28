@@ -61,28 +61,12 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .store
-        .query_texts_for_test(
-            "SELECT r.id || ': stored ' || COALESCE(s.queued_count || ' from ' \
-                     || COALESCE(s.first_queued_position, 'nowhere'), 'nothing') \
-                 || ', listed ' || COALESCE(l.queued_count, 'nothing') \
-                 || ', probed ' || probe.queued || ' from ' || COALESCE(probe.first, 'nowhere') \
-             FROM releases r \
-             LEFT JOIN release_storage s ON s.release_id = r.id \
-             LEFT JOIN release_listing l ON l.release_id = r.id \
-             JOIN (SELECT r2.id AS release_id, \
-                     (SELECT COUNT(*) FROM release_files f JOIN coven_uploads u \
-                        ON u.file = f.file \
-                      WHERE f.release_id = r2.id) AS queued, \
-                     (SELECT MIN(u.position) FROM release_files f JOIN coven_uploads u \
-                        ON u.file = f.file \
-                      WHERE f.release_id = r2.id) AS first \
-                   FROM releases r2) probe ON probe.release_id = r.id \
-             WHERE s.release_id IS NULL OR s.queued_count <> probe.queued \
-                OR s.first_queued_position IS NOT probe.first \
-                OR l.release_id IS NULL OR l.queued_count <> s.queued_count",
-        )
+        .read_rows(crate::test_reads::QueueDisagreementsParams {})
         .await
         .unwrap()
+        .into_iter()
+        .map(|row| row.disagreement)
+        .collect()
 }
 
 /// The releases with files in coven's queue, in the order their first files
@@ -90,13 +74,12 @@ async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
 async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
     manager
         .store
-        .query_texts_for_test(
-            "SELECT f.release_id FROM coven_uploads u \
-             JOIN release_files f ON u.file = f.file \
-             GROUP BY f.release_id ORDER BY MIN(u.position)",
-        )
+        .read_rows(crate::test_reads::ProbedUploadingReleasesParams {})
         .await
         .unwrap()
+        .into_iter()
+        .map(|row| row.release_id)
+        .collect()
 }
 
 /// Random writes against the probe: after each, every release's queued

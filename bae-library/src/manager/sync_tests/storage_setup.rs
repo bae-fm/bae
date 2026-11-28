@@ -151,17 +151,14 @@ async fn a_dropped_setup_call_cancels_its_setup() {
     drop(setup);
     writes.add_permits(usize::MAX >> 4);
     status_until(&test, |status| status.storage_setup.is_none()).await;
-    let outcomes = manager
+    let outcomes: Vec<_> = manager
         .store
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT outcome FROM coven_operations WHERE kind = 'StorageSetup'",
-                [],
-                |row| row.get::<_, Option<coven::StorageSetupOutcome>>(0),
-            )?)
-        })
+        .read_rows(crate::test_reads::StorageSetupOutcomesParams {})
         .await
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(|row| row.outcome)
+        .collect();
     assert_eq!(outcomes, vec![Some(coven::StorageSetupOutcome::Cancelled)]);
     assert!(!manager.is_sync_configured().await.unwrap());
 }

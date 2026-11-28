@@ -143,6 +143,19 @@ pub(crate) fn plant_audio_elsewhere_device_for_test(
     );
 }
 
+// Each release's storage row's counts as the triggers keep them, which other
+// domains' tests compare to what they probe from the files themselves.
+#[cfg(any(test, feature = "test-utils"))]
+coven::fragment!(
+    ReleaseStorageCounts,
+    r#"
+    SELECT kept.release_id, kept.file_count, kept.total_size, kept.stored,
+           kept.pinned_count, kept.queued_count, kept.first_queued_position,
+           kept.failed_move_file, kept.missing_original_file
+    FROM release_storage AS kept
+"#
+);
+
 #[cfg(test)]
 #[path = "release_storage_tests.rs"]
 mod tests;

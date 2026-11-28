@@ -541,3 +541,14 @@ coven::read!(
 // Each coven file this device knows.
 #[cfg(test)]
 coven::read!(writer CovenFileIds, "SELECT stored.id FROM coven_files AS stored");
+
+// Each release's cover's coven files: the browse and large copies and the
+// original, which other domains' tests check the pins and deletes of.
+#[cfg(any(test, feature = "test-utils"))]
+coven::fragment!(
+    CoverFiles,
+    r#"
+    SELECT cover.id AS release_id, cover.browse_file, cover.large_file, cover.original_file
+    FROM covers AS cover
+"#
+);
