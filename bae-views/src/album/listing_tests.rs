@@ -791,3 +791,36 @@ async fn every_first_sort_seeks_its_window_through_its_index() {
         assert!(!own.contains(&"USE TEMP B-TREE FOR ORDER BY"), "{index}: {steps:?}");
     }
 }
+
+/// A window from the top holds the grid's first rows under every sort, flat
+/// and grouped by artist, and under no sort.
+#[tokio::test]
+async fn every_grid_sorts_window_from_the_top_holds_its_first_rows() {
+    let (db, _tmp) = library().await;
+    db.read(|sql| {
+        let mut sorts = crate::tests::sorts_of(&[
+            AlbumSortField::Title,
+            AlbumSortField::Artist,
+            AlbumSortField::Year,
+            AlbumSortField::DateAdded,
+        ]);
+        sorts.push(Vec::new());
+        for sort in sorts {
+            let criteria: Vec<_> = sort
+                .iter()
+                .map(|&(field, direction)| AlbumSortCriterion { field, direction })
+                .collect();
+            for group_by_artist in [false, true] {
+                let order = crate::album::AlbumOrder::new(&criteria, group_by_artist);
+                crate::tests::assert_top_is_first_rows(
+                    &format!("{criteria:?}, grouped {group_by_artist}"),
+                    || crate::album::album_key_at_on(&sql, &order, 0),
+                    |window| crate::album::album_window_on(&sql, &order, window),
+                )?;
+            }
+        }
+        Ok(())
+    })
+    .await
+    .unwrap();
+}

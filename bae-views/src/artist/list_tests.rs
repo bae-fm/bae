@@ -27,3 +27,26 @@ async fn every_artist_window_from_the_top_reads_the_index_leading_with_its_first
     ])
     .await;
 }
+
+/// A window from the top holds the list's first rows under every sort.
+#[tokio::test]
+async fn every_artist_sorts_window_from_the_top_holds_its_first_rows() {
+    let (db, _tmp) = crate::tests::library().await;
+    db.read(|sql| {
+        for sort in crate::tests::sorts_of(&[ArtistSortField::Name, ArtistSortField::AlbumCount]) {
+            let criteria: Vec<_> = sort
+                .iter()
+                .map(|&(field, direction)| ArtistSortCriterion { field, direction })
+                .collect();
+            let sort = artist_sort(&criteria);
+            crate::tests::assert_top_is_first_rows(
+                &format!("{criteria:?}"),
+                || artist_key_at_on(&sql, &sort, 0),
+                |window| artist_window_on(&sql, &sort, window),
+            )?;
+        }
+        Ok(())
+    })
+    .await
+    .unwrap();
+}

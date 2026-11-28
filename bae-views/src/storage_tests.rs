@@ -907,3 +907,31 @@ async fn a_release_after_a_full_storage_window_reruns_nothing() {
         .await;
     assert!(live.is_marked_for_rerun(), "Album A sorts first");
 }
+
+/// A window from the top holds the list's first rows under every sort, whole,
+/// filtered and narrowed by a search.
+#[tokio::test]
+async fn every_storage_sorts_window_from_the_top_holds_its_first_rows() {
+    let (db, _tmp) = library().await;
+    db.read(|sql| {
+        for sort in crate::tests::sorts_of(&FIELDS) {
+            let (field, direction) = sort[0];
+            let criterion = StorageSortCriterion { field, direction };
+            for (filter, search) in [
+                (StorageFilter::All, ""),
+                (StorageFilter::Local, ""),
+                (StorageFilter::All, "album"),
+            ] {
+                let list = crate::storage::StorageList::new(&criterion, filter, search);
+                crate::tests::assert_top_is_first_rows(
+                    &format!("{criterion:?} {filter:?} {search:?}"),
+                    || crate::storage::storage_key_at_on(&sql, &list, 0),
+                    |window| crate::storage::storage_window_on(&sql, &list, window),
+                )?;
+            }
+        }
+        Ok(())
+    })
+    .await
+    .unwrap();
+}

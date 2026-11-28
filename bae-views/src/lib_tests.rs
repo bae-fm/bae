@@ -202,6 +202,39 @@ pub(super) async fn assert_tops_read_their_first_term(tops: &[(&str, &str)]) {
     }
 }
 
+/// Both ways of each of `fields`, each alone and then before the next field:
+/// the sorts a list's window from the top is checked under.
+pub(super) fn sorts_of<F: Copy>(fields: &[F]) -> Vec<Vec<(F, SortDirection)>> {
+    let mut sorts = Vec::new();
+    for (place, &field) in fields.iter().enumerate() {
+        for direction in [SortDirection::Ascending, SortDirection::Descending] {
+            sorts.push(vec![(field, direction)]);
+            let next = fields[(place + 1) % fields.len()];
+            sorts.push(vec![(field, direction), (next, SortDirection::Descending)]);
+        }
+    }
+    sorts
+}
+
+/// Asserts that a list's window of 20 rows from the top, read by `window`,
+/// holds rows, starting with the row at position 0, whose key `key_at`
+/// reads, and holds the rows and keys of the window from that key.
+pub(super) fn assert_top_is_first_rows<R>(
+    what: &str,
+    key_at: impl Fn() -> Result<Option<OrderKey>, DbError>,
+    window: impl Fn(&ListWindow) -> Result<WindowRead<R>, DbError>,
+) -> Result<(), DbError> {
+    let keys =
+        |read: &WindowRead<R>| read.rows.iter().map(|(_, key)| key.clone()).collect::<Vec<_>>();
+    let limit = 20;
+    let first = key_at()?.unwrap_or_else(|| panic!("{what}: the list has rows"));
+    let top = window(&ListWindow::top(limit))?;
+    let from_first = window(&ListWindow { from: Some(first), limit })?;
+    assert!(!top.rows.is_empty(), "{what}: the window from the top holds no rows");
+    assert_eq!(keys(&top), keys(&from_first), "{what}");
+    Ok(())
+}
+
 /// Whether `step` sorts rows for an ORDER BY.
 fn sorts_for_order_by(step: &PlanStep) -> bool {
     step.detail.starts_with("USE TEMP B-TREE FOR") && step.detail.ends_with("ORDER BY")

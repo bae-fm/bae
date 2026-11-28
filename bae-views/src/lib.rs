@@ -130,8 +130,4 @@ mod tests;
 mod test_artists;
 
 #[cfg(test)]
-#[path = "list_tops_tests.rs"]
-mod list_tops_tests;
-
-#[cfg(test)]
 mod test_pages;
