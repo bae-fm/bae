@@ -194,13 +194,6 @@ impl Emptiable {
     }
 }
 
-// Whether the library holds the album `:id`.
-#[cfg(test)]
-coven::read!(
-    writer AlbumIdHeld(id: String) { held: bool },
-    "SELECT EXISTS (SELECT 1 FROM albums AS album WHERE album.id = :id) AS held"
-);
-
 // Whether the library holds the work `:id`.
 #[cfg(test)]
 coven::read!(

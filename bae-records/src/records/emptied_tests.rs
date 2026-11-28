@@ -9,7 +9,10 @@ const ALBUM_B: &str = "5d0b1a0e-2b44-4a37-9d51-0a9e7a2b6c01";
 const WORK_PART: &str = "b1e4c7d2-9a3f-4c5e-8d6b-3f2a1e0d9c88";
 
 async fn album_held(db: &bae_store::Store, id: &str) -> bool {
-    db.read_row(super::AlbumIdHeldParams { id: id.to_string() }).await.unwrap().held
+    db.read_row(crate::records::release_records::AlbumHeldParams { album: id.to_string() })
+        .await
+        .unwrap()
+        .held
 }
 
 async fn work_held(db: &bae_store::Store, id: &str) -> bool {
