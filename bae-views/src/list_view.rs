@@ -96,6 +96,10 @@ fn wanted(visible: Visible, placed: Option<Placed<'_>>) -> Move {
     let Some(placed) = placed else {
         return start_at(start, limit, None);
     };
+    #[expect(
+        clippy::read_aggregate,
+        reason = "counts the keys of the window the view holds, to place the next window around the rows on screen; a long list's view holds its window's latest answer"
+    )]
     let held = placed.keys.len() as u64;
     let end = placed.start + held;
     let near = screen.div_ceil(2);
@@ -114,6 +118,10 @@ fn start_at(position: u64, limit: u64, placed: Option<&Placed<'_>>) -> Move {
     if position == 0 {
         return Move::To(ListWindow::top(limit));
     }
+    #[expect(
+        clippy::read_join,
+        reason = "starts the next window at a row the current window holds, as a long list's window does"
+    )]
     let held = placed.and_then(|placed| {
         let at = usize::try_from(position.checked_sub(placed.start)?).ok()?;
         placed.keys.get(at).cloned()

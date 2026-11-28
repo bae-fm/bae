@@ -169,6 +169,10 @@ impl FileReads {
                     for file in &candidate.files {
                         known.learn_skipped_file(file)?;
                     }
+                    #[expect(
+                        clippy::read_filter,
+                        reason = "kept finding: keeps the audio files among a stored folder that can't be imported, whose tags the pass learns"
+                    )]
                     let playable: Vec<FileVersion> = candidate
                         .files
                         .iter()
@@ -620,6 +624,10 @@ impl Known {
     }
 
     /// Take `read` for `version`, beside what is known of it.
+    #[expect(
+        clippy::read_group,
+        reason = "kept finding: keeps each file's read under its version, merged with what the stored scan already says of it"
+    )]
     fn learn(&mut self, version: FileVersion, read: FileRead) -> Result<(), FolderScanError> {
         use std::collections::hash_map::Entry;
         match self.files.entry(version) {

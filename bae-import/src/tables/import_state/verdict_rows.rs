@@ -571,6 +571,12 @@ pub(super) fn outcome_of(
         }
         findings
     };
+    #[expect(
+        clippy::read_pick,
+        clippy::read_aggregate,
+        clippy::read_filter,
+        reason = "refuses a stored verdict that lists matches its kind lists none of: checks what the statement returned for damage, and no screen shows it"
+    )]
     let no_findings = |found: &StoredMatches| {
         if found.rows.iter().all(|row| matches!(row.listing, Listing::Unlisted)) {
             return Ok(());

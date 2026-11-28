@@ -356,9 +356,6 @@ fn check_releases_in_library_on(
     sql: &impl bae_store::WriterRead,
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
-    if checks.is_empty() {
-        return Ok(Vec::new());
-    }
     let checks = serde_json::Value::Array(
         checks
             .iter()

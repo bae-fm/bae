@@ -187,6 +187,10 @@ pub(super) fn joined_albums(release: &SourceRelease, kept: &[GroupAlbum]) -> Vec
             let Some(other) = group_album.other_than(album) else {
                 continue;
             };
+            #[expect(
+                clippy::read_pick,
+                reason = "kept finding: tests whether the release's records or an album joined before already reach the kept album's catalog"
+            )]
             let reached = other.catalog == catalog
                 || release.other_records.iter().any(|record| record.catalog() == other.catalog)
                 || joined.iter().any(|named| named.catalog == other.catalog);

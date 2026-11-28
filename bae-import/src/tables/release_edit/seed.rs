@@ -31,6 +31,10 @@ pub(crate) fn release_edit_seed(
     context: ReleaseEditContext,
 ) -> Result<ReleaseEditSeed, ReleaseEditLoadError> {
     let ReleaseEditContext { detail, album_title, album_year, album_artists, tracks } = context;
+    #[expect(
+        clippy::read_group,
+        reason = "kept finding: collects the sheet place of each track's sheet file into a map by file"
+    )]
     let mut sheet_places = std::collections::BTreeMap::new();
     let tracks = tracks.into_iter().inspect(|track| {
         if let Some(sheet) = &track.sheet {

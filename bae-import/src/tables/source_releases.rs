@@ -291,6 +291,10 @@ fn prepared(stored: SourceRelease, kept: Vec<GroupAlbum>) -> PreparedRelease {
     release.other_records = with_joined_records(release.other_records, &joined);
     // A joined release group's images, addressed by its id as the extraction
     // addresses a group its documents reach.
+    #[expect(
+        clippy::read_filter,
+        reason = "kept finding: keeps the joined albums that are MusicBrainz release groups, to add their archive images"
+    )]
     for group in joined.iter().filter(|album| album.catalog == Catalog::MusicBrainz) {
         bae_catalogs::remote_image::push_unique_cover(
             &mut release.covers.album,
@@ -311,6 +315,10 @@ fn load_prepared_releases_on<S: bae_store::WriterRead>(
     releases: &[&bae_catalogs::records::LookupRef],
 ) -> Result<Vec<Option<PreparedRelease>>, DbError> {
     let request = ReleasesWithKeptAlbumsParams { releases: releases_json(releases) };
+    #[expect(
+        clippy::read_aggregate,
+        reason = "sizes the answer by the releases the caller asks for, which are the request's keys and not a read's rows"
+    )]
     let mut read = vec![None; releases.len()];
     for row in statement_rows(sql, &request)? {
         let (at, release) = row

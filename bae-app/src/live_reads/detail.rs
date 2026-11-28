@@ -29,6 +29,10 @@ pub fn subscribe_album_detail(
 /// entry and storage transition, and whether the library syncs —
 /// the state it is resolved against. Another release is a new id on the
 /// same read.
+#[expect(
+    clippy::read_filter,
+    reason = "kept finding: the release detail's gallery leaves the cover's own file out of the release's image files"
+)]
 pub fn subscribe_release_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,

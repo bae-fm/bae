@@ -390,6 +390,15 @@ async fn test_check_release_not_in_library() {
 }
 
 #[tokio::test]
+async fn test_check_no_releases_answers_none() {
+    let (db, _tmp, _album, _release) =
+        album_with("Album Title", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
+
+    let statuses = db.check_releases_in_library(&[]).await.unwrap();
+    assert!(statuses.is_empty());
+}
+
+#[tokio::test]
 async fn test_check_cross_source_doesnt_leak() {
     // An MB candidate against a Discogs-only library entry should
     // not match — different sources.

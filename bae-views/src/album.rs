@@ -431,6 +431,10 @@ impl AlbumDetailRows {
                 None::<String>,
             ));
         };
+        #[expect(
+            clippy::read_pick,
+            reason = "kept finding: finds where the chosen release sits among the album's releases"
+        )]
         let shown = self
             .chosen_release_id
             .and_then(|chosen| releases.iter().position(|held| held.detail.release.id == chosen))

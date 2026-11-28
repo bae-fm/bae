@@ -730,6 +730,10 @@ impl crate::types::BridgeImportCandidateDetail {
         } = detail;
         let rate = signals.as_ref().and_then(|signals| signals.origin.not_cd_rate);
         let bae_import::PaneFiles { files, cover_files, images, track_count, source_audio } = files;
+        #[expect(
+            clippy::read_filter,
+            reason = "kept finding: the candidate's file metadata identity hashes the candidate's audio files, which it filters out of the candidate's files"
+        )]
         let files = crate::types::BridgeCandidateFiles::from_core(
             candidate.files.file_metadata_identity(),
             files,

@@ -119,6 +119,10 @@ pub(super) fn load_items(
 
 /// Refuse an entry of `items` stamped with a generation their root, at
 /// `root_generation`, never reached.
+#[expect(
+    clippy::read_pick,
+    reason = "refuses stored scan items stamped with a generation their root never reached: checks what the statement returned for damage, and no screen shows it"
+)]
 pub(super) fn check_generations(
     items: &[StoredScanItem],
     root_generation: Option<i64>,
@@ -494,6 +498,10 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
 /// has the audio role. The table can only say the file exists; this says it
 /// is audio, so a candidate that violates it is refused here rather than
 /// panicking whoever reads the bound sheets.
+#[expect(
+    clippy::read_filter,
+    reason = "refuses a stored candidate whose sheet binds a file without the audio role: checks what the statement returned for damage, and no screen shows it"
+)]
 fn check_sheet_bindings_name_audio(
     candidate_path: &CandidateKey,
     files: &[CandidateFile],

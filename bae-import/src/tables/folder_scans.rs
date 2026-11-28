@@ -870,6 +870,10 @@ fn misplaced(
         });
     }
     if let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate), false) = (item, grouped) {
+        #[expect(
+            clippy::read_pick,
+            reason = "kept finding: finds a stored candidate with a part outside the watched folder it is stored under"
+        )]
         if !candidate.file_root.starts_with(root)
             || candidate.files.parts.iter().any(|part| !part.folder.starts_with(root))
         {

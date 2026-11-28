@@ -253,6 +253,10 @@ pulled_read! {
 impl ReleaseEditDraftSubscription {
     /// Read the draft of `form` from now on: the form the editor holds after
     /// its last change.
+    #[expect(
+        clippy::read_group,
+        reason = "clones the form the editor holds, the person's edits, to ask the draft's read with; its sheet places are no read's rows"
+    )]
     pub fn set_form(
         &self,
         form: std::sync::Arc<crate::BridgeReleaseEditForm>,
