@@ -176,6 +176,32 @@ pub(super) async fn assert_windows_seek_their_first_term(
     }
 }
 
+/// Assert that each of a list's `tops`, a statement that reads from the
+/// order's first row with the index leading with its first term, reads that
+/// index in order and sorts at most the rows that tie on the first term,
+/// which lets SQLite stop at the limit.
+pub(super) async fn assert_tops_read_their_first_term(tops: &[(&str, &str)]) {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(super::TEST_SCHEMA).await;
+    for &(statement, index) in tops {
+        let statement = statement.to_string();
+        let steps = db
+            .read(move |sql| {
+                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+                plan_steps(&sql, &statement, unbound)
+            })
+            .await
+            .unwrap();
+        let scan = format!("SCAN listing USING INDEX {index}");
+        assert!(steps.iter().any(|step| step.detail == scan), "{index}: {steps:?}");
+        assert!(
+            steps.iter().filter(|step| step.own).all(|step| !step.detail.contains("TEMP B-TREE")
+                || step.detail.contains("TERMS OF ORDER BY")
+                || step.detail.contains("RIGHT PART OF ORDER BY")),
+            "{index} sorts the whole list: {steps:?}"
+        );
+    }
+}
+
 /// Whether `step` sorts rows for an ORDER BY.
 fn sorts_for_order_by(step: &PlanStep) -> bool {
     step.detail.starts_with("USE TEMP B-TREE FOR") && step.detail.ends_with("ORDER BY")

@@ -47,6 +47,41 @@ sqlive_compose::read!(
 "#
 );
 
+// [`FoundWindow`] from the list's top.
+sqlive_compose::read!(
+    writer FoundTop(
+        sort: String,
+        search: Option<String>,
+        stored: Option<i64>,
+        limit: i64
+    ) {
+        key_0: bae_store::list_windows::SortValue,
+        key_1: bae_store::list_windows::SortValue,
+        key_2: bae_store::list_windows::SortValue,
+        key_3: bae_store::list_windows::SortValue,
+        key_4: bae_store::list_windows::SortValue
+    },
+    r#"
+    SELECT picked.lead AS key_0, picked.lead_back AS key_1, picked.album_title_sort_key AS key_2,
+           picked.created_at AS key_3, picked.release_id AS key_4,
+           shown.*
+    FROM (SELECT sorted_found.lead, sorted_found.lead_back, sorted_found.album_title_sort_key,
+                 sorted_found.created_at, sorted_found.release_id
+          FROM @crate::storage::order_fragments::StorageOrder(sort: :sort) AS sorted_found
+          WHERE sorted_found.album_id IN (
+                    SELECT found.album_id
+                    FROM @crate::album_search::AlbumsFound(pattern: :search) AS found)
+            AND (:stored IS NULL OR sorted_found.stored = :stored)
+          ORDER BY sorted_found.lead, sorted_found.lead_back, sorted_found.album_title_sort_key,
+                   sorted_found.created_at, sorted_found.release_id
+          LIMIT :limit) AS picked
+    CROSS JOIN @crate::storage::row::StorageListRow AS shown
+            ON shown.row_release_id = picked.release_id
+    ORDER BY picked.lead, picked.lead_back, picked.album_title_sort_key,
+             picked.created_at, picked.release_id
+"#
+);
+
 // How many releases of the list a search narrows come before the row at a key.
 sqlive_compose::read!(
     writer FoundBefore(

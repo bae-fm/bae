@@ -1,6 +1,10 @@
-//! The plans of the composer list's windows, one statement for each term a sort
-//! can lead with.
+//! The plans of the composer list's windows, from a key and from the top, one
+//! statement for each term a sort can lead with.
 
+use crate::composer::top_reads::{
+    ComposerTopByName, ComposerTopByNameDescending, ComposerTopByReleases,
+    ComposerTopByReleasesDescending, ComposerTopByWorks, ComposerTopByWorksDescending,
+};
 use crate::composer::window_reads::{
     ComposerWindowByName, ComposerWindowByNameDescending, ComposerWindowByReleases,
     ComposerWindowByReleasesDescending, ComposerWindowByWorks, ComposerWindowByWorksDescending,
@@ -24,4 +28,17 @@ const COMPOSER_WINDOWS: [(&str, &str, &str); 6] = [
 #[tokio::test]
 async fn every_composer_window_seeks_the_index_leading_with_its_first_term() {
     crate::tests::assert_windows_seek_their_first_term(&COMPOSER_WINDOWS, 3).await;
+}
+
+#[tokio::test]
+async fn every_composer_window_from_the_top_reads_the_index_leading_with_its_first_term() {
+    crate::tests::assert_tops_read_their_first_term(&[
+        (ComposerTopByName::SQL, "idx_composer_listing_name"),
+        (ComposerTopByNameDescending::SQL, "idx_composer_listing_name_back"),
+        (ComposerTopByWorks::SQL, "idx_composer_listing_works"),
+        (ComposerTopByWorksDescending::SQL, "idx_composer_listing_works_back"),
+        (ComposerTopByReleases::SQL, "idx_composer_listing_releases"),
+        (ComposerTopByReleasesDescending::SQL, "idx_composer_listing_releases_back"),
+    ])
+    .await;
 }

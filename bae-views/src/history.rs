@@ -83,6 +83,22 @@ sqlive_compose::read!(
 "#
 );
 
+// [`HistoryWindow`] from History's top: the newest plays.
+sqlive_compose::read!(
+    writer HistoryTop(limit: i64) { opens_day: bool },
+    r#"
+    SELECT play.started_at, play.id, play.played_on, play.opens_day, track.*, cover.*,
+           person.*
+    FROM @bae_people::people::fragments::ListedPlay AS play
+    CROSS JOIN @bae_records::records::fragments::ShownTrack AS track
+            ON track.track_id = play.track_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover ON cover.id = track.release_id
+    CROSS JOIN @bae_people::people::fragments::Profile AS person ON person.id = play.person_id
+    ORDER BY play.started_at DESC, play.id DESC
+    LIMIT :limit
+"#
+);
+
 // [`HistoryWindow`] of the plays of the person `person`.
 sqlive_compose::read!(
     writer PersonHistoryWindow(person: coven::MemberId, from_at: String, from_id: String, limit: i64)
@@ -97,6 +113,24 @@ sqlive_compose::read!(
     CROSS JOIN @bae_people::people::fragments::Profile AS person ON person.id = play.person_id
     WHERE play.person_id = :person
       AND (play.started_at, play.id) <= (:from_at, :from_id)
+    ORDER BY play.started_at DESC, play.id DESC
+    LIMIT :limit
+"#
+);
+
+// [`PersonHistoryWindow`] from History's top: the person's newest plays.
+sqlive_compose::read!(
+    writer PersonHistoryTop(person: coven::MemberId, limit: i64)
+        { opens_day: bool },
+    r#"
+    SELECT play.started_at, play.id, play.played_on, play.opens_day, track.*, cover.*,
+           person.*
+    FROM @bae_people::people::fragments::ListedPersonPlay AS play
+    CROSS JOIN @bae_records::records::fragments::ShownTrack AS track
+            ON track.track_id = play.track_id
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover ON cover.id = track.release_id
+    CROSS JOIN @bae_people::people::fragments::Profile AS person ON person.id = play.person_id
+    WHERE play.person_id = :person
     ORDER BY play.started_at DESC, play.id DESC
     LIMIT :limit
 "#
@@ -188,10 +222,6 @@ sqlive_compose::read!(
 "#
 );
 
-/// A time that sorts after every stored one: where a window from History's top
-/// starts.
-const AFTER_EVERY_PLAY: &str = "\u{10FFFF}";
-
 /// The key of the play that began at `started_at` with the id `id`, both as
 /// their columns hold them.
 fn key_of(started_at: String, id: String) -> OrderKey {
@@ -243,33 +273,17 @@ fn listed_play(
 }
 
 /// History's `window` under `filter`: its plays from the window's key on, or
-/// from the top, each with its key.
+/// from its newest play for a window from the top, each with its key.
 fn history_window_on(
     sql: &SqlReadContext<'_>,
     filter: &HistoryFilter,
     window: &ListWindow,
 ) -> Result<WindowRead<HistoryRow>, DbError> {
-    let (from_at, from_id) = match &window.from {
-        Some(key) => place_of(key)?,
-        None => (AFTER_EVERY_PLAY.to_string(), String::new()),
-    };
     let limit = sql_bound(window.limit);
-    let rows = match *filter {
-        None => statement_rows(sql, &HistoryWindowParams { from_at, from_id, limit })?
-            .into_iter()
-            .map(|row| {
-                let play = PlayColumns {
-                    started_at: row.started_at,
-                    id: row.id,
-                    played_on: row.played_on,
-                    opens_day: row.opens_day,
-                };
-                listed_play(play, row.track, row.cover, row.person)
-            })
-            .collect::<Result<_, _>>()?,
-        Some(person) => {
-            let params = PersonHistoryWindowParams { person, from_at, from_id, limit };
-            statement_rows(sql, &params)?
+    let from = window.from.as_ref().map(place_of).transpose()?;
+    macro_rules! rows {
+        ($statement:expr) => {
+            statement_rows(sql, &$statement)?
                 .into_iter()
                 .map(|row| {
                     let play = PlayColumns {
@@ -281,6 +295,16 @@ fn history_window_on(
                     listed_play(play, row.track, row.cover, row.person)
                 })
                 .collect::<Result<_, _>>()?
+        };
+    }
+    let rows = match (*filter, from) {
+        (None, None) => rows!(HistoryTopParams { limit }),
+        (None, Some((from_at, from_id))) => {
+            rows!(HistoryWindowParams { from_at, from_id, limit })
+        }
+        (Some(person), None) => rows!(PersonHistoryTopParams { person, limit }),
+        (Some(person), Some((from_at, from_id))) => {
+            rows!(PersonHistoryWindowParams { person, from_at, from_id, limit })
         }
     };
     Ok(WindowRead { window: window.clone(), rows })

@@ -136,7 +136,8 @@ async fn the_counts_follow_the_pause() {
     assert!(paused.paused());
 }
 
-/// The window and the position search the queue's own key, the window joins
+/// The window from a key and the position search the queue's own key, the
+/// window from the top reads the queue in its key's order, each window joins
 /// each entry to its release and its album by key, and neither they nor the
 /// jump sort anything or build a table first.
 #[tokio::test]
@@ -164,10 +165,13 @@ async fn the_list_reads_are_planned_on_the_queue_order() {
     assert!(window.contains("USING INTEGER PRIMARY KEY (rowid>?)"), "{window}");
     assert!(window.contains("USING INDEX sqlite_autoindex_releases_1 (id=?)"), "{window}");
     assert!(window.contains("USING INDEX sqlite_autoindex_albums_1 (id=?)"), "{window}");
+    let top = plan(DownloadTop::SQL, &[":limit"]).await;
+    assert!(top.starts_with("SCAN queued"), "{top}");
+    assert!(top.contains("USING INDEX sqlite_autoindex_releases_1 (id=?)"), "{top}");
     let before = plan(DownloadsBefore::SQL, &[":position"]).await;
     assert!(before.contains("USING INTEGER PRIMARY KEY (rowid<?)"), "{before}");
     let jump = plan(DownloadPlaceAt::SQL, &[":index"]).await;
-    for steps in [window, before, jump] {
+    for steps in [window, top, before, jump] {
         assert!(!steps.contains("TEMP B-TREE"), "{steps}");
         assert!(!steps.contains("MATERIALIZE"), "{steps}");
     }

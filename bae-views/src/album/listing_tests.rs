@@ -744,25 +744,36 @@ async fn an_artist_section_carries_the_artists_picture() {
 }
 
 /// Whatever the grid sorts by first, flat or grouped by artist, its window
-/// searches the index that leads with that sort's column, and sorts only the
-/// rows that tie on it: the plan never sorts the whole grid.
+/// searches the index that leads with that sort's column from a key, or reads
+/// it from its start from the top, and sorts only the rows that tie on it:
+/// the plan never sorts the whole grid.
 #[tokio::test]
 async fn every_first_sort_seeks_its_window_through_its_index() {
-    use crate::album::window_reads::*;
+    use crate::album::{top_reads::*, window_reads::*};
     let (db, _tmp) = library().await;
     let windows = [
-        (FlatWindowTitle::SQL, "idx_album_listing_title"),
-        (FlatWindowTitleBack::SQL, "idx_album_listing_title_back"),
-        (FlatWindowArtist::SQL, "idx_album_listing_artist"),
-        (FlatWindowArtistBack::SQL, "idx_album_listing_artist_back"),
-        (FlatWindowYear::SQL, "idx_album_listing_year"),
-        (FlatWindowYearBack::SQL, "idx_album_listing_year_back"),
-        (FlatWindowAdded::SQL, "idx_album_listing_added"),
-        (FlatWindowAddedBack::SQL, "idx_album_listing_added_back"),
-        (GroupedWindowArtist::SQL, "idx_album_artist_link_artists"),
-        (GroupedWindowArtistBack::SQL, "idx_album_artist_link_artists_back"),
+        (FlatWindowTitle::SQL, "SEARCH", "idx_album_listing_title"),
+        (FlatWindowTitleBack::SQL, "SEARCH", "idx_album_listing_title_back"),
+        (FlatWindowArtist::SQL, "SEARCH", "idx_album_listing_artist"),
+        (FlatWindowArtistBack::SQL, "SEARCH", "idx_album_listing_artist_back"),
+        (FlatWindowYear::SQL, "SEARCH", "idx_album_listing_year"),
+        (FlatWindowYearBack::SQL, "SEARCH", "idx_album_listing_year_back"),
+        (FlatWindowAdded::SQL, "SEARCH", "idx_album_listing_added"),
+        (FlatWindowAddedBack::SQL, "SEARCH", "idx_album_listing_added_back"),
+        (GroupedWindowArtist::SQL, "SEARCH", "idx_album_artist_link_artists"),
+        (GroupedWindowArtistBack::SQL, "SEARCH", "idx_album_artist_link_artists_back"),
+        (FlatTopTitle::SQL, "SCAN", "idx_album_listing_title"),
+        (FlatTopTitleBack::SQL, "SCAN", "idx_album_listing_title_back"),
+        (FlatTopArtist::SQL, "SCAN", "idx_album_listing_artist"),
+        (FlatTopArtistBack::SQL, "SCAN", "idx_album_listing_artist_back"),
+        (FlatTopYear::SQL, "SCAN", "idx_album_listing_year"),
+        (FlatTopYearBack::SQL, "SCAN", "idx_album_listing_year_back"),
+        (FlatTopAdded::SQL, "SCAN", "idx_album_listing_added"),
+        (FlatTopAddedBack::SQL, "SCAN", "idx_album_listing_added_back"),
+        (GroupedTopArtist::SQL, "SCAN", "idx_album_artist_link_artists"),
+        (GroupedTopArtistBack::SQL, "SCAN", "idx_album_artist_link_artists_back"),
     ];
-    for (statement, index) in windows {
+    for (statement, read, index) in windows {
         let steps = db
             .read(move |sql| {
                 let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
@@ -774,7 +785,7 @@ async fn every_first_sort_seeks_its_window_through_its_index() {
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         assert_eq!(
             own.first().and_then(|step| step.split(" (").next()),
-            Some(format!("SEARCH sorted USING INDEX {index}").as_str()),
+            Some(format!("{read} sorted USING INDEX {index}").as_str()),
             "{steps:?}"
         );
         assert!(!own.contains(&"USE TEMP B-TREE FOR ORDER BY"), "{index}: {steps:?}");

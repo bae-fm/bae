@@ -47,21 +47,6 @@ impl SortCode {
             Self::AddedBack => "added_back",
         }
     }
-
-    /// A value no row's first term sorts before when the grid sorts by this
-    /// first, in the term's own type and collation.
-    fn least(self) -> SortValue {
-        match self {
-            Self::Title => SortValue::Blob(Vec::new()),
-            Self::Artist | Self::Added => SortValue::Text(String::new()),
-            // In the `descending` collation the last text by its bytes sorts
-            // first.
-            Self::TitleBack | Self::ArtistBack | Self::AddedBack => {
-                SortValue::Text(char::MAX.to_string())
-            }
-            Self::Year | Self::YearBack => SortValue::Integer(i64::MIN),
-        }
-    }
 }
 
 /// What the grid sorts by first.
@@ -144,17 +129,6 @@ impl AlbumOrder {
         let code = |sort: Option<SortCode>| sort.map_or("", SortCode::code).to_string();
         let [second, third, fourth] = self.later;
         [code(Some(self.first())), code(second), code(third), code(fourth)]
-    }
-
-    /// A key no row of the grid sorts before: where a window from the grid's
-    /// top starts.
-    pub(super) fn top(&self) -> [SortValue; KEY_VALUES] {
-        // A place's terms hold numbers, bytes or text, and every number sorts
-        // before every one of the others, in either collation, so the least
-        // number is before every term of a row.
-        let mut values = std::array::from_fn(|_| SortValue::Integer(i64::MIN));
-        values[0] = self.first().least();
-        values
     }
 
     /// The values `key` names. Only the grid's reads make its keys.

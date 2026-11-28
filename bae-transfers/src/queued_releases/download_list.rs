@@ -41,6 +41,23 @@ sqlive_compose::read!(
 "#
 );
 
+// [`DownloadWindow`] from the list's top.
+sqlive_compose::read!(
+    writer DownloadTop(limit: i64),
+    r#"
+    SELECT queued.position, entry.*, release.*, album.*
+    FROM download_queue AS queued
+    JOIN @crate::queued_releases::rows::DownloadQueueRow AS entry
+      ON entry.position = queued.position
+    LEFT JOIN @bae_records::records::fragments::ReleaseAlbum AS release
+           ON release.release_id = entry.release_id
+    LEFT JOIN @bae_records::records::fragments::AlbumTitle AS album
+           ON album.album_id = release.album_id
+    ORDER BY queued.position
+    LIMIT :limit
+"#
+);
+
 // How many entries the downloads list has.
 sqlive_compose::read!(
     writer DownloadListLength { entries: u64 },
@@ -95,14 +112,22 @@ pub fn download_window_on(
     sql: &SqlReadContext<'_>,
     window: &ListWindow,
 ) -> Result<WindowRead<DownloadRow>, DbError> {
-    let from = window.from.as_ref().map(place_of).transpose()?.unwrap_or(i64::MIN);
-    let rows = statement_rows(sql, &DownloadWindowParams { from, limit: sql_bound(window.limit) })?
-        .into_iter()
-        .map(|row| {
-            let key = key_of(row.position);
-            Ok((row.entry.into_row(row.release, row.album)?, key))
-        })
-        .collect::<Result<_, DbError>>()?;
+    let limit = sql_bound(window.limit);
+    macro_rules! rows {
+        ($statement:expr) => {
+            statement_rows(sql, &$statement)?
+                .into_iter()
+                .map(|row| {
+                    let key = key_of(row.position);
+                    Ok((row.entry.into_row(row.release, row.album)?, key))
+                })
+                .collect::<Result<_, DbError>>()?
+        };
+    }
+    let rows = match &window.from {
+        None => rows!(DownloadTopParams { limit }),
+        Some(from) => rows!(DownloadWindowParams { from: place_of(from)?, limit }),
+    };
     Ok(WindowRead { window: window.clone(), rows })
 }
 

@@ -26,6 +26,7 @@ pub mod order_fragments;
 mod page_reads;
 mod place;
 mod position_reads;
+mod top_reads;
 mod window_reads;
 pub use place::{AlbumCard, AlbumPlace};
 pub mod search_albums;

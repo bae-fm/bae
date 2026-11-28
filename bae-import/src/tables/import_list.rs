@@ -27,6 +27,7 @@ pub(crate) mod fragments;
 mod pane_read;
 mod row_columns;
 pub mod row_fragments;
+mod top_reads;
 mod window_reads;
 pub(crate) use artist_standings::{artist_field_of_json, ArtistFieldJson};
 mod counts;

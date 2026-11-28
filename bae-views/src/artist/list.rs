@@ -14,7 +14,9 @@
 //! coven narrows an expression over stored columns alone.
 //!
 //! SQLite fixes the column a statement's index leads with, so each read has
-//! one statement for each term the sort can lead with. Each statement writes
+//! one statement for each term the sort can lead with, and a window has two:
+//! one that reads from a key, and one with no key that reads from the order's
+//! first row, for a window from the list's top. Each statement writes
 //! the order over the list table's own columns, and what coven reruns a window
 //! or a count for depends on the term the sort leads with. Under an ascending
 //! one, only a write on their side of the key reruns them, and a full window
@@ -29,7 +31,7 @@
 //! with a count.
 
 use super::*;
-use crate::list_sort::{before_every_row, key, key_values, ListSort, ListSortField};
+use crate::list_sort::{key, key_values, ListSort, ListSortField};
 use bae_store::list_windows::{sql_bound, SortValue};
 use bae_store::{statement_optional, statement_row, statement_rows};
 
@@ -47,7 +49,7 @@ impl ListSortField for ArtistSortField {
 }
 
 // The artist list's rows from a key on, at most `limit` of them, for each
-// first term. Each term is returned ahead of the row, so coven reruns a full
+// first term, each beside its twin that reads from the list's top. Each term is returned ahead of the row, so coven reruns a full
 // window only for a write at or before its last row.
 sqlive_compose::read!(
     writer ArtistWindowByName(
@@ -80,6 +82,36 @@ sqlive_compose::read!(
            listing.name_sort_key,
            listing.artist_id)
           >= (:key_1, :key_2, :key_3, :key_name, :key_id)
+    ORDER BY listing.name_sort_key,
+             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
+             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
+             listing.name_sort_key,
+             listing.artist_id
+    LIMIT :limit
+"#
+);
+
+// The list's first rows, at most `limit` of them, for each first term.
+sqlive_compose::read!(
+    writer ArtistTopByName(
+        field_2: Option<String>,
+        limit: i64
+    ) {
+        order_name: Vec<u8>,
+        order_id: String,
+        order_1: SortValue,
+        order_2: SortValue,
+        order_3: SortValue
+    },
+    r#"
+    SELECT listing.name_sort_key AS order_1,
+           CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END AS order_2,
+           CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END AS order_3,
+           listing.name_sort_key AS order_name,
+           listing.artist_id AS order_id,
+           shown.*
+    FROM artist_listing AS listing
+    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
     ORDER BY listing.name_sort_key,
              CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
              CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
@@ -129,6 +161,36 @@ sqlive_compose::read!(
 "#
 );
 
+// [`ArtistWindowByNameDescending`] from the list's top.
+sqlive_compose::read!(
+    writer ArtistTopByNameDescending(
+        field_2: Option<String>,
+        limit: i64
+    ) {
+        order_name: Vec<u8>,
+        order_id: String,
+        order_1: SortValue,
+        order_2: SortValue,
+        order_3: SortValue
+    },
+    r#"
+    SELECT listing.sort_name_back AS order_1,
+           CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END AS order_2,
+           CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END AS order_3,
+           listing.name_sort_key AS order_name,
+           listing.artist_id AS order_id,
+           shown.*
+    FROM artist_listing AS listing
+    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
+    ORDER BY listing.sort_name_back,
+             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
+             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
+             listing.name_sort_key,
+             listing.artist_id
+    LIMIT :limit
+"#
+);
+
 sqlive_compose::read!(
     writer ArtistWindowByAlbums(
         field_2: Option<String>,
@@ -169,6 +231,36 @@ sqlive_compose::read!(
 "#
 );
 
+// [`ArtistWindowByAlbums`] from the list's top.
+sqlive_compose::read!(
+    writer ArtistTopByAlbums(
+        field_2: Option<String>,
+        limit: i64
+    ) {
+        order_name: Vec<u8>,
+        order_id: String,
+        order_1: SortValue,
+        order_2: SortValue,
+        order_3: SortValue
+    },
+    r#"
+    SELECT listing.album_count AS order_1,
+           CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END AS order_2,
+           CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END AS order_3,
+           listing.name_sort_key AS order_name,
+           listing.artist_id AS order_id,
+           shown.*
+    FROM artist_listing AS listing
+    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
+    ORDER BY listing.album_count,
+             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
+             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
+             listing.name_sort_key,
+             listing.artist_id
+    LIMIT :limit
+"#
+);
+
 sqlive_compose::read!(
     writer ArtistWindowByAlbumsDescending(
         field_2: Option<String>,
@@ -200,6 +292,36 @@ sqlive_compose::read!(
            listing.name_sort_key,
            listing.artist_id)
           >= (:key_1, :key_2, :key_3, :key_name, :key_id)
+    ORDER BY listing.sort_albums_back,
+             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
+             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
+             listing.name_sort_key,
+             listing.artist_id
+    LIMIT :limit
+"#
+);
+
+// [`ArtistWindowByAlbumsDescending`] from the list's top.
+sqlive_compose::read!(
+    writer ArtistTopByAlbumsDescending(
+        field_2: Option<String>,
+        limit: i64
+    ) {
+        order_name: Vec<u8>,
+        order_id: String,
+        order_1: SortValue,
+        order_2: SortValue,
+        order_3: SortValue
+    },
+    r#"
+    SELECT listing.sort_albums_back AS order_1,
+           CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END AS order_2,
+           CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END AS order_3,
+           listing.name_sort_key AS order_name,
+           listing.artist_id AS order_id,
+           shown.*
+    FROM artist_listing AS listing
+    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
     ORDER BY listing.sort_albums_back,
              CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
              CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
@@ -420,17 +542,11 @@ pub(crate) fn artist_window_on(
     sort: &ListSort<ArtistSortField, 2>,
     window: &ListWindow,
 ) -> Result<WindowRead<DbArtistSummary>, DbError> {
-    // A window from a key starts at the key's row.
-    let ([key_1, key_2, key_3], key_name, key_id) = match &window.from {
-        Some(from) => key_values(from)?,
-        None => before_every_row(),
-    };
     let limit = sql_bound(window.limit);
+    let field_2 = sort.later(1);
     macro_rules! rows {
-        ($params:ident) => {{
-            let statement =
-                $params { field_2: sort.later(1), key_1, key_2, key_3, key_name, key_id, limit };
-            statement_rows(sql, &statement)?
+        ($statement:expr) => {{
+            statement_rows(sql, &$statement)?
                 .into_iter()
                 .map(|row| {
                     let key =
@@ -440,16 +556,41 @@ pub(crate) fn artist_window_on(
                 .collect::<Result<_, DbError>>()?
         }};
     }
+    // A window from the top reads from the order's first row, and one from a
+    // key from the key's row.
+    let Some(from) = &window.from else {
+        let rows = match sort.first() {
+            (ArtistSortField::Name, SortDirection::Ascending) => {
+                rows!(ArtistTopByNameParams { field_2, limit })
+            }
+            (ArtistSortField::Name, SortDirection::Descending) => {
+                rows!(ArtistTopByNameDescendingParams { field_2, limit })
+            }
+            (ArtistSortField::AlbumCount, SortDirection::Ascending) => {
+                rows!(ArtistTopByAlbumsParams { field_2, limit })
+            }
+            (ArtistSortField::AlbumCount, SortDirection::Descending) => {
+                rows!(ArtistTopByAlbumsDescendingParams { field_2, limit })
+            }
+        };
+        return Ok(WindowRead { window: window.clone(), rows });
+    };
+    let ([key_1, key_2, key_3], key_name, key_id) = key_values(from)?;
+    macro_rules! from_key {
+        ($params:ident) => {
+            rows!($params { field_2, key_1, key_2, key_3, key_name, key_id, limit })
+        };
+    }
     let rows = match sort.first() {
-        (ArtistSortField::Name, SortDirection::Ascending) => rows!(ArtistWindowByNameParams),
+        (ArtistSortField::Name, SortDirection::Ascending) => from_key!(ArtistWindowByNameParams),
         (ArtistSortField::Name, SortDirection::Descending) => {
-            rows!(ArtistWindowByNameDescendingParams)
+            from_key!(ArtistWindowByNameDescendingParams)
         }
         (ArtistSortField::AlbumCount, SortDirection::Ascending) => {
-            rows!(ArtistWindowByAlbumsParams)
+            from_key!(ArtistWindowByAlbumsParams)
         }
         (ArtistSortField::AlbumCount, SortDirection::Descending) => {
-            rows!(ArtistWindowByAlbumsDescendingParams)
+            from_key!(ArtistWindowByAlbumsDescendingParams)
         }
     };
     Ok(WindowRead { window: window.clone(), rows })

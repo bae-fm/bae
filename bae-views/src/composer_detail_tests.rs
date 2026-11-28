@@ -300,21 +300,31 @@ async fn the_page_rows_follow_writes_in_their_windows() {
     assert_eq!(other, 1);
 }
 
-/// The page's window seeks to its key through the page's index and sorts
-/// nothing there, and reads each row's work or credit by its key, so a window
-/// costs its own rows however long the page is.
+/// The page's window, from a key or from its top, searches the page's index
+/// and sorts nothing there, and reads each row's work or credit by its key, so
+/// a window costs its own rows however long the page is.
 #[tokio::test]
 async fn a_composer_page_window_seeks_the_pages_index_and_builds_no_whole_table() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     write_page(&db).await;
-    let statement = crate::composer_detail::ComposerPageWindow::SQL.to_string();
-    let steps = db
-        .read(move |sql| {
-            let params = rusqlite::params![COMPOSER, 0, [0_u8], "", 0.0, "", 0, [0_u8], 0, "", 50];
-            crate::tests::plan_steps(&sql, &statement, params)
-        })
-        .await
-        .unwrap();
+    for statement in [
+        crate::composer_detail::ComposerPageWindow::SQL,
+        crate::composer_detail::ComposerPageTop::SQL,
+    ] {
+        let steps = db
+            .read(move |sql| {
+                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+                crate::tests::plan_steps(&sql, statement, unbound)
+            })
+            .await
+            .unwrap();
+        assert_reads_the_page_index(&steps);
+    }
+}
+
+/// Asserts that `steps` search the page's index, build no whole table and sort
+/// nothing in the statement's own SELECT.
+fn assert_reads_the_page_index(steps: &[crate::tests::PlanStep]) {
     let seeks = steps.iter().any(|step| {
         step.detail.starts_with("SEARCH listing USING")
             && step.detail.contains("idx_composer_detail_row_order")

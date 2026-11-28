@@ -48,14 +48,6 @@ impl<F: ListSortField, const N: usize> ListSort<F, N> {
     }
 }
 
-/// The key a window from the top binds, which every row comes after: no term
-/// is as low as the least integer, which SQLite also sorts before every blob.
-pub(crate) fn before_every_row<const N: usize>() -> ([SortValue; N], SortValue, String) {
-    let sorts =
-        std::array::from_fn(|place| SortValue::Integer(if place == 0 { i64::MIN } else { 0 }));
-    (sorts, SortValue::Integer(0), String::new())
-}
-
 /// The key of a row with the value `sorts` for each criterion, the name key
 /// `name` and the id `id`.
 pub(crate) fn key<const N: usize>(sorts: [SortValue; N], name: Vec<u8>, id: String) -> OrderKey {

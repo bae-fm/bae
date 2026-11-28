@@ -68,26 +68,6 @@ impl StorageLead {
             Self::AddedBack => "added_back",
         }
     }
-
-    /// A value no release's column for the sort comes before, in the column's
-    /// own type and collation.
-    fn least(self) -> SortValue {
-        match self {
-            Self::Title => SortValue::Blob(Vec::new()),
-            Self::Artist | Self::Media | Self::Added => SortValue::Text(String::new()),
-            // In the `descending` collation the last text by its bytes sorts
-            // first.
-            Self::TitleBack | Self::ArtistBack | Self::MediaBack | Self::AddedBack => {
-                SortValue::Text(char::MAX.to_string())
-            }
-            Self::Files
-            | Self::FilesBack
-            | Self::Size
-            | Self::SizeBack
-            | Self::Storage
-            | Self::StorageBack => SortValue::Integer(i64::MIN),
-        }
-    }
 }
 
 /// Which releases a Storage Manager list keeps.
@@ -146,19 +126,6 @@ pub(crate) struct StorageList {
 impl StorageList {
     pub(crate) fn new(sort: &StorageSortCriterion, filter: StorageFilter, search: &str) -> Self {
         Self { lead: StorageLead::of(sort), scope: StorageScope::new(filter, search) }
-    }
-
-    /// A key no release of the whole or the filtered list comes before: where
-    /// a window from its top starts.
-    pub(super) fn top(&self) -> [SortValue; 4] {
-        let empty = || SortValue::Text(String::new());
-        [self.lead.least(), SortValue::Blob(Vec::new()), empty(), empty()]
-    }
-
-    /// A key no release a search finds comes before. Every number sorts before
-    /// the sort's other terms, whichever of its two columns it is in.
-    pub(super) fn found_top() -> [SortValue; 5] {
-        std::array::from_fn(|_| SortValue::Integer(i64::MIN))
     }
 
     /// The values `key` names. Only the list's own reads make its keys.

@@ -127,11 +127,12 @@ async fn compiled_plan(db: &Store, statement: &'static str) -> Vec<crate::tests:
     .unwrap()
 }
 
-/// Whatever the list sorts by, whole or filtered, its window searches the
-/// index of that sort and reads it in order: the statement sorts nothing.
+/// Whatever the list sorts by, whole or filtered, its window from a key or
+/// from the top reads the index of that sort in order: the statement sorts
+/// nothing.
 #[tokio::test]
 async fn every_storage_sort_seeks_its_window_through_its_index() {
-    use crate::storage::{kept_window_reads::*, window_reads::*};
+    use crate::storage::{kept_window_reads::*, top_reads::*, window_reads::*};
     let (db, _tmp) = library().await;
     let windows = [
         (AllWindowTitle::SQL, "title"),
@@ -162,25 +163,59 @@ async fn every_storage_sort_seeks_its_window_through_its_index() {
         (KeptWindowStorageBack::SQL, "stored_storage_back"),
         (KeptWindowAdded::SQL, "stored_added"),
         (KeptWindowAddedBack::SQL, "stored_added_back"),
+        (AllTopTitle::SQL, "title"),
+        (AllTopTitleBack::SQL, "title_back"),
+        (AllTopArtist::SQL, "artist"),
+        (AllTopArtistBack::SQL, "artist_back"),
+        (AllTopMedia::SQL, "media"),
+        (AllTopMediaBack::SQL, "media_back"),
+        (AllTopFiles::SQL, "files"),
+        (AllTopFilesBack::SQL, "files_back"),
+        (AllTopSize::SQL, "size"),
+        (AllTopSizeBack::SQL, "size_back"),
+        (AllTopStorage::SQL, "storage"),
+        (AllTopStorageBack::SQL, "storage_back"),
+        (AllTopAdded::SQL, "added"),
+        (AllTopAddedBack::SQL, "added_back"),
+        (KeptTopTitle::SQL, "stored_title"),
+        (KeptTopTitleBack::SQL, "stored_title_back"),
+        (KeptTopArtist::SQL, "stored_artist"),
+        (KeptTopArtistBack::SQL, "stored_artist_back"),
+        (KeptTopMedia::SQL, "stored_media"),
+        (KeptTopMediaBack::SQL, "stored_media_back"),
+        (KeptTopFiles::SQL, "stored_files"),
+        (KeptTopFilesBack::SQL, "stored_files_back"),
+        (KeptTopSize::SQL, "stored_size"),
+        (KeptTopSizeBack::SQL, "stored_size_back"),
+        (KeptTopStorage::SQL, "stored_storage"),
+        (KeptTopStorageBack::SQL, "stored_storage_back"),
+        (KeptTopAdded::SQL, "stored_added"),
+        (KeptTopAddedBack::SQL, "stored_added_back"),
     ];
     for (statement, name) in windows {
         let steps = compiled_plan(&db, statement).await;
         let own: Vec<&str> =
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         let first = own.first().expect("the statement has a plan");
-        let index = format!("INDEX idx_release_listing_{name} (");
-        assert!(first.starts_with("SEARCH entry USING ") && first.contains(&index), "{steps:?}");
+        let index = format!("INDEX idx_release_listing_{name}");
+        let reads_index = first
+            .strip_suffix(&index)
+            .is_some_and(|read| read.starts_with("SCAN entry USING "))
+            || (first.starts_with("SEARCH entry USING ") && first.contains(&format!("{index} (")));
+        assert!(reads_index, "{steps:?}");
         assert!(!own.iter().any(|step| step.starts_with("USE TEMP B-TREE")), "{name}: {steps:?}");
     }
 }
 
-/// A searched window, count of rows before a key and jump never scan the
-/// listing: they reach it by the albums the search finds.
+/// A searched window, from a key or the top, count of rows before a key and
+/// jump never scan the listing: they reach it by the albums the search finds.
 #[tokio::test]
 async fn a_searched_storage_read_never_scans_the_listing() {
     use crate::storage::found_reads::*;
     let (db, _tmp) = library().await;
-    for statement in [FoundWindow::SQL, FoundBefore::SQL, FoundKeyAt::SQL, FoundTotals::SQL] {
+    for statement in
+        [FoundWindow::SQL, FoundTop::SQL, FoundBefore::SQL, FoundKeyAt::SQL, FoundTotals::SQL]
+    {
         let steps = compiled_plan(&db, statement).await;
         assert!(
             !steps.iter().any(|step| ["entry", "sorted", "counted", "kept"].iter().any(|alias| {

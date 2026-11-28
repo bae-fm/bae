@@ -11,6 +11,7 @@ use bae_records::records::files::CoverVersion;
 use bae_store::{statement_optional, statement_row, statement_rows};
 
 mod list;
+mod top_reads;
 mod window_reads;
 pub(crate) use list::{
     composer_key_at_on, composer_list_length_on, composer_page_on, composer_sort,

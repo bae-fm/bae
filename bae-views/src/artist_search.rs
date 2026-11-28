@@ -88,6 +88,31 @@ sqlive_compose::read!(
 "#
 );
 
+// [`ArtistSearchWindow`] from the top of what the text finds.
+sqlive_compose::read!(
+    writer ArtistSearchTop(
+        text: String,
+        pattern: String,
+        limit: i64
+    ) { order_rank: i64, order_name: Vec<u8>, order_id: String },
+    r#"
+    SELECT picked.match_rank AS order_rank, picked.ranked_name_key AS order_name,
+           picked.ranked_artist_id AS order_id,
+           artist.*, image.*, names.*
+    FROM (SELECT ranked.ranked_artist_id, ranked.match_rank, ranked.ranked_name_key
+          FROM @crate::artist_search::RankedArtists(text: :text, pattern: :pattern) AS ranked
+          ORDER BY ranked.match_rank, ranked.ranked_name_key, ranked.ranked_artist_id
+          LIMIT :limit) AS picked
+    CROSS JOIN @bae_records::records::browse_fragments::ArtistRecord AS artist
+            ON artist.artist_id = picked.ranked_artist_id
+    LEFT JOIN @bae_records::records::files::ArtistImageVersion AS image
+           ON image.id = picked.ranked_artist_id
+    CROSS JOIN @bae_records::records::artist_credit_names::ArtistOtherNames AS names
+            ON names.names_artist_id = picked.ranked_artist_id
+    ORDER BY picked.match_rank, picked.ranked_name_key, picked.ranked_artist_id
+"#
+);
+
 // How many of the artists the text finds come before the row at a key.
 sqlive_compose::read!(
     writer ArtistSearchBefore(
@@ -252,31 +277,30 @@ fn artist_search_window_on(
     query: &crate::LibrarySearchQuery,
     window: &ListWindow,
 ) -> Result<WindowRead<DbArtistSearchRow>, DbError> {
-    // No artist comes before the top: no rank is below 0, and no name key or
-    // id below the empty one.
-    let ([key_rank], key_name, key_id) = match &window.from {
-        Some(from) => key_values(from)?,
-        None => ([SortValue::Integer(0)], SortValue::Blob(Vec::new()), String::new()),
+    let (text, pattern) = (query.as_str().to_string(), search_pattern(query.as_str()));
+    let limit = sql_bound(window.limit);
+    macro_rules! rows {
+        ($statement:expr) => {
+            statement_rows(sql, &$statement)?
+                .into_iter()
+                .map(|row| {
+                    let found = DbArtistSearchRow {
+                        artist: row.artist.into_artist()?,
+                        image_version: row.image.and_then(ArtistImageVersion::into_version),
+                        credit_names: row.names.into_names().0,
+                    };
+                    Ok((found, artist_search_key(row.order_rank, row.order_name, row.order_id)))
+                })
+                .collect::<Result<_, DbError>>()?
+        };
+    }
+    let rows = match &window.from {
+        None => rows!(ArtistSearchTopParams { text, pattern, limit }),
+        Some(from) => {
+            let ([key_rank], key_name, key_id) = key_values(from)?;
+            rows!(ArtistSearchWindowParams { text, pattern, limit, key_rank, key_name, key_id })
+        }
     };
-    let statement = ArtistSearchWindowParams {
-        text: query.as_str().to_string(),
-        pattern: search_pattern(query.as_str()),
-        limit: sql_bound(window.limit),
-        key_rank,
-        key_name,
-        key_id,
-    };
-    let rows = statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| {
-            let found = DbArtistSearchRow {
-                artist: row.artist.into_artist()?,
-                image_version: row.image.and_then(ArtistImageVersion::into_version),
-                credit_names: row.names.into_names().0,
-            };
-            Ok((found, artist_search_key(row.order_rank, row.order_name, row.order_id)))
-        })
-        .collect::<Result<_, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 

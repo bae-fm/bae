@@ -1,6 +1,7 @@
 //! A window of the list, loaded whole in one statement: the compiled read of
-//! the list's order (`window_reads`), which joins the placement's two sides
-//! from the window's first key on and reads what each item's row shows beside
+//! the list's order, which joins the placement's two sides from the window's
+//! first key on (`window_reads`), or from the order's first row for a window
+//! from the list's top (`top_reads`), and reads what each item's row shows beside
 //! its placement through the placement's row fragments (`row_fragments`), so
 //! the statement reads only the window's rows, however many items the list
 //! holds.
@@ -20,6 +21,7 @@
 use super::list_items::{key_of, key_values, keyed_params, Item, ListBinding};
 use super::listed::{ListedColumns, PlacementColumns};
 use super::row_columns::{self, ReleaseColumns, ShownColumns};
+use super::top_reads::*;
 use super::window_reads::*;
 use super::*;
 use crate::candidate_detail::ListedRelease;
@@ -32,7 +34,7 @@ use crate::triage::{
 use crate::{CandidateKey, ImportListOrder, ReleaseLink};
 use bae_catalogs::records::ReleaseRecord;
 use bae_records::UploadProgress;
-use bae_store::list_windows::{OrderKey, SortValue, WindowRead};
+use bae_store::list_windows::{OrderKey, WindowRead};
 use bae_store::ListWindow;
 use bae_types::credits::CreditLine;
 #[cfg(test)]
@@ -134,8 +136,13 @@ macro_rules! stored_item {
     }};
 }
 
-/// The window's statement: the read of the list's order, with what it binds.
+/// The window's statement: the read of the list's order from its top, or from
+/// a key, with what it binds.
 pub(super) enum WindowStatement {
+    NewestFirstTop(NewestFirstTopParams),
+    OldestFirstTop(OldestFirstTopParams),
+    PathAscendingTop(PathAscendingTopParams),
+    PathDescendingTop(PathDescendingTopParams),
     NewestFirst(NewestFirstWindowParams),
     OldestFirst(OldestFirstWindowParams),
     PathAscending(PathAscendingWindowParams),
@@ -143,15 +150,31 @@ pub(super) enum WindowStatement {
 }
 
 impl WindowStatement {
-    /// The statement reading the window `window` of the list `request` shows.
-    /// A window from the list's top binds a key whose first value sorts
-    /// before every row's, which the read's comparisons take every row past.
+    /// The statement reading the window `window` of the list `request` shows:
+    /// from the order's first row for a window from the list's top, else from
+    /// the window's key.
     pub(super) fn of(request: &ImportListRequest, window: &ListWindow) -> Result<Self, DbError> {
         let ListBinding { tab, filter, filter_text, folds_only, folded } = ListBinding::of(request);
         let limit = bae_store::list_windows::sql_bound(window.limit);
-        let from = window.from.as_ref();
+        let Some(from) = &window.from else {
+            macro_rules! top {
+                ($params:ident) => {
+                    $params { tab, filter, filter_text, folds_only, folded, limit }
+                };
+            }
+            return Ok(match request.view.order {
+                ImportListOrder::NewestFirst => Self::NewestFirstTop(top!(NewestFirstTopParams)),
+                ImportListOrder::OldestFirst => Self::OldestFirstTop(top!(OldestFirstTopParams)),
+                ImportListOrder::PathAscending => {
+                    Self::PathAscendingTop(top!(PathAscendingTopParams))
+                }
+                ImportListOrder::PathDescending => {
+                    Self::PathDescendingTop(top!(PathDescendingTopParams))
+                }
+            });
+        };
         macro_rules! bound {
-            ($params:ident, $key:expr, [$($column:ident)*]) => {
+            ($params:ident, [$($column:ident)*]) => {
                 keyed_params!(
                     $params {
                         tab: tab,
@@ -161,7 +184,7 @@ impl WindowStatement {
                         folded: folded,
                         limit: limit,
                     },
-                    $key,
+                    key_values(from)?,
                     [$($column)*]
                 )
             };
@@ -169,36 +192,32 @@ impl WindowStatement {
         Ok(match request.view.order {
             ImportListOrder::NewestFirst => Self::NewestFirst(bound!(
                 NewestFirstWindowParams,
-                window_key(from, BELOW_EVERY_FLAG)?,
                 [
                     order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
-                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
-                    order_key_10 order_key_11 order_key_12 order_key_13
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
                 ]
             )),
             ImportListOrder::OldestFirst => Self::OldestFirst(bound!(
                 OldestFirstWindowParams,
-                window_key(from, BELOW_EVERY_FLAG)?,
                 [
                     order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
-                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
-                    order_key_10 order_key_11 order_key_12 order_key_13
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
                 ]
             )),
             ImportListOrder::PathAscending => Self::PathAscending(bound!(
                 PathAscendingWindowParams,
-                window_key(from, BELOW_EVERY_FLAG)?,
                 [
                     order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
-                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
                 ]
             )),
             ImportListOrder::PathDescending => Self::PathDescending(bound!(
                 PathDescendingWindowParams,
-                window_key(from, ABOVE_EVERY_FLAG)?,
                 [
                     order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
-                    order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
                 ]
             )),
         })
@@ -208,6 +227,10 @@ impl WindowStatement {
     #[cfg(test)]
     pub(super) fn parts(&self) -> (&'static str, Vec<(&'static str, &dyn ToSql)>) {
         match self {
+            Self::NewestFirstTop(params) => (NewestFirstTop::SQL, params.params()),
+            Self::OldestFirstTop(params) => (OldestFirstTop::SQL, params.params()),
+            Self::PathAscendingTop(params) => (PathAscendingTop::SQL, params.params()),
+            Self::PathDescendingTop(params) => (PathDescendingTop::SQL, params.params()),
             Self::NewestFirst(params) => (NewestFirstWindow::SQL, params.params()),
             Self::OldestFirst(params) => (OldestFirstWindow::SQL, params.params()),
             Self::PathAscending(params) => (PathAscendingWindow::SQL, params.params()),
@@ -232,6 +255,24 @@ impl WindowStatement {
             };
         }
         Ok(match self {
+            Self::NewestFirstTop(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
+            ]),
+            Self::OldestFirstTop(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
+            ]),
+            Self::PathAscendingTop(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+            ]),
+            Self::PathDescendingTop(params) => items!(params, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+            ]),
             Self::NewestFirst(params) => items!(params, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
@@ -253,28 +294,6 @@ impl WindowStatement {
         })
     }
 }
-
-/// The values a window's read binds for its order's terms: those of the key
-/// `from`, or, from the list's top, `before_every_row` for the first term and
-/// NULL for the rest, which every row's key sorts after.
-fn window_key<const N: usize>(
-    from: Option<&OrderKey>,
-    before_every_row: i64,
-) -> Result<[SortValue; N], DbError> {
-    if let Some(key) = from {
-        return key_values(key);
-    }
-    let mut values = std::array::from_fn(|_term| SortValue::Null);
-    if let Some(first) = values.first_mut() {
-        *first = SortValue::Integer(before_every_row);
-    }
-    Ok(values)
-}
-
-/// A value before the 0 or 1 an order's first term is, in an ascending
-/// order, and one past it, in a descending one.
-const BELOW_EVERY_FLAG: i64 = -1;
-const ABOVE_EVERY_FLAG: i64 = 2;
 
 /// The plans SQLite reads the windows of the list `request` shows by, one
 /// line per step: from the list's top, then from its first item. What a test

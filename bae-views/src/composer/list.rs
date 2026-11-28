@@ -14,7 +14,10 @@
 //! coven narrows an expression over stored columns alone.
 //!
 //! SQLite fixes the column a statement's index leads with, so each read has
-//! one statement for each term the sort can lead with. Each statement writes
+//! one statement for each term the sort can lead with, and a window has two:
+//! one that reads from a key (`window_reads`), and one with no key that reads
+//! from the order's first row, for a window from the list's top
+//! (`top_reads`). Each statement writes
 //! the order over the list table's own columns, and what coven reruns a window
 //! or a count for depends on the term the sort leads with. Under an ascending
 //! one, only a write on their side of the key reruns them, and a full window
@@ -28,13 +31,18 @@
 //! sort leads with the name, and every composer with one count when it leads
 //! with a count.
 
+use super::top_reads::{
+    ComposerTopByNameDescendingParams, ComposerTopByNameParams,
+    ComposerTopByReleasesDescendingParams, ComposerTopByReleasesParams,
+    ComposerTopByWorksDescendingParams, ComposerTopByWorksParams,
+};
 use super::window_reads::{
     ComposerWindowByNameDescendingParams, ComposerWindowByNameParams,
     ComposerWindowByReleasesDescendingParams, ComposerWindowByReleasesParams,
     ComposerWindowByWorksDescendingParams, ComposerWindowByWorksParams,
 };
 use super::*;
-use crate::list_sort::{before_every_row, key, key_values, ListSort, ListSortField};
+use crate::list_sort::{key, key_values, ListSort, ListSortField};
 use bae_store::list_windows::{sql_bound, SortValue};
 use bae_store::{statement_optional, statement_row, statement_rows};
 
@@ -558,27 +566,11 @@ pub(crate) fn composer_window_on(
     sort: &ListSort<ComposerSortField, 3>,
     window: &ListWindow,
 ) -> Result<WindowRead<DbComposerSummary>, DbError> {
-    // A window from a key starts at the key's row.
-    let ([key_1, key_2, key_3, key_4, key_5], key_name, key_id) = match &window.from {
-        Some(from) => key_values(from)?,
-        None => before_every_row(),
-    };
     let limit = sql_bound(window.limit);
+    let (field_2, field_3) = (sort.later(1), sort.later(2));
     macro_rules! rows {
-        ($params:ident) => {{
-            let statement = $params {
-                field_2: sort.later(1),
-                field_3: sort.later(2),
-                key_1,
-                key_2,
-                key_3,
-                key_4,
-                key_5,
-                key_name,
-                key_id,
-                limit,
-            };
-            statement_rows(sql, &statement)?
+        ($statement:expr) => {{
+            statement_rows(sql, &$statement)?
                 .into_iter()
                 .map(|row| {
                     let key = key(
@@ -591,22 +583,69 @@ pub(crate) fn composer_window_on(
                 .collect::<Result<_, DbError>>()?
         }};
     }
+    // A window from the top reads from the order's first row, and one from a
+    // key from the key's row.
+    let Some(from) = &window.from else {
+        macro_rules! top {
+            ($params:ident) => {
+                rows!($params { field_2, field_3, limit })
+            };
+        }
+        let rows = match sort.first() {
+            (ComposerSortField::Name, SortDirection::Ascending) => top!(ComposerTopByNameParams),
+            (ComposerSortField::Name, SortDirection::Descending) => {
+                top!(ComposerTopByNameDescendingParams)
+            }
+            (ComposerSortField::WorkCount, SortDirection::Ascending) => {
+                top!(ComposerTopByWorksParams)
+            }
+            (ComposerSortField::WorkCount, SortDirection::Descending) => {
+                top!(ComposerTopByWorksDescendingParams)
+            }
+            (ComposerSortField::LinkedReleaseCount, SortDirection::Ascending) => {
+                top!(ComposerTopByReleasesParams)
+            }
+            (ComposerSortField::LinkedReleaseCount, SortDirection::Descending) => {
+                top!(ComposerTopByReleasesDescendingParams)
+            }
+        };
+        return Ok(WindowRead { window: window.clone(), rows });
+    };
+    let ([key_1, key_2, key_3, key_4, key_5], key_name, key_id) = key_values(from)?;
+    macro_rules! from_key {
+        ($params:ident) => {
+            rows!($params {
+                field_2,
+                field_3,
+                key_1,
+                key_2,
+                key_3,
+                key_4,
+                key_5,
+                key_name,
+                key_id,
+                limit
+            })
+        };
+    }
     let rows = match sort.first() {
-        (ComposerSortField::Name, SortDirection::Ascending) => rows!(ComposerWindowByNameParams),
+        (ComposerSortField::Name, SortDirection::Ascending) => {
+            from_key!(ComposerWindowByNameParams)
+        }
         (ComposerSortField::Name, SortDirection::Descending) => {
-            rows!(ComposerWindowByNameDescendingParams)
+            from_key!(ComposerWindowByNameDescendingParams)
         }
         (ComposerSortField::WorkCount, SortDirection::Ascending) => {
-            rows!(ComposerWindowByWorksParams)
+            from_key!(ComposerWindowByWorksParams)
         }
         (ComposerSortField::WorkCount, SortDirection::Descending) => {
-            rows!(ComposerWindowByWorksDescendingParams)
+            from_key!(ComposerWindowByWorksDescendingParams)
         }
         (ComposerSortField::LinkedReleaseCount, SortDirection::Ascending) => {
-            rows!(ComposerWindowByReleasesParams)
+            from_key!(ComposerWindowByReleasesParams)
         }
         (ComposerSortField::LinkedReleaseCount, SortDirection::Descending) => {
-            rows!(ComposerWindowByReleasesDescendingParams)
+            from_key!(ComposerWindowByReleasesDescendingParams)
         }
     };
     Ok(WindowRead { window: window.clone(), rows })

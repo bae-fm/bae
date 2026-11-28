@@ -236,6 +236,32 @@ sqlive_compose::read!(
 "#
 );
 
+// [`ComposerPageWindow`] from the page's top.
+sqlive_compose::read!(
+    writer ComposerPageTop(
+        artist: String,
+        limit: i64
+    ) { order_key_0: SortValue, order_key_1: SortValue, order_key_2: SortValue, order_key_3: SortValue, order_key_4: SortValue, order_key_5: SortValue, order_key_6: SortValue, order_key_7: SortValue, order_key_8: SortValue },
+    r#"
+    SELECT listing.section AS order_key_0,
+           listing.group_title_sort_key AS order_key_1,
+           listing.sort_group_album AS order_key_2,
+           listing.sort_group_order AS order_key_3,
+           listing.group_id AS order_key_4,
+           listing.sort_place AS order_key_5,
+           listing.sort_title AS order_key_6,
+           listing.sort_position AS order_key_7,
+           listing.item_id AS order_key_8,
+           shown.*
+    FROM composer_detail_row AS listing
+    CROSS JOIN @crate::composer_detail::ComposerPageEntry AS shown
+            ON shown.row_entry = listing.entry
+    WHERE listing.artist_id = :artist
+    ORDER BY listing.section, listing.group_title_sort_key, listing.sort_group_album, listing.sort_group_order, listing.group_id, listing.sort_place, listing.sort_title, listing.sort_position, listing.item_id
+    LIMIT :limit
+"#
+);
+
 // The rows of the composer `artist`'s page at the places from `offset`, at
 // most `limit`.
 sqlive_compose::read!(
@@ -326,24 +352,6 @@ sqlive_compose::read!(
 "#
 );
 
-/// A key before every row of a composer's page: a part before the first.
-fn top_of_page() -> [SortValue; 9] {
-    let text = || SortValue::Text(String::new());
-    let blob = || SortValue::Blob(Vec::new());
-    let zero = || SortValue::Integer(0);
-    [
-        SortValue::Integer(-1),
-        blob(),
-        text(),
-        SortValue::Real(0.0),
-        text(),
-        zero(),
-        blob(),
-        zero(),
-        text(),
-    ]
-}
-
 /// The nine values of the page's order `key` holds. Only the page's reads make
 /// its keys.
 fn page_key_values(key: &OrderKey) -> Result<[SortValue; 9], DbError> {
@@ -351,45 +359,56 @@ fn page_key_values(key: &OrderKey) -> Result<[SortValue; 9], DbError> {
         .map_err(|values| DbError::unreadable("a composer page key", values))
 }
 
-/// The `window` of `artist_id`'s page, each row with its key.
+/// The `window` of `artist_id`'s page, each row with its key: from the page's
+/// first row for a window from its top, else from the window's key.
 fn composer_page_window_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
     window: &ListWindow,
 ) -> Result<WindowRead<DbComposerDetailRow>, DbError> {
-    let from = window.from.as_ref().map(page_key_values).transpose()?;
-    let [order_key_0, order_key_1, order_key_2, order_key_3, order_key_4, order_key_5, order_key_6, order_key_7, order_key_8] =
-        from.unwrap_or_else(top_of_page);
-    let statement = ComposerPageWindowParams {
-        artist: artist_id.to_string(),
-        order_key_0,
-        order_key_1,
-        order_key_2,
-        order_key_3,
-        order_key_4,
-        order_key_5,
-        order_key_6,
-        order_key_7,
-        order_key_8,
-        limit: bae_store::list_windows::sql_bound(window.limit),
+    let artist = artist_id.to_string();
+    let limit = bae_store::list_windows::sql_bound(window.limit);
+    macro_rules! rows {
+        ($statement:expr) => {
+            statement_rows(sql, &$statement)?
+                .into_iter()
+                .map(|row| {
+                    let key = OrderKey::new(vec![
+                        row.order_key_0,
+                        row.order_key_1,
+                        row.order_key_2,
+                        row.order_key_3,
+                        row.order_key_4,
+                        row.order_key_5,
+                        row.order_key_6,
+                        row.order_key_7,
+                        row.order_key_8,
+                    ]);
+                    Ok((row_of_entry(row.shown)?, key))
+                })
+                .collect::<Result<_, DbError>>()?
+        };
+    }
+    let rows = match &window.from {
+        None => rows!(ComposerPageTopParams { artist, limit }),
+        Some(from) => {
+            let [order_key_0, order_key_1, order_key_2, order_key_3, order_key_4, order_key_5, order_key_6, order_key_7, order_key_8] =
+                page_key_values(from)?;
+            rows!(ComposerPageWindowParams {
+                artist,
+                order_key_0,
+                order_key_1,
+                order_key_2,
+                order_key_3,
+                order_key_4,
+                order_key_5,
+                order_key_6,
+                order_key_7,
+                order_key_8,
+                limit,
+            })
+        }
     };
-    let rows = statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| {
-            let key = OrderKey::new(vec![
-                row.order_key_0,
-                row.order_key_1,
-                row.order_key_2,
-                row.order_key_3,
-                row.order_key_4,
-                row.order_key_5,
-                row.order_key_6,
-                row.order_key_7,
-                row.order_key_8,
-            ]);
-            Ok((row_of_entry(row.shown)?, key))
-        })
-        .collect::<Result<_, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 

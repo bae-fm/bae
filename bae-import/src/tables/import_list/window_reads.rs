@@ -2,8 +2,8 @@
 //! shows. Each is the join of the rows that others sort under (`u`) with the
 //! rows sorting under each (`w`), read from the window's first key on in the
 //! order's indexes, so coven reruns a full window only for a write at or
-//! before its last row. A window from the list's top binds a key that sorts
-//! before every row. Each row selects its key, its release's placement, what
+//! before its last row. A window from the list's top reads from the order's
+//! first row through its own statement (`top_reads`). Each row selects its key, its release's placement, what
 //! the placement's fragments read past it, and for a member of a group,
 //! whether the list shows no member of the group after it.
 

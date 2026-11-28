@@ -16,6 +16,7 @@ use super::key_reads::*;
 use super::numbered_reads::*;
 use super::page_reads::*;
 use super::position_reads::*;
+use super::top_reads::*;
 use super::window_reads::*;
 
 // The flat grid's counts: its albums, each of which is one row, and whether
@@ -185,28 +186,61 @@ macro_rules! key_of {
     };
 }
 
-/// The grid's rows in `window` under `order`, each with its key.
+/// The grid's rows in `window` under `order`, each with its key. A window from
+/// the top reads from the order's first row, and one from a key from the
+/// key's row.
 pub(crate) fn album_window_on(
     sql: &SqlReadContext<'_>,
     order: &AlbumOrder,
     window: &ListWindow,
 ) -> Result<WindowRead<AlbumAppearanceRow>, DbError> {
-    let from = match &window.from {
-        Some(key) => AlbumOrder::values_of(key)?,
-        None => order.top(),
+    let [first, second, third, fourth] = order.codes();
+    let limit = sql_bound(window.limit);
+    macro_rules! rows {
+        ($statement:expr, |$row:ident| $beside:expr) => {
+            statement_rows(sql, &$statement)?
+                .into_iter()
+                .map(|$row| {
+                    let key = key_of!($row);
+                    Ok((AlbumAppearanceRow::of($row.card, $beside)?, key))
+                })
+                .collect::<Result<Vec<_>, DbError>>()?
+        };
+    }
+    let Some(from) = &window.from else {
+        macro_rules! top {
+            ($params:ident, |$row:ident| $beside:expr) => {
+                rows!($params { first, second, third, fourth, limit }, |$row| $beside)
+            };
+        }
+        let rows = match order.lead {
+            AlbumLead::Flat(SortCode::Title) => top!(FlatTopTitleParams, |row| None),
+            AlbumLead::Flat(SortCode::TitleBack) => top!(FlatTopTitleBackParams, |row| None),
+            AlbumLead::Flat(SortCode::Artist) => top!(FlatTopArtistParams, |row| None),
+            AlbumLead::Flat(SortCode::ArtistBack) => top!(FlatTopArtistBackParams, |row| None),
+            AlbumLead::Flat(SortCode::Year) => top!(FlatTopYearParams, |row| None),
+            AlbumLead::Flat(SortCode::YearBack) => top!(FlatTopYearBackParams, |row| None),
+            AlbumLead::Flat(SortCode::Added) => top!(FlatTopAddedParams, |row| None),
+            AlbumLead::Flat(SortCode::AddedBack) => top!(FlatTopAddedBackParams, |row| None),
+            AlbumLead::Grouped(SortDirection::Ascending) => {
+                top!(GroupedTopArtistParams, |row| row.beside.into_line()?)
+            }
+            AlbumLead::Grouped(SortDirection::Descending) => {
+                top!(GroupedTopArtistBackParams, |row| row.beside.into_line()?)
+            }
+        };
+        return Ok(WindowRead { window: window.clone(), rows });
     };
-    macro_rules! window {
-        ($params:ident, |$row:ident| $beside:expr) => {{
-            let [first, second, third, fourth] = order.codes();
-            let [key_0, key_1, key_2, key_3, key_4, key_5, key_6, key_7] = from;
-            statement_rows(
-                sql,
-                &$params {
+    let [key_0, key_1, key_2, key_3, key_4, key_5, key_6, key_7] = AlbumOrder::values_of(from)?;
+    macro_rules! from_key {
+        ($params:ident, |$row:ident| $beside:expr) => {
+            rows!(
+                $params {
                     first,
                     second,
                     third,
                     fourth,
-                    limit: sql_bound(window.limit),
+                    limit,
                     key_0,
                     key_1,
                     key_2,
@@ -216,36 +250,27 @@ pub(crate) fn album_window_on(
                     key_6,
                     key_7,
                 },
-            )?
-            .into_iter()
-            .map(|$row| {
-                let key = key_of!($row);
-                Ok((AlbumAppearanceRow::of($row.card, $beside)?, key))
-            })
-            .collect::<Result<Vec<_>, DbError>>()?
-        }};
-    }
-    macro_rules! flat {
-        ($params:ident) => {
-            window!($params, |row| None)
-        };
-    }
-    macro_rules! grouped {
-        ($params:ident) => {
-            window!($params, |row| row.beside.into_line()?)
+                |$row| $beside
+            )
         };
     }
     let rows = match order.lead {
-        AlbumLead::Flat(SortCode::Title) => flat!(FlatWindowTitleParams),
-        AlbumLead::Flat(SortCode::TitleBack) => flat!(FlatWindowTitleBackParams),
-        AlbumLead::Flat(SortCode::Artist) => flat!(FlatWindowArtistParams),
-        AlbumLead::Flat(SortCode::ArtistBack) => flat!(FlatWindowArtistBackParams),
-        AlbumLead::Flat(SortCode::Year) => flat!(FlatWindowYearParams),
-        AlbumLead::Flat(SortCode::YearBack) => flat!(FlatWindowYearBackParams),
-        AlbumLead::Flat(SortCode::Added) => flat!(FlatWindowAddedParams),
-        AlbumLead::Flat(SortCode::AddedBack) => flat!(FlatWindowAddedBackParams),
-        AlbumLead::Grouped(SortDirection::Ascending) => grouped!(GroupedWindowArtistParams),
-        AlbumLead::Grouped(SortDirection::Descending) => grouped!(GroupedWindowArtistBackParams),
+        AlbumLead::Flat(SortCode::Title) => from_key!(FlatWindowTitleParams, |row| None),
+        AlbumLead::Flat(SortCode::TitleBack) => from_key!(FlatWindowTitleBackParams, |row| None),
+        AlbumLead::Flat(SortCode::Artist) => from_key!(FlatWindowArtistParams, |row| None),
+        AlbumLead::Flat(SortCode::ArtistBack) => {
+            from_key!(FlatWindowArtistBackParams, |row| None)
+        }
+        AlbumLead::Flat(SortCode::Year) => from_key!(FlatWindowYearParams, |row| None),
+        AlbumLead::Flat(SortCode::YearBack) => from_key!(FlatWindowYearBackParams, |row| None),
+        AlbumLead::Flat(SortCode::Added) => from_key!(FlatWindowAddedParams, |row| None),
+        AlbumLead::Flat(SortCode::AddedBack) => from_key!(FlatWindowAddedBackParams, |row| None),
+        AlbumLead::Grouped(SortDirection::Ascending) => {
+            from_key!(GroupedWindowArtistParams, |row| row.beside.into_line()?)
+        }
+        AlbumLead::Grouped(SortDirection::Descending) => {
+            from_key!(GroupedWindowArtistBackParams, |row| row.beside.into_line()?)
+        }
     };
     Ok(WindowRead { window: window.clone(), rows })
 }
