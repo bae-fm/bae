@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use bae_diagnostics::Diagnostics;
 use bae_store::query::to_i64;
-use bae_store::{DbError, Store, WriteStatements};
+use bae_store::{statement_optional, DbError, Store, WriteStatements, WriterRead};
 use coven::CovenWrite;
 use tracing::{debug, warn};
 
@@ -274,15 +274,7 @@ impl TileDisk {
         let folder = folder.to_string();
         let kept = match mark {
             Mark::Used => self.store.call(move |sql| mark_used(sql, &folder)).await?,
-            Mark::Unused => {
-                self.store
-                    .read(move |sql| {
-                        pyramid_from(sql.query(PYRAMID, [&folder], |row| {
-                            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-                        })?)
-                    })
-                    .await?
-            }
+            Mark::Unused => self.store.read(move |sql| pyramid_on(&sql, folder)).await?,
         };
         Ok(kept)
     }
@@ -422,17 +414,24 @@ fn folder_for(identity: &str) -> String {
     bae_util::fs::hash_bytes(identity.as_bytes())
 }
 
-/// The statement that reads the pyramid a folder's row describes.
-const PYRAMID: &str = "SELECT width, height, format FROM cached_tiles WHERE folder = ?1";
+// The pyramid a folder's row describes.
+coven::read!(
+    writer KeptPyramid(folder: String) { width: u32, height: u32 },
+    r#"
+    SELECT tiles.width, tiles.height, tiles.format
+    FROM cached_tiles AS tiles
+    WHERE tiles.folder = :folder
+"#
+);
 
-/// The pyramid the row [`PYRAMID`] read describes, when it read one.
-fn pyramid_from(rows: Vec<(u32, u32, String)>) -> Result<Option<Pyramid>, DbError> {
-    rows.into_iter()
-        .next()
-        .map(|(width, height, format)| {
-            let format = CopyFormat::from_stored_name(&format)
-                .ok_or_else(|| DbError::unreadable("a tile format", &format))?;
-            Ok(Pyramid { width, height, format })
+/// The pyramid `folder`'s row describes, read in `sql`; none when there is no
+/// row.
+fn pyramid_on(sql: &impl WriterRead, folder: String) -> Result<Option<Pyramid>, DbError> {
+    statement_optional(sql, &KeptPyramidParams { folder })?
+        .map(|row| {
+            let format = CopyFormat::from_stored_name(&row.format)
+                .ok_or_else(|| DbError::unreadable("a tile format", &row.format))?;
+            Ok(Pyramid { width: row.width, height: row.height, format })
         })
         .transpose()
 }
@@ -474,7 +473,7 @@ coven::write!(DeleteAllTiles, r#"DELETE FROM cached_tiles"#);
 /// describes; none when there is no row.
 fn mark_used(sql: &CovenWrite<'_>, folder: &str) -> Result<Option<Pyramid>, DbError> {
     sql.run(&MarkTilesUsedParams { folder })?;
-    pyramid_from(sql.query(PYRAMID, [folder], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?)
+    pyramid_on(sql, folder.to_string())
 }
 
 /// Record `folder`, holding `pyramid` in `bytes`, as the most recently used,
