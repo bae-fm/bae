@@ -6,9 +6,9 @@ use super::tracklist::{insert_entry, insert_release_role, Numbering};
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::records::ReleaseRecord;
 use bae_catalogs::source_release::{CatalogFacts, SourceRelease, UnfetchedReason};
+use bae_store::WriteContext;
 use bae_store::{DbError, WriteStatements};
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
-use coven::CovenWrite;
 
 /// The `album_links` column a release's facts are stored with: a MusicBrainz
 /// release's reading, none for a Discogs release. Fetching a MusicBrainz
@@ -28,7 +28,7 @@ fn album_links_column(facts: &CatalogFacts) -> Option<&'static str> {
 
 /// Write `release`, replacing whatever was stored for it.
 pub(super) fn replace_source_release_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release: &SourceRelease,
 ) -> Result<(), DbError> {
     check_derived_facts(release);
@@ -224,7 +224,7 @@ pub(super) fn replace_source_release_on(
 /// Delete the rows under the release, children before the tables they hang
 /// off. Deleting a release's mediums takes its entries, and with them their
 /// credits, roles and works.
-fn delete_child_rows(sql: &CovenWrite<'_>, catalog: &str, key: &str) -> Result<(), DbError> {
+fn delete_child_rows(sql: &WriteContext<'_>, catalog: &str, key: &str) -> Result<(), DbError> {
     sql.run(&DeleteSourceReleaseLabelRowsParams { catalog, key })?;
     sql.run(&DeleteSourceReleaseBarcodeRowsParams { catalog, key })?;
     sql.run(&DeleteSourceReleaseAlbumArtistRowsParams { catalog, key })?;

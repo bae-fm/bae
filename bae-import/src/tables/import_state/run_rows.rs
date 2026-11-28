@@ -212,7 +212,7 @@ coven::write!(
 
 /// Delete every run's published state: nothing a run published outlives
 /// the process that ran it.
-pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+pub(super) fn delete_every_run_on(sql: &WriteContext<'_>) -> Result<(), DbError> {
     sql.run(&DeleteEveryRunParams {})?;
     Ok(())
 }
@@ -233,7 +233,7 @@ coven::write!(
 /// its rows name, and `signals`, where given, as what extraction last read
 /// for it.
 fn store_run_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     run: i64,
     outcome: &RunOutcome,
@@ -268,7 +268,7 @@ fn published_outcome(
 /// stands, with each of the `releases` it read that its rows name, and the
 /// signals it last read where it read new ones.
 pub(crate) fn store_release_run_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     run: IdentifyRunId,
     outcome: &RunOutcome,
@@ -294,7 +294,7 @@ coven::read!(
 /// its rows name, and the signals it last read, if its standing names that
 /// run; whether it did.
 fn publish_candidate_run_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     run: IdentifyRunId,
     outcome: &RunOutcome,

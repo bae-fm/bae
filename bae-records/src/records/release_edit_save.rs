@@ -172,22 +172,22 @@ impl Records {
         &self,
         plan: ReleaseEditPlan,
         gone: GonePicks,
-        inputs_unchanged: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
+        inputs_unchanged: impl for<'ctx> FnOnce(&WriteContext<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
             + Send
             + 'static,
         layout: impl for<'ctx> FnOnce(
-                &CovenWrite<'ctx>,
+                &WriteContext<'ctx>,
             ) -> Result<Option<super::layout::LaidRelease>, DbError>
             + Send
             + 'static,
         rebound: Option<super::sheet_files::ReboundAudio>,
         sheet_decisions: impl for<'ctx> FnOnce(
-                &CovenWrite<'ctx>,
+                &WriteContext<'ctx>,
                 &[(String, bae_types::mediums::MediumSide)],
             ) -> Result<(), DbError>
             + Send
             + 'static,
-        saved: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Saved, DbError> + Send + 'static,
+        saved: impl for<'ctx> FnOnce(&WriteContext<'ctx>) -> Result<Saved, DbError> + Send + 'static,
     ) -> Result<Saved, ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
         let ids = self.ids.clone();
@@ -306,7 +306,7 @@ coven::write!(
 /// picked artist the library no longer holds as `gone` says.
 #[cfg(desktop)]
 fn write_applied_rows_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     rows: &ReleaseRows,
     picked: &[String],
     album_fields: AlbumFields,

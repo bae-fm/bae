@@ -62,5 +62,5 @@ mod tests;
 pub mod window_cost;
 
 use bae_store::*;
-use coven::{CovenWrite, SqlReadContext};
+use bae_store::{ReadContext, WriteContext};
 use tracing::warn;

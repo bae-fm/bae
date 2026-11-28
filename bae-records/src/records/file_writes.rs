@@ -43,7 +43,7 @@ coven::write!(
 /// Insert a release file row referencing `coven_file`, the coven file the
 /// write staged for it.
 pub fn insert_release_file_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     file: &NewReleaseFile,
     coven_file: coven::FileId,
 ) -> Result<(), IdentityWriteError> {
@@ -98,7 +98,7 @@ coven::write!(
 "#
 );
 
-pub fn insert_audio_format_row(conn: &CovenWrite<'_>, af: &DbAudioFormat) -> Result<(), DbError> {
+pub fn insert_audio_format_row(conn: &WriteContext<'_>, af: &DbAudioFormat) -> Result<(), DbError> {
     conn.run(&InsertAudioFormatParams {
         id: &af.id,
         track_id: &af.track_id,
@@ -143,7 +143,7 @@ coven::write!(
 );
 
 pub fn insert_audio_segment_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     segment: &DbAudioSegment,
 ) -> Result<(), DbError> {
     conn.run(&InsertAudioSegmentParams {
@@ -170,7 +170,7 @@ coven::write!(
 );
 
 pub fn insert_scrub_points_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     points: &DbScrubPoints,
 ) -> Result<(), DbError> {
     conn.run(&InsertScrubPointsParams {
@@ -192,7 +192,7 @@ coven::write!(
 /// carves the track `track_id` out of an image, from under the sheet's
 /// `FILE` line `file_reference`.
 pub fn insert_carved_track_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     track_id: &str,
     sheet_file_id: &str,
     file_reference: &str,

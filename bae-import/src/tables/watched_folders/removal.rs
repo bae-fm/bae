@@ -148,7 +148,7 @@ fn check_in_place_of(
 /// every candidate found only there, each through the owner of its rows.
 /// Returns the keys of the grouping releases that went with their groupings.
 fn forget_folders_under(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     roots: &[PathBuf],
 ) -> Result<Vec<CandidateKey>, DbError> {
     let mut removed = Vec::new();

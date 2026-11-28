@@ -352,7 +352,7 @@ fn history_rows_before_read(
 /// The key of the play at `position` of History under `filter`, or of the last
 /// one when it ends before it; `None` for no plays.
 fn history_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     filter: &HistoryFilter,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {

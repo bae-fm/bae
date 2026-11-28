@@ -394,7 +394,7 @@ coven::write!(
 /// library label the rule in the module doc decides, inserting the new labels,
 /// filling in the linked ones and merging the labels one id names first.
 pub fn write_release_labels_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     release_id: &str,
     labels: &[ReleaseLabel],
     write: &PressingWrite<'_>,
@@ -459,7 +459,7 @@ fn labels_named_on<Q: bae_store::WriterRead>(
 
 /// The library label `label`, named `name`, names.
 fn resolve_label_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     label: &ReleaseLabel,
     name: &str,
     named_now: &[(String, String)],

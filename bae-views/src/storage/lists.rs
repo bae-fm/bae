@@ -191,7 +191,7 @@ pub(crate) fn storage_window_of(
 /// The list's rows in `window`, each with its key.
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn storage_window_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     list: &StorageList,
     window: &ListWindow,
 ) -> Result<WindowRead<StorageRowParts>, DbError> {
@@ -263,7 +263,7 @@ pub(crate) fn storage_rows_before_read(
 /// How many rows of the list come before the row at `key`.
 #[cfg(test)]
 pub(crate) fn storage_rows_before_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     list: &StorageList,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
@@ -275,7 +275,7 @@ pub(crate) fn storage_rows_before_on(
 /// The key of the row at `position` of the list, or of its last row when it
 /// ends before it; `None` for an empty list.
 pub(crate) fn storage_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     list: &StorageList,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {

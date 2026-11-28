@@ -61,7 +61,7 @@ coven::write!(
 /// Work out what the link of the candidate `content_hash` claims, over the
 /// claimed releases as this write has stored them, and store it in place of
 /// what was stored. A candidate linked to nothing claims nothing.
-pub(super) fn store_claims_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn store_claims_on(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteClaimedRecordsParams { content_hash })?;
     sql.run(&DeleteOfferedCoversParams { content_hash })?;
     let Some(listed) = load_release_link_on(sql, content_hash)? else {
@@ -136,7 +136,7 @@ coven::read!(
 /// Store again what every link claiming one of `releases` claims, inside the
 /// write that stored those releases again.
 pub(crate) fn store_claims_of_releases_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     releases: &[&bae_catalogs::records::LookupRef],
 ) -> Result<(), DbError> {
     if releases.is_empty() {
@@ -192,7 +192,7 @@ coven::read!(
 /// `albums` among its own albums (its group, or an album one of its records
 /// names), inside the write that changed the albums kept for them.
 pub(crate) fn store_claims_of_albums_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     albums: &[MetadataRef],
 ) -> Result<(), DbError> {
     if albums.is_empty() {

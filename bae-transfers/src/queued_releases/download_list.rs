@@ -5,8 +5,8 @@
 
 use crate::download_snapshot::DownloadRow;
 use bae_store::list_windows::{sql_bound, OrderKey, SortValue};
+use bae_store::ReadContext;
 use bae_store::{statement_optional, DbError, ListWindow, WindowRead};
-use coven::SqlReadContext;
 
 // The downloads list's order: each entry's place, in the order queued.
 coven::fragment!(
@@ -107,7 +107,7 @@ fn place_of(key: &OrderKey) -> Result<i64, DbError> {
 /// The downloads list's `window`: its entries from the window's key on, or
 /// from the top, each with its key.
 pub fn download_window_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     window: &ListWindow,
 ) -> Result<WindowRead<DownloadRow>, DbError> {
     download_window_of(window, sql.reads(&download_window_read(window)?)?)
@@ -153,7 +153,7 @@ pub fn download_window_of(
 
 /// How many entries of the downloads list come before the entry at `key`.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn downloads_before_on(sql: &SqlReadContext<'_>, key: &OrderKey) -> Result<u64, DbError> {
+pub fn downloads_before_on(sql: &ReadContext<'_>, key: &OrderKey) -> Result<u64, DbError> {
     Ok(bae_store::statement_row(sql, &downloads_before_read(key)?)?.entries)
 }
 
@@ -165,10 +165,7 @@ pub fn downloads_before_read(key: &OrderKey) -> Result<DownloadsBeforeParams, Db
 
 /// The key of the entry at `index`, or of the last one when the list ends
 /// before it; `None` for an empty list.
-pub fn download_key_at_on(
-    sql: &SqlReadContext<'_>,
-    index: u64,
-) -> Result<Option<OrderKey>, DbError> {
+pub fn download_key_at_on(sql: &ReadContext<'_>, index: u64) -> Result<Option<OrderKey>, DbError> {
     Ok(statement_optional(sql, &DownloadPlaceAtParams { index: sql_bound(index) })?
         .map(|row| key_of(row.entry.position)))
 }

@@ -405,7 +405,7 @@ coven::read!(
 /// something names it. What each link claiming a release this stores claims
 /// is stored again from it.
 pub(crate) fn store_named_releases_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     releases: &[SourceRelease],
 ) -> Result<(), DbError> {
     let mut stored_now = Vec::new();

@@ -285,7 +285,7 @@ fn artist_search_key(rank: i64, name: Vec<u8>, id: String) -> OrderKey {
 /// The artists `query` finds that `window` holds, each with its key.
 #[cfg(any(test, feature = "test-utils"))]
 fn artist_search_window_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     query: &crate::LibrarySearchQuery,
     window: &ListWindow,
 ) -> Result<WindowRead<DbArtistSearchRow>, DbError> {
@@ -364,7 +364,7 @@ fn artist_search_rows_before_read(
 /// The key of the artist at `position` of what `query` finds, or of the last
 /// one when it finds fewer.
 fn artist_search_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     query: &crate::LibrarySearchQuery,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {

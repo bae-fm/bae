@@ -563,7 +563,7 @@ coven::read!(
 /// The composer list's `window` under `sort`, each row with its key.
 #[cfg(test)]
 pub(crate) fn composer_window_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ComposerSortField, 3>,
     window: &ListWindow,
 ) -> Result<WindowRead<DbComposerSummary>, DbError> {
@@ -672,7 +672,7 @@ pub(crate) fn composer_window_read(
 /// The composer list's rows at `page`'s places under `sort`.
 #[cfg(test)]
 pub(crate) fn composer_page_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ComposerSortField, 3>,
     page: ListPage,
 ) -> Result<Vec<DbComposerSummary>, DbError> {
@@ -718,7 +718,7 @@ pub(crate) fn composer_page_read(
 /// How many composers come before the row at `at` under `sort`.
 #[cfg(test)]
 pub(crate) fn composers_before_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ComposerSortField, 3>,
     at: &OrderKey,
 ) -> Result<u64, DbError> {
@@ -769,7 +769,7 @@ pub(crate) fn composers_before_read(
 
 /// The key of the composer at `position` under `sort`, or of the last one.
 pub(crate) fn composer_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ComposerSortField, 3>,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {

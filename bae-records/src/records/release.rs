@@ -47,7 +47,7 @@ coven::write!(
 /// labels `pressing` decides.
 #[cfg(desktop)]
 pub(super) fn update_release_pressing_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     release: &DbRelease,
     pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
@@ -68,7 +68,7 @@ pub(super) fn update_release_pressing_on(
 /// barcodes.
 #[cfg(desktop)]
 fn update_release_typed_pressing_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     release: &DbRelease,
     pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
@@ -106,7 +106,7 @@ coven::write!(
 /// Write the facts of `facts` the release `release_id`'s own row keeps: its
 /// area, status and packaging.
 fn update_release_fact_columns_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     release_id: &str,
     facts: &bae_types::pressing::PressingFacts,
 ) -> Result<(), DbError> {
@@ -132,7 +132,10 @@ coven::write!(
 
 /// Write `album`'s title, year and compilation flag over its row.
 #[cfg(desktop)]
-pub(super) fn update_album_fields_on(tx: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
+pub(super) fn update_album_fields_on(
+    tx: &WriteContext<'_>,
+    album: &DbAlbum,
+) -> Result<(), DbError> {
     tx.run(&SetAlbumFieldsParams {
         id: &album.id,
         title: &album.title,
@@ -159,7 +162,7 @@ coven::write!(
 /// was read (a record is orthogonal to editable metadata).
 #[cfg(desktop)]
 pub(super) fn write_release_metadata_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     metadata: &ReleaseMetadataRows,
     album_fields: AlbumFields,
     pressing_facts: PressingFactsWrite,
@@ -228,7 +231,7 @@ impl Records {
         let pressing = PressingParts::new(&*self.ids, self.store.now_utc(), &release.pressing);
         self.store
             .write(move |sql| {
-                let changes = |sql: &CovenWrite<'_>| {
+                let changes = |sql: &WriteContext<'_>| {
                     Ok::<_, DbError>(bae_store::statement_row(sql, &TotalChangesParams {})?.changes)
                 };
                 let before = changes(&sql)?;

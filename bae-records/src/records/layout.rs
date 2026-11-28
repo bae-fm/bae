@@ -315,7 +315,7 @@ coven::write!(
 /// layout no longer holds goes after the tracks leave it.
 #[cfg(desktop)]
 pub(super) fn write_layout_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     release_id: &str,
     layout: &ReleaseLayout,
     ids: &dyn coven::IdSource,

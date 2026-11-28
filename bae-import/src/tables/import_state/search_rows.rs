@@ -40,7 +40,7 @@ coven::write!(
 );
 
 /// Delete every typed search: none outlives the process that asked it.
-pub(super) fn delete_every_search_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+pub(super) fn delete_every_search_on(sql: &WriteContext<'_>) -> Result<(), DbError> {
     sql.run(&DeleteEverySearchParams {})?;
     Ok(())
 }
@@ -297,7 +297,7 @@ coven::write!(
 /// Store what a pick of the release `release_id` read, in place of what an
 /// earlier pick of it read.
 fn store_pick_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     run: i64,
     release_id: &str,
     links: &AlbumLinks,
@@ -344,7 +344,7 @@ coven::write!(
 /// `held` — the files the write leaves the candidate with, `None` for a write
 /// that leaves the scan without it. Every row it owns goes with it.
 pub(super) fn end_search_unless_of_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
@@ -393,7 +393,7 @@ coven::write!(
 /// the library asks the catalog. The run its parts' answers land on, and the
 /// catalogs to ask, in their order.
 fn start_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     files: Option<&CandidateFiles>,
     query: &SearchQuery,
@@ -504,7 +504,7 @@ coven::read!(
 /// Land `catalog`'s answer on its part of the search `run`, if that part is
 /// still searching; whether it landed.
 fn land_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     run: SearchRun,
     catalog: LookupCatalog,
     outcome: &Result<Vec<MetadataResult>, Failure>,

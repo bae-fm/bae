@@ -129,7 +129,7 @@ coven::write!(
 
 /// Delete the draft of `content_hash`: its source and every row below it
 /// hang off the draft row and go with it.
-pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_draft(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteDraftParams { content_hash })?;
     Ok(())
 }
@@ -137,7 +137,7 @@ pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(
 /// The draft row of a candidate that has none yet, with everything hanging
 /// off it: its album artists, its mediums, its tracks and their values.
 pub(super) fn insert_draft(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     draft: &CandidateDraft,
     author: MetadataAuthor,
@@ -189,7 +189,7 @@ impl EditRow {
 /// The draft's mediums, tracks and the values hanging off them: the rows
 /// below the draft row besides its album artists.
 pub(super) fn insert_draft_body(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
@@ -205,7 +205,7 @@ pub(super) fn insert_draft_body(
 /// The track at `position` with the rows hanging off it, where none is
 /// stored.
 fn insert_track(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     position: usize,
     track: &CandidateTrack,
@@ -216,7 +216,7 @@ fn insert_track(
 
 /// The track's own row at `position`, in place of the one stored with its id.
 pub(super) fn store_track_row(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     position: usize,
     track: &CandidateTrack,
@@ -246,7 +246,7 @@ pub(super) fn store_track_row(
 
 /// The rows hanging off a track: its own artists, its roles and its works.
 pub(super) fn insert_track_rows(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     track: &CandidateTrack,
 ) -> Result<(), DbError> {
@@ -285,7 +285,7 @@ fn stored_for_test_on(
 /// row edits, the failure its last import left, and the failure of the
 /// pane's last command.
 pub(crate) fn load_pane_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     candidate: OneCandidate<'_>,
 ) -> Result<DbCandidatePaneRows, DbError> {
     let OneCandidate::Hash(content_hash) = candidate;
@@ -507,7 +507,7 @@ impl StoredTrack {
 /// Seed a candidate's draft from the folder's file tags, authored by the
 /// pre-fill, with provenance naming the tags as its source.
 pub(super) fn insert_file_tags_draft(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     draft: &crate::CandidateDraft,
 ) -> Result<(), DbError> {

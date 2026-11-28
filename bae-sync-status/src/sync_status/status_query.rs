@@ -13,7 +13,7 @@ coven::read!(
 );
 
 /// The sync status as one read of the library sees it.
-pub fn sync_status_on(sql: &SqlReadContext<'_>) -> Result<SyncStatusSnapshot, DbError> {
+pub fn sync_status_on(sql: &ReadContext<'_>) -> Result<SyncStatusSnapshot, DbError> {
     bae_store::statement_row(sql, &LibrarySyncStatusParams {})?.current.into_snapshot()
 }
 

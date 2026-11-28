@@ -139,7 +139,7 @@ async fn add_note(store: &crate::Store, topic: &str, body: &str) {
     let (topic, body) = (topic.to_owned(), body.to_owned());
     store
         .call_sql(move |sql| {
-            sql.execute("INSERT INTO notes (topic, body) VALUES (?1, ?2)", (&topic, &body))?;
+            sql.sql.execute("INSERT INTO notes (topic, body) VALUES (?1, ?2)", (&topic, &body))?;
             Ok(())
         })
         .await
@@ -171,7 +171,7 @@ async fn a_write_runs_the_statement_a_one_shot_read_runs() {
     let (store, _tmp) = notes_store().await;
     let counted = store
         .call_sql(|sql| {
-            sql.execute("INSERT INTO notes (topic, body) VALUES ('a', 'one')", [])?;
+            sql.sql.execute("INSERT INTO notes (topic, body) VALUES ('a', 'one')", [])?;
             statement_row(&sql, &Count::from(&topic("a")))
         })
         .await

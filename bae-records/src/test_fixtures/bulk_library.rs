@@ -8,7 +8,7 @@ use crate::{
     IdentityWriteError,
 };
 use bae_catalogs::catalog::Catalog;
-use coven::CovenWrite;
+use bae_store::WriteContext;
 
 /// A library row's id: a UUID naming its table by `kind` and its row by `i`.
 fn row_id(kind: u32, i: u64) -> String {
@@ -42,7 +42,7 @@ pub fn created_at(i: u64) -> time::UtcDateTime {
 /// medium and one track, and a work the artist composed. Titles and names run
 /// in an order of their own, unrelated to the ids', and every sort has ties
 /// the ids break.
-pub fn insert_on(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), IdentityWriteError> {
+pub fn insert_on(sql: &WriteContext<'_>, start: u64, end: u64) -> Result<(), IdentityWriteError> {
     let mut rows = LibraryRows::default();
     for i in start..end {
         let at = created_at(i);

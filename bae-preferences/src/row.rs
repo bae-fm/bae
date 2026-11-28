@@ -13,8 +13,8 @@ use super::{
     ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
+use bae_store::WriteContext;
 use bae_store::{exactly_one, statement_row, DbError, Store, WriteStatements};
-use coven::CovenWrite;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use std::path::PathBuf;
 
@@ -505,7 +505,7 @@ fn bit_depth_column(bit_depth: SaveBitDepth) -> &'static str {
 /// presets whole when any of them changed, and the filename pattern whole
 /// when it changed.
 fn write_preferences_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     stored: &Preferences,
     edited: &Preferences,
 ) -> rusqlite::Result<()> {
@@ -620,10 +620,10 @@ fn write_preferences_on(
 /// pieces are rows of.
 trait PatternValue: Copy {
     /// Delete every piece of the stored pattern.
-    fn delete_pieces(sql: &CovenWrite<'_>) -> rusqlite::Result<()>;
+    fn delete_pieces(sql: &WriteContext<'_>) -> rusqlite::Result<()>;
     /// Store one piece, a value or a text, at `position`.
     fn insert_piece(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         position: i64,
         value: Option<&'static str>,
         text: Option<&str>,
@@ -633,13 +633,13 @@ trait PatternValue: Copy {
 }
 
 impl PatternValue for SaveFilenameValue {
-    fn delete_pieces(sql: &CovenWrite<'_>) -> rusqlite::Result<()> {
+    fn delete_pieces(sql: &WriteContext<'_>) -> rusqlite::Result<()> {
         sql.run(&DeleteFilenameTokensParams {})?;
         Ok(())
     }
 
     fn insert_piece(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         position: i64,
         value: Option<&'static str>,
         text: Option<&str>,
@@ -677,13 +677,13 @@ impl PatternValue for SaveFilenameValue {
 }
 
 impl PatternValue for SaveFolderValue {
-    fn delete_pieces(sql: &CovenWrite<'_>) -> rusqlite::Result<()> {
+    fn delete_pieces(sql: &WriteContext<'_>) -> rusqlite::Result<()> {
         sql.run(&DeleteFolderTokensParams {})?;
         Ok(())
     }
 
     fn insert_piece(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         position: i64,
         value: Option<&'static str>,
         text: Option<&str>,
@@ -737,7 +737,7 @@ fn pattern_of<Value: PatternValue>(
 /// Replace the stored pattern of `Value`'s table with `pattern`, piece by
 /// piece.
 fn write_pattern<Value: PatternValue>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     pattern: &NamePattern<Value>,
 ) -> rusqlite::Result<()> {
     Value::delete_pieces(sql)?;

@@ -543,7 +543,7 @@ impl crate::test_fixtures::library::LibraryRows {
     /// [`Self::pressing_parts`].
     pub fn write_on(
         &self,
-        conn: &CovenWrite<'_>,
+        conn: &WriteContext<'_>,
         pressing: &[PressingParts],
     ) -> Result<(), IdentityWriteError> {
         for artist in &self.artists {

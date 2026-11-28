@@ -124,7 +124,7 @@ pub enum FolderReadingRefusal {
 /// its key while stored, since its release is addressed by it, so a reading
 /// naming a different key is stale and refused.
 pub(crate) fn store_folder_reading(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &FolderReleaseDecisionKey,
     decision: crate::folder_scanner::FolderReleaseDecision,
     author: crate::folder_scanner::FolderReleaseDecisionAuthor,

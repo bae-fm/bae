@@ -91,7 +91,7 @@ coven::write!(
 /// fetched with, and the copies a catalog serves of a remote one. Every caller
 /// writes it in the write that created or found the candidate's state row.
 pub(super) fn save_cover(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     cover: &PreparedCover,
 ) -> Result<(), DbError> {
@@ -129,7 +129,7 @@ pub(super) fn save_cover(
 }
 
 /// Remove the candidate's cover choice.
-pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_cover(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteCoverParams { content_hash })?;
     Ok(())
 }

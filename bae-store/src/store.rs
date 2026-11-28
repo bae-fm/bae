@@ -1,8 +1,9 @@
 //! The library's store: bae's handle on coven's, which every read, write and
 //! live query of the library runs through.
 
+use crate::contexts::{BulkContext, ReadContext, WriteContext};
 use coven::task::{BugSinkRef, CarriesBug};
-use coven::{ClockRef, CovenHandle, CovenWrite, SqlReadContext};
+use coven::{ClockRef, CovenHandle};
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
 use std::sync::Arc;
@@ -122,14 +123,23 @@ impl Store {
 
     /// Run a pure read on Coven's bounded readers. Attach `.process()` for
     /// result assembly after releasing the connection.
-    pub fn read<F, R>(&self, f: F) -> StoreRead<'_, F>
+    pub fn read<F, R>(
+        &self,
+        f: F,
+    ) -> StoreRead<
+        '_,
+        impl for<'conn> FnOnce(coven::SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
+    >
     where
-        F: for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
+        F: for<'conn> FnOnce(ReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
         R: Send + 'static,
     {
         #[cfg(any(test, feature = "test-utils"))]
         self.inner.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        StoreRead::new(self.inner.handle.read(f), self.inner.bugs.as_ref())
+        StoreRead::new(
+            self.inner.handle.read(move |sql| f(ReadContext::new(sql))),
+            self.inner.bugs.as_ref(),
+        )
     }
 
     /// Every row of the generated statement `statement`, read once.
@@ -170,7 +180,7 @@ impl Store {
     /// Run a write with a borrowed transaction context.
     pub async fn call<R>(
         &self,
-        f: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'ctx> FnOnce(&WriteContext<'ctx>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
@@ -182,7 +192,7 @@ impl Store {
     /// steps in one transaction.
     pub async fn call_sql<R>(
         &self,
-        f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'ctx> FnOnce(WriteContext<'ctx>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
@@ -196,12 +206,12 @@ impl Store {
     /// reading a table it changed runs again once, whichever rows it read.
     pub async fn call_bulk<R>(
         &self,
-        f: impl for<'conn> FnOnce(&coven::BulkSqlContext<'conn>) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'conn> FnOnce(&BulkContext<'conn>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
     {
-        self.reported(self.inner.handle.write_bulk(move |sql| f(&sql)).await)
+        self.reported(self.inner.handle.write_bulk(move |sql| f(&BulkContext { sql: &sql })).await)
     }
 
     /// A live query of `reads`, statements bae's build compiled: coven runs
@@ -274,13 +284,15 @@ impl Store {
     /// step is one of coven's sync operations.
     pub fn write<R, E>(
         &self,
-        write: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, E> + Send + 'static,
+        write: impl for<'ctx> FnOnce(WriteContext<'ctx>) -> Result<R, E> + Send + 'static,
     ) -> impl std::future::Future<Output = Result<R, E>> + Send + '_
     where
         R: Send + 'static,
         E: coven::WriteFailure + Send + 'static,
     {
-        Box::pin(async move { self.reported(self.inner.handle.write(write).await) })
+        Box::pin(async move {
+            self.reported(self.inner.handle.write(move |sql| write(WriteContext::new(sql))).await)
+        })
     }
 
     /// Stage app bytes, then run a write that puts them in its rows: `stage`
@@ -291,7 +303,7 @@ impl Store {
     pub async fn write_staged<T, R, E>(
         &self,
         stage: impl FnOnce(&mut coven::WriteBatch<'_>) -> Result<T, E> + Send + 'static,
-        sql: impl for<'ctx> FnOnce(CovenWrite<'ctx>, T) -> Result<R, E> + Send + 'static,
+        sql: impl for<'ctx> FnOnce(WriteContext<'ctx>, T) -> Result<R, E> + Send + 'static,
     ) -> Result<R, E>
     where
         T: Send + 'static,
@@ -300,7 +312,7 @@ impl Store {
     {
         let staged = self.reported(Box::pin(self.inner.handle.stage_files(stage)).await)?;
         self.write(move |write| {
-            let value = write.put_staged(staged)?;
+            let value = write.sql.put_staged(staged)?;
             sql(write, value)
         })
         .await

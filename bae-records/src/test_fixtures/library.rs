@@ -299,7 +299,10 @@ impl RecordsFixture {
 
     /// Write the library inside `conn`'s write, its labels made at the time
     /// its last rows were described.
-    pub fn write_on(self, conn: &coven::CovenWrite<'_>) -> Result<(), crate::IdentityWriteError> {
+    pub fn write_on(
+        self,
+        conn: &bae_store::WriteContext<'_>,
+    ) -> Result<(), crate::IdentityWriteError> {
         let labels = self.rows.pressing_parts(&coven::UuidIds, self.at);
         self.rows.write_on(conn, &labels)
     }

@@ -304,7 +304,7 @@ coven::read!(
 /// batch: `None` for a candidate whose entry may have been the item and is
 /// another.
 fn read_batch(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     asked: &[Asked<'_>],
 ) -> Result<HashMap<usize, Option<ScanItemReadings>>, DbError> {
     if asked.is_empty() {

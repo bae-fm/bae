@@ -78,7 +78,7 @@ impl PlaybackTimelineRow {
     }
 }
 
-fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Result<()> {
+fn write_on(sql: &WriteContext<'_>, timeline: &PlaybackTimeline) -> rusqlite::Result<()> {
     let library = timeline.library.as_ref();
     let preview = timeline.preview.as_ref().map(|preview| {
         let (path, start_sample, end_sample) = preview_target_values(&preview.target);
@@ -101,7 +101,7 @@ fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Resu
 }
 
 /// Reset the row to what playback starts with: no line.
-pub(super) fn reset_playback_timeline_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
+pub(super) fn reset_playback_timeline_on(sql: &bae_store::BulkContext<'_>) -> rusqlite::Result<()> {
     sql.run(&ResetPlaybackTimelineParams {})?;
     Ok(())
 }

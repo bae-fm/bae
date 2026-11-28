@@ -170,7 +170,7 @@ coven::write!(
 /// taking in a replaced release. A sidecar stored exactly so only takes the
 /// generation.
 pub(super) fn write_sidecar(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     sidecar: &FolderSidecar,
@@ -391,7 +391,7 @@ fn decoded(folders: impl IntoIterator<Item = Vec<u8>>) -> Result<Vec<PathBuf>, D
 }
 
 /// Delete the sidecars stored for `folders`.
-fn delete_sidecars_at(sql: &CovenWrite<'_>, folders: &[PathBuf]) -> Result<(), DbError> {
+fn delete_sidecars_at(sql: &WriteContext<'_>, folders: &[PathBuf]) -> Result<(), DbError> {
     sql.run(&DeleteSidecarsParams {
         folders: path_column::hex_list(folders.iter().map(PathBuf::as_path)),
     })?;
@@ -401,7 +401,7 @@ fn delete_sidecars_at(sql: &CovenWrite<'_>, folders: &[PathBuf]) -> Result<(), D
 /// Delete every sidecar holding one of `item`'s files, now that a scanned
 /// release holds them, and say which folders lost theirs.
 pub(super) fn delete_sidecars_holding(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     item: &ScanItem,
 ) -> Result<Vec<PathBuf>, DbError> {
     let ScanItem::Valid(candidate) = item else {
@@ -423,7 +423,7 @@ pub(super) fn delete_sidecars_holding(
 /// when given — that `generation` did not write, and say which folders lost
 /// theirs.
 pub(super) fn prune_sidecars(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     under: Option<&Path>,

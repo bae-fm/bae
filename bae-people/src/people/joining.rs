@@ -42,7 +42,7 @@ pub fn private_circle_name(member: &coven::MemberId) -> String {
 /// another, since the old circle's key is lost with the old keys. Nothing
 /// else is written, so a member's second device, and a retry, write nothing.
 pub(crate) fn write_profile(
-    sql: &coven::JoiningWrite<'_>,
+    sql: &bae_store::JoiningContext<'_>,
     joining: &coven::Joining,
 ) -> Result<(), coven::DbError> {
     match &joining.person {

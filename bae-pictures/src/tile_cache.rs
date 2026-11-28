@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use bae_diagnostics::Diagnostics;
 use bae_store::query::to_i64;
+use bae_store::WriteContext;
 use bae_store::{statement_optional, DbError, Store, WriteStatements, WriterRead};
-use coven::CovenWrite;
 use tracing::{debug, warn};
 
 use crate::tiles::{cut_tiles, tile_path, Pyramid};
@@ -471,7 +471,7 @@ coven::write!(DeleteAllTiles, r#"DELETE FROM cached_tiles"#);
 
 /// Mark `folder`'s row as the most recently used, and return the pyramid it
 /// describes; none when there is no row.
-fn mark_used(sql: &CovenWrite<'_>, folder: &str) -> Result<Option<Pyramid>, DbError> {
+fn mark_used(sql: &WriteContext<'_>, folder: &str) -> Result<Option<Pyramid>, DbError> {
     sql.run(&MarkTilesUsedParams { folder })?;
     pyramid_on(sql, folder.to_string())
 }
@@ -480,7 +480,7 @@ fn mark_used(sql: &CovenWrite<'_>, folder: &str) -> Result<Option<Pyramid>, DbEr
 /// then delete the least recently used rows until the rest fit `budget`, and
 /// return the folders whose rows it deleted.
 fn keep(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     folder: &str,
     pyramid: Pyramid,
     bytes: u64,
@@ -499,7 +499,7 @@ fn keep(
 }
 
 /// Delete every row.
-fn forget_all(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+fn forget_all(sql: &WriteContext<'_>) -> Result<(), DbError> {
     sql.run(&DeleteAllTilesParams {})?;
     Ok(())
 }

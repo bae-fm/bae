@@ -8,8 +8,8 @@ use crate::output_snapshot::OutputRequest;
 use crate::{output_snapshot::OutputKind, release_queue::ReleaseQueueEntry};
 #[cfg(desktop)]
 use bae_store::DbError;
+use bae_store::WriteContext;
 use bae_store::WriteStatements;
-use coven::CovenWrite;
 
 /// One queue's moves of its entries, each returning how many rows it changed.
 /// Only this crate can name this trait, so no other crate runs a queue's
@@ -20,32 +20,36 @@ pub trait QueueWrites: Sized {
     /// size from the release's storage row, so the entry keeps both after the
     /// library deletes the release.
     #[cfg(desktop)]
-    fn insert_on(sql: &CovenWrite<'_>, entry: &ReleaseQueueEntry<Self>) -> Result<usize, DbError>;
+    fn insert_on(sql: &WriteContext<'_>, entry: &ReleaseQueueEntry<Self>)
+        -> Result<usize, DbError>;
     /// Start a queued or active entry, unless the queue is paused.
-    fn activate_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize>;
+    fn activate_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize>;
     /// Take out the active entry.
-    fn finish_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize>;
+    fn finish_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize>;
     /// Fail a queued or active entry with `error`.
-    fn fail_on(sql: &CovenWrite<'_>, release_id: &str, error: &str) -> rusqlite::Result<usize>;
+    fn fail_on(sql: &WriteContext<'_>, release_id: &str, error: &str) -> rusqlite::Result<usize>;
     /// Fail the active entry with `error`.
     fn fail_active_on(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         release_id: &str,
         error: &str,
     ) -> rusqlite::Result<usize>;
     /// Queue every failed entry again.
-    fn retry_all_on(sql: &CovenWrite<'_>) -> rusqlite::Result<usize>;
+    fn retry_all_on(sql: &WriteContext<'_>) -> rusqlite::Result<usize>;
     /// Queue a failed entry again.
-    fn retry_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize>;
+    fn retry_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize>;
     /// Put the active entry back to queued.
-    fn requeue_active_on(sql: &CovenWrite<'_>) -> rusqlite::Result<usize>;
+    fn requeue_active_on(sql: &WriteContext<'_>) -> rusqlite::Result<usize>;
     /// Take out an entry in any phase.
-    fn delete_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize>;
+    fn delete_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize>;
 }
 
 impl QueueWrites for DownloadRequest {
     #[cfg(desktop)]
-    fn insert_on(sql: &CovenWrite<'_>, entry: &ReleaseQueueEntry<Self>) -> Result<usize, DbError> {
+    fn insert_on(
+        sql: &WriteContext<'_>,
+        entry: &ReleaseQueueEntry<Self>,
+    ) -> Result<usize, DbError> {
         let (kind, target_dir) = match &entry.payload {
             Self::Pin => ("pin", None),
             Self::MoveToThisDevice { target_dir } => {
@@ -60,46 +64,49 @@ impl QueueWrites for DownloadRequest {
         })?)
     }
 
-    fn activate_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn activate_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&ActivateDownloadParams { release: release_id })
     }
 
-    fn finish_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn finish_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&FinishDownloadParams { release: release_id })
     }
 
-    fn fail_on(sql: &CovenWrite<'_>, release_id: &str, error: &str) -> rusqlite::Result<usize> {
+    fn fail_on(sql: &WriteContext<'_>, release_id: &str, error: &str) -> rusqlite::Result<usize> {
         sql.run(&FailDownloadParams { release: release_id, error })
     }
 
     fn fail_active_on(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         release_id: &str,
         error: &str,
     ) -> rusqlite::Result<usize> {
         sql.run(&FailActiveDownloadParams { release: release_id, error })
     }
 
-    fn retry_all_on(sql: &CovenWrite<'_>) -> rusqlite::Result<usize> {
+    fn retry_all_on(sql: &WriteContext<'_>) -> rusqlite::Result<usize> {
         sql.run(&RetryFailedDownloadsParams {})
     }
 
-    fn retry_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn retry_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&RetryFailedDownloadParams { release: release_id })
     }
 
-    fn requeue_active_on(sql: &CovenWrite<'_>) -> rusqlite::Result<usize> {
+    fn requeue_active_on(sql: &WriteContext<'_>) -> rusqlite::Result<usize> {
         sql.run(&RequeueActiveDownloadParams {})
     }
 
-    fn delete_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn delete_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&DeleteDownloadParams { release: release_id })
     }
 }
 
 impl QueueWrites for OutputRequest {
     #[cfg(desktop)]
-    fn insert_on(sql: &CovenWrite<'_>, entry: &ReleaseQueueEntry<Self>) -> Result<usize, DbError> {
+    fn insert_on(
+        sql: &WriteContext<'_>,
+        entry: &ReleaseQueueEntry<Self>,
+    ) -> Result<usize, DbError> {
         let OutputRequest { target_dir, kind } = &entry.payload;
         let (kind, preset, filename_pattern, folder_pattern, extras) = match kind {
             OutputKind::Export => ("export", None, None, None, None),
@@ -131,39 +138,39 @@ impl QueueWrites for OutputRequest {
         })?)
     }
 
-    fn activate_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn activate_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&ActivateOutputParams { release: release_id })
     }
 
-    fn finish_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn finish_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&FinishOutputParams { release: release_id })
     }
 
-    fn fail_on(sql: &CovenWrite<'_>, release_id: &str, error: &str) -> rusqlite::Result<usize> {
+    fn fail_on(sql: &WriteContext<'_>, release_id: &str, error: &str) -> rusqlite::Result<usize> {
         sql.run(&FailOutputParams { release: release_id, error })
     }
 
     fn fail_active_on(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         release_id: &str,
         error: &str,
     ) -> rusqlite::Result<usize> {
         sql.run(&FailActiveOutputParams { release: release_id, error })
     }
 
-    fn retry_all_on(sql: &CovenWrite<'_>) -> rusqlite::Result<usize> {
+    fn retry_all_on(sql: &WriteContext<'_>) -> rusqlite::Result<usize> {
         sql.run(&RetryFailedOutputsParams {})
     }
 
-    fn retry_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn retry_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&RetryFailedOutputParams { release: release_id })
     }
 
-    fn requeue_active_on(sql: &CovenWrite<'_>) -> rusqlite::Result<usize> {
+    fn requeue_active_on(sql: &WriteContext<'_>) -> rusqlite::Result<usize> {
         sql.run(&RequeueActiveOutputParams {})
     }
 
-    fn delete_on(sql: &CovenWrite<'_>, release_id: &str) -> rusqlite::Result<usize> {
+    fn delete_on(sql: &WriteContext<'_>, release_id: &str) -> rusqlite::Result<usize> {
         sql.run(&DeleteOutputParams { release: release_id })
     }
 }

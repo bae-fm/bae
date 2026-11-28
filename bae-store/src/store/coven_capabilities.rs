@@ -1,6 +1,6 @@
 use crate::store::Store;
 use crate::DbError;
-use coven::SqlReadContext;
+use crate::ReadContext;
 
 /// What this device holds that the store's storage, `storage`, lacks, from
 /// `queued`, the writes and files coven's queues hold: all of them while
@@ -85,13 +85,13 @@ impl Store {
     /// One read of the store, failing with the closure's own error.
     pub async fn read_coven<R, E>(
         &self,
-        read: impl FnOnce(SqlReadContext<'_>) -> Result<R, E> + Send + 'static,
+        read: impl FnOnce(ReadContext<'_>) -> Result<R, E> + Send + 'static,
     ) -> Result<R, E>
     where
         R: Send + 'static,
         E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
     {
-        self.reported(self.inner.handle.read(read).await)
+        self.reported(self.inner.handle.read(move |sql| read(ReadContext::new(sql))).await)
     }
 
     /// Stop the sync loop: returns once the running pass and transfers have
@@ -306,7 +306,7 @@ impl Store {
     }
 
     /// Download what each of `files` lacks into a whole copy, pinning nothing:
-    /// a write commits the result with `CovenWrite::pin`, beside whatever
+    /// a write commits the result with `WriteContext::pin`, beside whatever
     /// else it must commit with the pin.
     pub async fn prepare_pin(
         &self,

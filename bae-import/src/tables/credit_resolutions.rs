@@ -111,7 +111,7 @@ coven::write!(DeleteDueCredits, r#"DELETE FROM import_credit_resolution_due"#);
 /// Answer every credit the transaction's writes marked due and empty the
 /// list: each one a draft still holds gets the rule's answer, written where
 /// it differs from the stored one, and each one none holds loses its answer.
-pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> {
+pub(crate) fn answer_due_credits(sql: &bae_store::CommitContext<'_>) -> Result<(), coven::DbError> {
     let due = statement_rows(sql, &DueCreditParams {})?;
     if due.is_empty() {
         return Ok(());

@@ -10,8 +10,8 @@ use crate::release_queue::{
     ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState,
 };
 use bae_records::records::fragments::{AlbumTitle, ReleaseAlbum};
+use bae_store::ReadContext;
 use bae_store::{statement_row, DbError};
-use coven::SqlReadContext;
 
 // Each entry of the download queue, with its place in the order queued.
 coven::fragment!(
@@ -195,9 +195,7 @@ fn unreadable_entry(release_id: &str, problem: String) -> DbError {
     DbError::unreadable(format!("the queue entry of release {release_id}"), problem)
 }
 
-pub(super) fn next_download_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<NextUp<DownloadRequest>, DbError> {
+pub(super) fn next_download_on(sql: &ReadContext<'_>) -> Result<NextUp<DownloadRequest>, DbError> {
     let row = statement_row(sql, &NextDownloadParams {})?;
     Ok(NextUp {
         entry: row.entry.map(DownloadQueueRow::into_entry).transpose()?,
@@ -206,7 +204,7 @@ pub(super) fn next_download_on(
 }
 
 pub(super) fn next_output_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
 ) -> Result<NextUp<crate::OutputRequest>, DbError> {
     let entry = bae_store::statement_optional(sql, &NextOutputParams {})?
         .map(|row| row.entry.into_entry())
@@ -326,7 +324,7 @@ impl OutputQueueRow {
 
 /// How many entries the download queue holds in each phase, and what holds it
 /// back.
-pub(super) fn download_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
+pub(super) fn download_counts_on(sql: &ReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
     Ok(statement_row(sql, &DownloadQueueTotalsParams {})?.counts.into_counts())
 }
 
@@ -340,7 +338,7 @@ pub(super) fn subscribe_download_counts(
 
 /// How many entries the export and save queue holds in each phase, and
 /// whether it is paused: it needs no network.
-pub(super) fn output_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
+pub(super) fn output_counts_on(sql: &ReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
     Ok(output_counts_of(statement_row(sql, &OutputQueueTotalsParams {})?))
 }
 
@@ -362,7 +360,7 @@ pub(super) fn output_counts_of(row: OutputQueueTotalsRow) -> ReleaseQueueCounts 
 /// Every entry of the export and save queue, in the order queued.
 #[cfg(any(desktop, test, feature = "test-utils"))]
 pub(super) fn output_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
 ) -> Result<Vec<ReleaseQueueRow<crate::OutputRequest, ()>>, DbError> {
     output_rows_of(bae_store::statement_rows(sql, &OutputQueueEntriesParams {})?)
 }

@@ -102,7 +102,9 @@ impl RatingSystemError {
 
 /// The library's rating systems as its first write sets them: stars for
 /// albums and for tracks.
-pub(crate) fn write_first_rating_systems(sql: &coven::MemberWrite<'_>) -> rusqlite::Result<()> {
+pub(crate) fn write_first_rating_systems(
+    sql: &bae_store::MemberContext<'_>,
+) -> rusqlite::Result<()> {
     sql.run(&InsertRatingSystemsParams { system: RatingSystem::Stars.as_str() })?;
     Ok(())
 }

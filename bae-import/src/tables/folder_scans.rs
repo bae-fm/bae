@@ -143,7 +143,7 @@ pub(super) fn root_generation_on(
 /// root complete, or not watched, for `unwatched`, when its directories could
 /// not all be watched.
 fn finish_read_tree(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     unwatched: Option<&crate::UnwatchedReason>,
@@ -164,7 +164,7 @@ fn finish_read_tree(
 /// Store `reason` as the status of `watched_folder_path`'s `generation`: not
 /// watched.
 fn store_unwatched(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     reason: &crate::UnwatchedReason,
@@ -182,7 +182,7 @@ fn store_unwatched(
 /// transaction, where a newer scan taking the root is decided, so a scan that
 /// lost the root writes nothing over its successor.
 fn holds_generation(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
 ) -> Result<bool, DbError> {
@@ -515,7 +515,7 @@ impl ImportTables {
 /// candidate replaces nothing; it is seen before the folders around it are
 /// read, and the reading that settles them does the replacing.
 fn superseded_keys(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     entry_key: &CandidateKey,
     item: &ScanItem,
@@ -585,7 +585,7 @@ pub(crate) type ScanWriteError = bae_store::WriteError<ScanEntryMoved>;
 /// Write one scan item under `generation`, inside the caller's transaction,
 /// deleting the entries it supersedes. The caller has checked `generation`.
 fn write_scan_item(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     to_write: &FolderEntryToWrite,
@@ -672,7 +672,7 @@ pub(super) enum EntryWrite {
 
 /// Write one entry under `generation`, inside the caller's transaction.
 pub(super) fn write_entry(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     to_write: &ScanItemToWrite,
@@ -799,7 +799,7 @@ pub(super) fn write_entry(
 
 #[cfg(any(test, feature = "test-utils"))]
 pub(super) fn load_folder_scan_items_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<impl FnOnce() -> Result<Vec<ScanItem>, DbError> + Send + 'static, DbError> {

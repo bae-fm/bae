@@ -5,8 +5,9 @@
 use super::fragments::StartFailure;
 use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory, UiErrorClass};
+use bae_store::WriteContext;
 use bae_store::WriteStatements;
-use coven::{CovenWrite, DropboxAccess, OAuthAccess, StorageFailure};
+use coven::{DropboxAccess, OAuthAccess, StorageFailure};
 
 /// Why a failed start could not be recorded.
 #[derive(Debug, thiserror::Error)]
@@ -43,7 +44,7 @@ struct FailureColumns {
 
 impl FailureColumns {
     /// Keep these columns with `detail` as the failed start that stands.
-    fn keep(&self, sql: &CovenWrite<'_>, detail: &str) -> rusqlite::Result<()> {
+    fn keep(&self, sql: &WriteContext<'_>, detail: &str) -> rusqlite::Result<()> {
         sql.run(&KeepStartFailureParams {
             category: self.category,
             storage_failure: self.storage_failure,

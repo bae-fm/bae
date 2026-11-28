@@ -5,8 +5,8 @@
 //! the middle and the end. Each time is the median of several runs.
 
 use crate::list_windows::OrderKey;
+use crate::ReadContext;
 use crate::{DbError, ListWindow, SortDirection, Store};
-use coven::SqlReadContext;
 use std::time::{Duration, Instant};
 /// The sizes the lists are measured at, each reached by adding rows to the
 /// library the size before it built.
@@ -22,7 +22,7 @@ pub const RUNS: usize = 15;
 /// last read returned.
 pub async fn median<F>(db: &Store, read: F) -> (Duration, usize)
 where
-    F: Fn(&SqlReadContext<'_>) -> Result<usize, DbError> + Send + Sync + Clone + 'static,
+    F: Fn(&ReadContext<'_>) -> Result<usize, DbError> + Send + Sync + Clone + 'static,
 {
     let mut runs = Vec::with_capacity(RUNS);
     let mut rows = 0;
@@ -75,21 +75,17 @@ pub async fn measure_reads(
     list: &str,
     name: &str,
     n: u64,
-    key_at: impl Fn(&SqlReadContext<'_>, u64) -> Result<Option<OrderKey>, DbError>
+    key_at: impl Fn(&ReadContext<'_>, u64) -> Result<Option<OrderKey>, DbError>
         + Clone
         + Send
         + Sync
         + 'static,
-    window: impl Fn(&SqlReadContext<'_>, &ListWindow) -> Result<usize, DbError>
+    window: impl Fn(&ReadContext<'_>, &ListWindow) -> Result<usize, DbError>
         + Clone
         + Send
         + Sync
         + 'static,
-    count: impl Fn(&SqlReadContext<'_>, &OrderKey) -> Result<u64, DbError>
-        + Clone
-        + Send
-        + Sync
-        + 'static,
+    count: impl Fn(&ReadContext<'_>, &OrderKey) -> Result<u64, DbError> + Clone + Send + Sync + 'static,
 ) {
     for (at, position) in offsets(n) {
         let key = {

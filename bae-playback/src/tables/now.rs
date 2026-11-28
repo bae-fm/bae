@@ -272,7 +272,7 @@ impl PlaybackNowRow {
     }
 }
 
-fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<()> {
+fn apply_on(sql: &WriteContext<'_>, change: &PlaybackChange) -> rusqlite::Result<()> {
     match change {
         PlaybackChange::State(state) => {
             let columns = StateColumns::of(state);
@@ -376,7 +376,7 @@ pub async fn dismiss_playback_failure(store: &Store) -> Result<(), DbError> {
 /// output, previewing nothing, no failure. The volume and mute are kept when
 /// `keep_level`, for playback to resume at; otherwise full and unmuted.
 pub(super) fn reset_playback_now_on(
-    sql: &coven::BulkSqlContext<'_>,
+    sql: &bae_store::BulkContext<'_>,
     keep_level: bool,
 ) -> rusqlite::Result<()> {
     sql.run(&ResetPlaybackNowParams {})?;

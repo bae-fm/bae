@@ -1,8 +1,8 @@
 //! People and their devices, with permissions derived from coven's
 //! membership, as db reads them from coven's views.
 
+use bae_store::WriteContext;
 use bae_store::{DbError, Store};
-use coven::CovenWrite;
 
 mod admin_operations;
 pub use admin_operations::{InviteError, RefusedInviteDismissError};

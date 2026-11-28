@@ -40,7 +40,7 @@ impl bae_util::task_failure::ReportedBug for CreditNameError {
 /// its spelling. Every link a write makes names an artist the write holds,
 /// so a missing one is a bug, which panics in the store's work.
 pub(super) fn settle_credit_name(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     artist_id: &str,
     credit: Option<&CreditName>,
     now: &str,
@@ -65,7 +65,7 @@ coven::write!(
 
 /// [`settle_credit_name`] for an artist whose own name's key is `own`.
 fn settle_credit_name_beside(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     artist_id: &str,
     own: &str,
     credit: &CreditName,
@@ -96,7 +96,7 @@ coven::read!(
 
 /// The key of `artist_id`'s own name; `None` when the library holds no such
 /// artist.
-fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<Option<String>, DbError> {
+fn own_name_key_on(conn: &WriteContext<'_>, artist_id: &str) -> Result<Option<String>, DbError> {
     let statement = OwnNameKeyParams { artist: artist_id.to_owned() };
     Ok(bae_store::statement_optional(conn, &statement)?.map(|row| row.name_key))
 }
@@ -129,7 +129,7 @@ coven::write!(
 /// Point every link naming `artist_id`'s credit name `from` at `to` (`None`:
 /// the artist's own name).
 fn relink_credit_name(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     artist_id: &str,
     from: &str,
     to: Option<&str>,

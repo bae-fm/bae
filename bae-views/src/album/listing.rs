@@ -49,7 +49,7 @@ coven::read!(
 /// the library has a track to shuffle.
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn album_counts_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     group_by_artist: bool,
 ) -> Result<AlbumCounts, DbError> {
     Ok(match group_by_artist {
@@ -350,7 +350,7 @@ pub(crate) fn album_page_read(
 /// How many rows of the grid under `order` come before the row at `key`.
 #[cfg(test)]
 pub(crate) fn albums_before_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     order: &AlbumOrder,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
@@ -402,7 +402,7 @@ pub(crate) fn albums_before_read(
 /// The key of the row at `position` of the grid under `order`, or of its last
 /// row when it ends before it; `None` for an empty grid.
 pub(crate) fn album_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     order: &AlbumOrder,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {
@@ -480,7 +480,7 @@ pub(crate) fn album_place_read(
 /// The albums of the grid's cards under `order` from the card `from` to the
 /// card `to`, both included, each album once.
 pub(crate) fn album_ids_between_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     order: &AlbumOrder,
     from: AlbumCard<'_>,
     to: AlbumCard<'_>,
@@ -505,7 +505,7 @@ pub(crate) fn album_ids_between_on(
 /// The albums of `album_ids` the grid under `order` lists, each once at its
 /// first card, in the grid's order.
 pub(crate) fn albums_in_order_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     order: &AlbumOrder,
     album_ids: &[String],
 ) -> Result<Vec<AlbumSummaryRow>, DbError> {
@@ -524,7 +524,7 @@ pub(crate) fn albums_in_order_on(
 /// Every album, in the order of the flat grid under `order`.
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn every_album_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     order: &AlbumOrder,
 ) -> Result<Vec<DbAlbum>, DbError> {
     let [first, second, third, fourth] = order.codes();

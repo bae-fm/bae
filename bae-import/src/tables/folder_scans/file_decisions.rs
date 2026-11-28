@@ -35,7 +35,7 @@ coven::read!(
 /// holds exactly the releases `settled_by_key` names reading those files,
 /// each at `expected_revision`.
 pub(crate) fn settle_candidate_files(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,

@@ -9,9 +9,9 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
 use bae_store::DbError;
+use bae_store::WriteContext;
 use bae_store::WriteStatements as _;
 use bae_types::credit_role::CreditedAs;
-use coven::CovenWrite;
 use std::str::FromStr;
 
 /// The form's album-level fields, as the columns of a candidate's edit row
@@ -257,7 +257,7 @@ coven::write!(
 /// Insert the draft's label rows, as the form holds them, where the draft
 /// holds none.
 pub(crate) fn insert_label_rows(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     labels: &[RawLabelEdit],
 ) -> Result<(), DbError> {
@@ -277,7 +277,7 @@ pub(crate) fn insert_label_rows(
 /// Insert the draft's barcode rows, as the form holds them, where the draft
 /// holds none.
 pub(crate) fn insert_barcode_rows(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     barcodes: &[String],
 ) -> Result<(), DbError> {
@@ -289,7 +289,7 @@ pub(crate) fn insert_barcode_rows(
 
 /// Insert the draft's mediums, in order, where the draft holds none.
 pub(crate) fn insert_medium_rows(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     mediums: &[bae_types::mediums::ReleaseMedium],
 ) -> Result<(), DbError> {
@@ -305,7 +305,7 @@ pub(crate) fn insert_medium_rows(
 }
 
 pub(crate) fn insert_album_artist_assignments(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     assignments: &[Credited],
 ) -> Result<(), DbError> {
@@ -318,7 +318,7 @@ pub(crate) fn insert_album_artist_assignments(
 /// Rewrite in place each album artist that differs from the one stored at
 /// its position, and delete the stored ones past the last.
 pub(crate) fn store_album_artist_assignments(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     stored: &[Credited],
     assignments: &[Credited],
@@ -385,7 +385,7 @@ impl<'a> AssignmentRow<'a> {
 /// Make the album artist at `position` `assignment`, in place when one is
 /// there.
 fn store_album_artist_assignment(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     position: usize,
     assignment: &Credited,
@@ -408,7 +408,7 @@ fn store_album_artist_assignment(
 }
 
 pub(crate) fn insert_track_artist_assignments(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     track_id: &str,
     assignments: &[Credited],
@@ -436,7 +436,7 @@ pub(crate) fn insert_track_artist_assignments(
 /// Write a draft's works and the roles on its release, under
 /// `key`. The caller has already written the candidate's edit row.
 pub(crate) fn insert_draft_values(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     works: &WorkGraph,
     release_roles: &[CreditedRole],
@@ -498,7 +498,7 @@ pub(crate) fn insert_draft_values(
 /// credits on it and the works it performs, under `key`. The
 /// caller has already written the track row and the works.
 pub(crate) fn insert_track_values(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     track_id: &str,
     roles: &[CreditedRole],

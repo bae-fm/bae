@@ -2,7 +2,7 @@
 //! self-only circle.
 
 use bae_store::{DbError, Store};
-use coven::{CovenWrite, SqlReadContext};
+use bae_store::{ReadContext, WriteContext};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use std::sync::Arc;
 use time::UtcDateTime;

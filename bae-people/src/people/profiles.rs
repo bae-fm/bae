@@ -178,7 +178,7 @@ impl People {
     /// has no profile.
     pub(super) async fn write_as_self<T, E>(
         &self,
-        write: impl for<'ctx> FnOnce(&CovenWrite<'ctx>, PersonProfile) -> Result<Result<T, E>, DbError>
+        write: impl for<'ctx> FnOnce(&WriteContext<'ctx>, PersonProfile) -> Result<Result<T, E>, DbError>
             + Send
             + 'static,
     ) -> Result<T, E>

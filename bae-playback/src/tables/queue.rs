@@ -457,13 +457,13 @@ pub(super) fn queue_row_on(sql: &impl WriterRead) -> Result<QueueStateRow, DbErr
 }
 
 /// Make the context row `entry` the playing one, in both of the lane's orders.
-fn set_cursor_on(sql: &CovenWrite<'_>, entry: i64) -> Result<(), DbError> {
+fn set_cursor_on(sql: &WriteContext<'_>, entry: i64) -> Result<(), DbError> {
     sql.run(&PlayContextEntryParams { entry })?;
     Ok(())
 }
 
 /// Empty the context lane and clear what it played from, in the same write.
-fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> Result<(), DbError> {
+fn clear_context_on(sql: &bae_store::BulkContext<'_>) -> Result<(), DbError> {
     sql.run(&ClearContextLaneParams {})?;
     sql.run(&ClearEmptiedContextSourceParams {})?;
     Ok(())
@@ -477,7 +477,7 @@ pub(super) struct Located {
 }
 
 pub(super) fn locate_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     id: QueueEntryId,
 ) -> Result<Option<Located>, DbError> {
     let (lane, entry) = row_key(&id);
@@ -493,7 +493,7 @@ pub(super) fn locate_on(
 /// every place it holds, in random order, and answer the highest place the
 /// lane held before. With `keep_through`, a place in the lane's own order, the
 /// rows up to it keep their order and come first.
-fn place_shuffled_on(sql: &CovenWrite<'_>, keep_through: Option<i64>) -> Result<i64, DbError> {
+fn place_shuffled_on(sql: &WriteContext<'_>, keep_through: Option<i64>) -> Result<i64, DbError> {
     let top = LaneOrder::Shuffled.top_on(sql)?.unwrap_or(0);
     match keep_through {
         Some(cursor) => sql.run(&ShuffleLaneAfterParams { top, cursor })?,
@@ -503,7 +503,7 @@ fn place_shuffled_on(sql: &CovenWrite<'_>, keep_through: Option<i64>) -> Result<
 }
 
 fn add_manual_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     tracks: &bae_records::TrackList,
     place: ManualPlace,
 ) -> Result<usize, DbError> {
@@ -543,7 +543,7 @@ fn add_manual_on(
     Ok(count as usize)
 }
 
-fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
+fn set_shuffle_on(sql: &WriteContext<'_>, on: bool) -> Result<(), DbError> {
     let row = queue_row_on(sql)?;
     if row.shuffled == on {
         return Ok(());
@@ -564,7 +564,7 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
     Ok(())
 }
 
-fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
+fn advance_on(sql: &WriteContext<'_>) -> Result<Option<QueueEntry>, DbError> {
     if let Some(front) = statement_optional(sql, &UpNextFrontParams {})? {
         sql.run(&DeleteUpNextAtParams { position: front.position })?;
         let id = QueueEntryId::Manual(front.entry);
@@ -578,7 +578,7 @@ fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
     Ok(Some(next))
 }
 
-fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
+fn wrap_on(sql: &WriteContext<'_>) -> Result<Option<QueueEntry>, DbError> {
     let row = queue_row_on(sql)?;
     if row.cursor().is_none() {
         return Ok(None);
@@ -595,7 +595,7 @@ fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
 }
 
 fn step_back_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     current: Option<QueueEntryId>,
 ) -> Result<Option<QueueEntry>, DbError> {
     let row = queue_row_on(sql)?;
@@ -641,7 +641,7 @@ impl FromSql for RepeatMode {
 /// window costs are measured at.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn fill_context_lane_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     start: u64,
     tracks: &[String],
 ) -> Result<(), DbError> {

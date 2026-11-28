@@ -189,17 +189,17 @@ impl LibraryManager {
             || rebound.as_ref().is_some_and(|audio| !audio.dropped.is_empty());
         let saved_id = release_id.clone();
         let (opened_form, layout_form, decisions_form) = (form.clone(), form.clone(), form);
-        let inputs_unchanged = move |sql: &coven::CovenWrite<'_>| {
+        let inputs_unchanged = move |sql: &bae_store::WriteContext<'_>| {
             bae_import::tables::release_save_inputs_unchanged_on(sql, &opened_form, &inputs)
         };
-        let layout = move |sql: &coven::CovenWrite<'_>| {
+        let layout = move |sql: &bae_store::WriteContext<'_>| {
             lays_out
                 .then(|| bae_import::tables::release_edit_layout_on(sql, &layout_form))
                 .transpose()
         };
         let bindings = rebound.as_ref().map_or_else(Vec::new, |audio| audio.bindings.clone());
         let sheet_decisions =
-            move |sql: &coven::CovenWrite<'_>,
+            move |sql: &bae_store::WriteContext<'_>,
                   honored: &[(String, bae_types::mediums::MediumSide)]| {
                 bae_import::tables::store_release_edit_sheet_decisions_on(
                     sql,
@@ -208,7 +208,7 @@ impl LibraryManager {
                     honored,
                 )
             };
-        let saved = move |sql: &coven::CovenWrite<'_>| {
+        let saved = move |sql: &bae_store::WriteContext<'_>| {
             bae_import::tables::release_edit_form_on(sql, &saved_id)
         };
         self.records

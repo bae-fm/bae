@@ -117,7 +117,7 @@ coven::read!(
 /// if its scan generation and file edit revision still match the snapshot's.
 /// `false` means the candidate changed first and nothing was written.
 pub(crate) fn replace_candidate_file_tag_snapshot_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
@@ -173,7 +173,7 @@ pub(crate) fn replace_candidate_file_tag_snapshot_on(
 /// Replace one candidate's stored file-tag reading, inside the caller's
 /// transaction.
 pub(crate) fn replace_candidate_file_tag_snapshot(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     snapshot: &crate::file_tag_snapshot::FileTagSnapshot,

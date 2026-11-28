@@ -180,7 +180,7 @@ impl Emptiable {
     /// and the artists nothing credits, among those read. An album goes with
     /// its credits and ratings, a work with its credits and parts, an artist
     /// with its other names and picture.
-    pub(super) fn remove_emptied(&self, conn: &CovenWrite<'_>) -> Result<(), DbError> {
+    pub(super) fn remove_emptied(&self, conn: &WriteContext<'_>) -> Result<(), DbError> {
         for album in &self.albums {
             conn.run(&DeleteEmptiedAlbumParams { album })?;
         }

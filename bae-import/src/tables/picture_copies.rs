@@ -289,7 +289,10 @@ coven::write!(
 
 /// Drop every copy of the candidates holding `content_hash`, inside the write
 /// that imports them: an imported candidate leaves the import list.
-pub(super) fn forget_for_hash_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn forget_for_hash_on(
+    sql: &WriteContext<'_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
     sql.run(&ForgetCopiesForHashParams { content_hash })?;
     Ok(())
 }
@@ -302,7 +305,7 @@ coven::write!(
 /// Drop every copy of the candidate in the folder `candidate_path`, inside the
 /// write that sets it aside.
 pub(super) fn forget_for_folder_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     candidate_path: &Path,
 ) -> Result<(), DbError> {
     sql.run(&ForgetCopiesForFolderParams { candidate_path: coven::path_bytes(candidate_path) })?;

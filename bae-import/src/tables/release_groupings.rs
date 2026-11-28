@@ -248,7 +248,7 @@ coven::read!(
 /// below `folders`. Returns the keys of the grouping releases that were listed
 /// and went with them.
 pub(super) fn forget_at_or_below(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     folders: &super::watched_folders::FoldersAtOrBelow,
 ) -> Result<Vec<CandidateKey>, DbError> {
     let groupings = bae_store::statement_rows(
@@ -273,7 +273,7 @@ pub(super) fn forget_at_or_below(
 /// `touched` (releases just written or removed) or sits in one of `sidecars`
 /// (folders whose sidecar was just written or removed).
 pub(super) fn rebuild_groupings(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     touched: &[CandidateKey],
     sidecars: &[PathBuf],
 ) -> Result<GroupingChanges, DbError> {
@@ -294,7 +294,10 @@ pub(super) fn rebuild_groupings(
 /// Build and store the release of the grouping `key` from the releases it
 /// takes in, or record on the grouping why it cannot be built and leave its
 /// release as last built.
-fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<GroupingChanges, DbError> {
+fn rebuild_grouping(
+    sql: &WriteContext<'_>,
+    key: &CandidateKey,
+) -> Result<GroupingChanges, DbError> {
     let member_keys: Vec<CandidateKey> =
         bae_store::statement_rows(sql, &GroupingMembersParams { key: key.clone() })?
             .into_iter()
@@ -568,7 +571,7 @@ fn parent_files_on(
 /// Rebuild each grouping but `key` sitting in `folder` that is blocked, now
 /// that `key` no longer stands in the way of reading the folder's files.
 fn rebuild_blocked_in(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     folder: &Path,
 ) -> Result<GroupingChanges, DbError> {
@@ -588,7 +591,7 @@ fn rebuild_blocked_in(
 
 /// Say why grouping `key`'s release cannot be worked on as it stands.
 fn blocked(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     block: &GroupingBlock,
 ) -> Result<GroupingChanges, DbError> {
@@ -622,7 +625,7 @@ fn decision_of(combined: bool) -> FolderReleaseDecision {
 /// no grouping may hold it, it may not be in the library, and nothing may be
 /// importing or identifying it.
 fn require_combinable_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     member: &FolderCandidate,
 ) -> Result<(), crate::ImportError> {
     let key = member.key();
@@ -658,7 +661,7 @@ pub(crate) fn require_combination_idle(
 /// Set the release a grouping reads as one aside, or back; `false` when it
 /// already was, or no grouping has `key`.
 fn set_grouping_skipped_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &CandidateKey,
     skipped: bool,
 ) -> Result<bool, DbError> {

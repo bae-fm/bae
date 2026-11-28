@@ -2,9 +2,9 @@
 //! write's, by the write itself or by the before-commit function coven runs
 //! last in it.
 
+use crate::contexts::{BulkContext, CommitContext, JoiningContext, MemberContext, WriteContext};
 use crate::read_statement::{at_most_one, row_count};
 use crate::DbError;
-use coven::{BulkSqlContext, CommitSql, CovenWrite, JoiningWrite, MemberWrite};
 use coven::{Write, WriteReturning};
 
 /// A context that writes, which runs generated writes.
@@ -31,20 +31,21 @@ pub trait WriteStatements {
     }
 }
 
-/// [`WriteStatements`] for each of coven's contexts, which run SQL by the
-/// same methods and share no trait for them.
+/// [`WriteStatements`] for each of bae-store's write contexts, through the
+/// coven context it holds: coven's contexts run SQL by the same methods and
+/// share no trait for them.
 macro_rules! write_statements {
     ($($context:ident),+) => {$(
         impl WriteStatements for $context<'_> {
             fn run<Q: Write>(&self, statement: &Q) -> rusqlite::Result<usize> {
-                self.execute(Q::SQL, statement.params().as_slice())
+                self.sql.execute(Q::SQL, statement.params().as_slice())
             }
 
             fn returning<Q: WriteReturning>(&self, statement: &Q) -> rusqlite::Result<Vec<Q::Row>> {
-                self.query(Q::SQL, statement.params().as_slice(), Q::read)
+                self.sql.query(Q::SQL, statement.params().as_slice(), Q::read)
             }
         }
     )+};
 }
 
-write_statements!(BulkSqlContext, CommitSql, CovenWrite, JoiningWrite, MemberWrite);
+write_statements!(BulkContext, CommitContext, JoiningContext, MemberContext, WriteContext);

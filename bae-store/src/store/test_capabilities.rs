@@ -65,7 +65,9 @@ impl Store {
     /// How many files wait in this device's upload queue.
     pub async fn queued_upload_count_for_test(&self) -> Result<i64, DbError> {
         self.read(|sql| {
-            Ok(sql.query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| row.get(0))?)
+            Ok(sql
+                .sql
+                .query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| row.get(0))?)
         })
         .await
     }
@@ -78,7 +80,7 @@ impl Store {
     ) -> Result<i64, DbError> {
         let namespace = namespace.to_string();
         self.read(move |sql| {
-            Ok(sql.query_row(
+            Ok(sql.sql.query_row(
                 "SELECT COUNT(*) FROM coven_uploads AS upload \
                  JOIN coven_files AS f ON f.id = upload.file WHERE f.namespace = ?1",
                 [namespace],

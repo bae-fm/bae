@@ -171,7 +171,7 @@ impl ReleaseSheetDecisions {
 /// `store_on` fails the commit. A binding of a line to left-out audio is not
 /// the release's, which has no such file.
 pub(super) fn store_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     decided: &CandidateFileEdits,
     file_ids: &HashMap<&str, &str>,
     left_out: &[String],
@@ -208,7 +208,7 @@ pub(super) fn store_on(
 /// previous choice. The editor's save calls it
 /// through `store_release_edit_sheet_decisions_on`.
 pub(super) fn store_sheet_place_decisions_on<'a>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     places: impl IntoIterator<Item = (&'a str, SheetPlace)>,
 ) -> Result<(), DbError> {
     for (sheet_file_id, place) in places {
@@ -223,7 +223,7 @@ pub(super) fn store_sheet_place_decisions_on<'a>(
 /// takes the new file. The editor's save calls it through
 /// `store_release_edit_sheet_decisions_on`.
 pub(super) fn store_sheet_binding_decisions_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     picks: &[bae_records::records::sheet_files::SheetFilePick],
 ) -> Result<(), DbError> {
     for pick in picks {

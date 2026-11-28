@@ -54,7 +54,7 @@ coven::write!(
 /// Write `draft`, authored by `author`, over `stored`, which `stored_author`
 /// wrote.
 pub(super) fn store_draft(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     (stored, stored_author): (&CandidateDraft, MetadataAuthor),
     (draft, author): (&CandidateDraft, MetadataAuthor),
@@ -183,7 +183,7 @@ coven::write!(
 
 /// The rows hanging off one track: its artists, its roles and its works.
 fn delete_track_rows(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     track_id: &str,
 ) -> Result<(), DbError> {
@@ -260,7 +260,7 @@ coven::write!(
 
 /// Clear the draft's body: tracks first, which reference the mediums and the
 /// works, each taking the rows that hang off it.
-fn delete_draft_body(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+fn delete_draft_body(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteDraftTracksParams { content_hash })?;
     sql.run(&DeleteDraftWorksParams { content_hash })?;
     sql.run(&DeleteDraftReleaseRolesParams { content_hash })?;

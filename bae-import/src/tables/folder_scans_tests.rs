@@ -22,7 +22,7 @@ impl ImportTables {
 }
 
 fn load_folder_scan_snapshots_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots: Vec<_> = bae_store::statement_rows(sql, &test_reads::EveryRootParams {})?
         .into_iter()

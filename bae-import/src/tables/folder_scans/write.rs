@@ -15,7 +15,7 @@ use crate::CandidateKey;
 /// Remove the entry at `key`: its candidate leaves the scan, and its
 /// identification ends with it.
 pub(crate) fn delete_entry(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     key: &CandidateKey,
 ) -> Result<(), DbError> {
@@ -31,7 +31,7 @@ coven::write!(
 );
 
 fn delete_entry_row(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     key: &CandidateKey,
 ) -> Result<(), DbError> {
@@ -102,7 +102,7 @@ macro_rules! entry_row_clears {
         /// that stores the entry again over that row and says itself what
         /// that does to its candidate's identification.
         pub(super) fn clear_entry_rows(
-            sql: &CovenWrite<'_>,
+            sql: &WriteContext<'_>,
             watched_folder_path: &Path,
             key: &CandidateKey,
         ) -> Result<(), DbError> {
@@ -148,7 +148,7 @@ coven::read!(
 /// generation than `generation`, ending each candidate's identification, and
 /// return their keys.
 pub(super) fn prune_other_generations(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
 ) -> Result<Vec<CandidateKey>, DbError> {
@@ -198,7 +198,7 @@ coven::write!(
 /// nothing else, so the completion prune keeps the row. The row keeps the
 /// files the reading was taken from, so the reading stays current with it.
 pub(crate) fn touch_candidate(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     path: &CandidateKey,
     generation: i64,
@@ -218,7 +218,7 @@ pub(crate) fn touch_candidate(
 }
 
 pub(super) fn insert_item(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     item: &ScanItem,
@@ -255,7 +255,7 @@ pub(super) fn insert_item(
 }
 
 fn insert_candidate(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     kind: &str,
@@ -351,7 +351,7 @@ coven::write!(
 /// key, and its parts. `source_kind` is `folder` for a scan's row, `grouping`
 /// for a grouping's.
 pub(crate) fn insert_candidate_row(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     kind: &str,
@@ -433,7 +433,7 @@ coven::write!(
 );
 
 fn insert_invalid(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     generation: i64,
     source_kind: &str,
@@ -538,7 +538,7 @@ coven::write!(
 /// links go in last, since they reference file rows that may sort after the
 /// sheet's.
 pub(crate) fn insert_candidate_files(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     files: &crate::folder_scanner::CategorizedFiles,
@@ -610,7 +610,7 @@ coven::write!(
 );
 
 fn insert_file(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     position: usize,
@@ -724,7 +724,7 @@ coven::write!(
 );
 
 fn insert_cue_sheet(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     sheet_relative_path: &str,

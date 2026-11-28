@@ -129,7 +129,7 @@ fn folder_scan_status(
 
 /// Each watched folder's status, in the order the folders are listed.
 fn load_folder_scan_statuses_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
 ) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
     bae_store::statement_rows(sql, &FolderScanStatusesParams {})?
         .into_iter()
@@ -232,7 +232,7 @@ coven::write!(ClearHeldRootScans, r#"DELETE FROM folder_scan_held"#);
 /// Store `held` as the one row of `watched_folder_path`, leaving a row that
 /// already says it unwritten.
 fn hold_root_scan_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &std::path::Path,
     held: &HeldRootScan,
 ) -> Result<(), DbError> {
@@ -311,7 +311,7 @@ coven::read!(
 "#
 );
 
-fn load_stored_folder_scans_on(sql: &SqlReadContext<'_>) -> Result<Vec<StoredRootScan>, DbError> {
+fn load_stored_folder_scans_on(sql: &ReadContext<'_>) -> Result<Vec<StoredRootScan>, DbError> {
     let mut scans = Vec::new();
     for row in bae_store::statement_rows(sql, &StoredFolderScansParams {})? {
         let watched_folder_path = path_column::decode(row.watched.watched_path)?;

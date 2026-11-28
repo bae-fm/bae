@@ -117,7 +117,7 @@ pub struct ArtistIdMerge {
 impl ResolvedArtists {
     /// Insert the new artists and fill in the linked ones, before any link
     /// that points at them is written.
-    pub fn write_on(&self, tx: &CovenWrite<'_>) -> Result<(), DbError> {
+    pub fn write_on(&self, tx: &WriteContext<'_>) -> Result<(), DbError> {
         for artist in &self.inserts {
             insert_artist_row(tx, artist)?;
         }

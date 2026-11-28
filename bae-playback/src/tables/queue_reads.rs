@@ -248,19 +248,19 @@ fn session_up_next_of(rows: Vec<SessionUpNextItemsRow>) -> Result<Vec<QueueItem>
 }
 
 /// The track that plays next, as the session's up-next list starts.
-pub(super) fn queue_front_on(sql: &SqlReadContext<'_>) -> Result<Option<String>, DbError> {
+pub(super) fn queue_front_on(sql: &ReadContext<'_>) -> Result<Option<String>, DbError> {
     Ok(statement_optional(sql, &QueueFrontParams { limit: 1 })?.map(|row| row.front.track_id))
 }
 
 /// The track [`NextInOrder`] reads.
-pub(super) fn next_in_order_on(sql: &SqlReadContext<'_>) -> Result<Option<String>, DbError> {
+pub(super) fn next_in_order_on(sql: &ReadContext<'_>) -> Result<Option<String>, DbError> {
     Ok(statement_optional(sql, &NextInOrderParams {})?.map(|row| row.track_id))
 }
 
 /// The queue as one read sees it.
 #[cfg(any(test, feature = "test-utils"))]
 pub(super) fn queue_value_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
 ) -> Result<crate::ResolvedQueueSnapshot, DbError> {
     queue_value_of(statement_rows(sql, &QueueValueParams {})?)
 }

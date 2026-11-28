@@ -69,7 +69,13 @@ impl LaneOrder {
     }
 
     /// Move the rows at places `low..=high` up by `lift`.
-    fn lift_on(self, sql: &CovenWrite<'_>, lift: i64, low: i64, high: i64) -> Result<(), DbError> {
+    fn lift_on(
+        self,
+        sql: &WriteContext<'_>,
+        lift: i64,
+        low: i64,
+        high: i64,
+    ) -> Result<(), DbError> {
         match self {
             Self::UpNext => sql.run(&LiftUpNextParams { lift, low, high })?,
             Self::Ordered => sql.run(&LiftOrderedParams { lift, low, high })?,
@@ -82,7 +88,7 @@ impl LaneOrder {
     /// `delta`.
     fn lower_on(
         self,
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         lift: i64,
         delta: i64,
         from: i64,
@@ -96,7 +102,7 @@ impl LaneOrder {
     }
 
     /// Put the row `entry` at `place`.
-    fn park_on(self, sql: &CovenWrite<'_>, entry: i64, place: i64) -> Result<(), DbError> {
+    fn park_on(self, sql: &WriteContext<'_>, entry: i64, place: i64) -> Result<(), DbError> {
         match self {
             Self::UpNext => sql.run(&PlaceInUpNextParams { entry, place })?,
             Self::Ordered => sql.run(&PlaceInOrderedParams { entry, place })?,
@@ -106,7 +112,7 @@ impl LaneOrder {
     }
 
     /// Put the order's cursor at `place`; Up Next has no cursor to put.
-    fn move_cursor_on(self, sql: &CovenWrite<'_>, place: i64) -> Result<(), DbError> {
+    fn move_cursor_on(self, sql: &WriteContext<'_>, place: i64) -> Result<(), DbError> {
         match self {
             Self::UpNext => {}
             Self::Ordered => {
@@ -252,7 +258,7 @@ coven::read!(
 /// the lane holds, then come down to where they belong. The caller has left
 /// the places they come down to free.
 pub(super) fn shift_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     order: LaneOrder,
     low: i64,
     high: i64,
@@ -270,7 +276,7 @@ pub(super) fn shift_on(
 }
 
 pub(super) fn reorder_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     id: QueueEntryId,
     target: QueueLane,
     position: u64,
@@ -305,7 +311,7 @@ pub(super) fn reorder_on(
 /// counts `lane`'s rows in the order the screens show them, skips the moved
 /// row `entry`, and returns none when `position` is past the lane's end.
 fn entry_after_place_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     lane: QueueLane,
     entry: i64,
     position: u64,
@@ -329,7 +335,7 @@ fn entry_after_place_on(
 /// one, in the order `order`. A context order's cursor moves so it stays on the
 /// same track or between the same two.
 fn move_entry_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     order: LaneOrder,
     entry: i64,
     before: Option<i64>,

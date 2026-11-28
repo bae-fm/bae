@@ -24,7 +24,10 @@ coven::write!(
 /// holds no draft row, through `blank_draft_seed`, the write the trigger on a
 /// deleted release runs too. Stores nothing for a state the scan holds no
 /// audio units of yet.
-pub(super) fn seed_blank_draft_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn seed_blank_draft_on(
+    sql: &WriteContext<'_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
     sql.run(&SeedBlankDraftParams { content_hash })?;
     Ok(())
 }

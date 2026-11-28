@@ -49,7 +49,7 @@ async fn seed_two_discs(db: &bae_store::Store) -> [String; 2] {
 }
 
 fn insert_track(
-    conn: &coven::CovenWrite<'_>,
+    conn: &bae_store::WriteContext<'_>,
     track: &str,
     track_number: u32,
     medium: &str,
@@ -64,7 +64,7 @@ fn insert_track(
 /// Move every track on the medium `from` to `to`, then remove `from`, in
 /// `conn`'s write.
 fn empty_and_remove_medium(
-    conn: &coven::CovenWrite<'_>,
+    conn: &bae_store::WriteContext<'_>,
     from: &str,
     to: &str,
 ) -> Result<(), bae_store::DbError> {

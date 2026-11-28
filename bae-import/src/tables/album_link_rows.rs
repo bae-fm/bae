@@ -228,7 +228,7 @@ coven::read!(
 /// found, and store again what each link claims whose claimed release joins
 /// the albums kept before or now.
 pub(super) fn replace_group_album_links_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     read: &[(String, Vec<MetadataRef>)],
 ) -> Result<(), DbError> {
     let mut changed: Vec<MetadataRef> = Vec::new();

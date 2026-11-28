@@ -344,7 +344,7 @@ coven::write!(
 /// Write `layout`'s cards, card text and row statements as `owner`'s list,
 /// in place of what that list held.
 pub(super) fn store_list_text(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     owner: ListOwner<'_>,
     layout: &ListLayout,
 ) -> Result<(), DbError> {
@@ -480,7 +480,7 @@ coven::write!(
 /// works out for each MusicBrainz group from the picks and the list, and the
 /// text of each card and row. Returns those links.
 pub(super) fn lay_out_search_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     run: i64,
 ) -> Result<Vec<GroupLinks>, DbError> {
     let rows = load_search_run_matches_on(sql, run)?;

@@ -170,7 +170,7 @@ coven::write!(
 );
 
 /// Every signal row under `content_hash`. The values cascade from the header.
-pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_signals(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteSignalsParams { content_hash })?;
     Ok(())
 }
@@ -179,7 +179,7 @@ pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result
 /// `owner` held: the header in place, its values anew. Only a run in flight
 /// stores a pass still scanning.
 pub(super) fn store_signals(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     owner: Owner<'_>,
     signals: &Signals,
 ) -> Result<(), DbError> {

@@ -246,7 +246,7 @@ pub enum PreparationRefusal {
 /// verdict `prep` holds: a release that may be worked on, not set aside,
 /// imported or claimed by an import, with the files the verdict answers.
 fn answers_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     key: &crate::CandidateKey,
     prep: &CandidatePreparation,
 ) -> Result<bool, DbError> {
@@ -288,7 +288,7 @@ coven::read!(
 /// Write `prep` over what is stored, provided the stored revisions still
 /// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
     extras: &CandidateSaveExtras,

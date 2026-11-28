@@ -7,7 +7,11 @@
 //! names a person enters.
 
 mod builder;
+mod contexts;
 pub use builder::store_builder;
+pub use contexts::{
+    BulkContext, CommitContext, JoiningContext, MemberContext, ReadContext, WriteContext,
+};
 mod device_state;
 pub use device_state::FormerDeviceState;
 mod entered_name;

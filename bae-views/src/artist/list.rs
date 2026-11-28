@@ -539,7 +539,7 @@ coven::read!(
 /// The artist list's `window` under `sort`, each row with its key.
 #[cfg(test)]
 pub(crate) fn artist_window_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ArtistSortField, 2>,
     window: &ListWindow,
 ) -> Result<WindowRead<DbArtistSummary>, DbError> {
@@ -615,7 +615,7 @@ pub(crate) fn artist_window_read(
 /// How many artists come before the row at `at` under `sort`.
 #[cfg(test)]
 pub(crate) fn artists_before_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ArtistSortField, 2>,
     at: &OrderKey,
 ) -> Result<u64, DbError> {
@@ -653,7 +653,7 @@ pub(crate) fn artists_before_read(
 
 /// The key of the artist at `position` under `sort`, or of the last one.
 pub(crate) fn artist_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     sort: &ListSort<ArtistSortField, 2>,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {

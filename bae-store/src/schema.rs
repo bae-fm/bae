@@ -17,19 +17,20 @@ const PAGE_CACHE_KIB: u32 = 16 * 1024;
 /// A domain's write for a member's device as its registration applies: coven
 /// runs it as a local write, in the transaction that first applies the
 /// registration, with the facts of the member's latest admission.
-pub type JoiningWrite = fn(&coven::JoiningWrite<'_>, &coven::Joining) -> Result<(), coven::DbError>;
+pub type JoiningWrite =
+    fn(&crate::JoiningContext<'_>, &coven::Joining) -> Result<(), coven::DbError>;
 
 /// A domain's write in the library's first write: coven runs it as the
 /// library's creator, inside the library's creation, after the creator and
 /// this device are registered and before the library is visible, so the rows
 /// it writes are there on every device that ever reads the library.
-pub type FirstWrite = fn(&coven::MemberWrite<'_>) -> rusqlite::Result<()>;
+pub type FirstWrite = fn(&crate::MemberContext<'_>) -> rusqlite::Result<()>;
 
 /// A domain's function that coven runs last in each transaction that changes
 /// the app's rows, this device's write or one applied from another device
 /// alike, to store in the domain's device-local tables what its Rust rules
 /// compute from the transaction's rows. Its error rolls the transaction back.
-pub type BeforeCommit = fn(&coven::CommitSql<'_>) -> Result<(), coven::DbError>;
+pub type BeforeCommit = fn(&crate::CommitContext<'_>) -> Result<(), coven::DbError>;
 
 /// One domain's share of the schema: its SQL files, which run in the order
 /// given, the SQL functions and collations those files name, the synced
@@ -226,7 +227,10 @@ impl Schema {
            + Send
            + 'static {
         let writes: Vec<FirstWrite> = self.parts().filter_map(|part| part.first_write).collect();
-        move |sql, _| Ok(writes.iter().try_for_each(|write| write(sql))?)
+        move |sql, _| {
+            let sql = crate::MemberContext { sql };
+            Ok(writes.iter().try_for_each(|write| write(&sql))?)
+        }
     }
 
     /// The parts' writes for a member's device as its registration applies,
@@ -281,13 +285,16 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
     let joining_writes = schema.joining_writes();
     if !joining_writes.is_empty() {
         builder = builder.joining_write(move |sql, joining| {
-            joining_writes.iter().try_for_each(|write| write(sql, joining))
+            let sql = crate::JoiningContext { sql };
+            joining_writes.iter().try_for_each(|write| write(&sql, joining))
         });
     }
     let before_commits = schema.before_commits();
     if !before_commits.is_empty() {
-        builder = builder
-            .before_commit(move |sql| before_commits.iter().try_for_each(|function| function(sql)));
+        builder = builder.before_commit(move |sql| {
+            let sql = crate::CommitContext { sql };
+            before_commits.iter().try_for_each(|function| function(&sql))
+        });
     }
     for function in schema.functions() {
         let compute = function.compute;

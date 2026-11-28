@@ -33,7 +33,7 @@ coven::write!(
 "#
 );
 
-pub(super) fn insert_artist_row(conn: &CovenWrite<'_>, artist: &DbArtist) -> Result<(), DbError> {
+pub(super) fn insert_artist_row(conn: &WriteContext<'_>, artist: &DbArtist) -> Result<(), DbError> {
     conn.run(&InsertArtistParams {
         id: &artist.id,
         name: &artist.name,
@@ -64,7 +64,7 @@ coven::write!(
 );
 
 pub(super) fn update_artist_external_ids_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     id: &str,
     discogs_artist_id: Option<&str>,
     musicbrainz_artist_id: Option<&str>,
@@ -96,7 +96,7 @@ coven::write!(
 );
 
 #[cfg(any(test, feature = "test-utils", desktop))]
-pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
+pub(super) fn insert_album_row(conn: &WriteContext<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.run(&InsertAlbumParams {
         id: &album.id,
         title: &album.title,
@@ -129,7 +129,7 @@ coven::write!(
 /// Write `album` whether or not its row is here: a group's album (whose id is
 /// the group's) can be here already, written by another import of the group.
 #[cfg(desktop)]
-pub fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
+pub fn upsert_album_row(conn: &WriteContext<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.run(&UpsertAlbumParams {
         id: &album.id,
         title: &album.title,
@@ -142,7 +142,7 @@ pub fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), Db
 
 #[cfg(any(test, feature = "test-utils", all(debug_assertions, desktop)))]
 pub(super) fn insert_album_artist_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     aa: &DbAlbumArtist,
 ) -> Result<(), DbError> {
     insert_album_credit(conn, aa, &aa.created_at.to_rfc3339())
@@ -184,7 +184,7 @@ coven::write!(
 /// release stays its primary one. Its labels name the library labels
 /// `labels` decides.
 pub fn insert_release_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     release: &DbRelease,
     pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
@@ -248,7 +248,7 @@ coven::write!(
 /// the library label it names and the catalog number it gives, in order, each
 /// row under its id of `row_ids`.
 pub(super) fn replace_release_label_rows(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     release_id: &str,
     rows: &[(Option<String>, Option<&str>)],
     row_ids: &[String],
@@ -286,7 +286,7 @@ coven::write!(
 /// Make the release `release_id`'s barcodes exactly `barcodes`, in order,
 /// each row under its id of `row_ids`.
 pub(super) fn replace_release_barcodes(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     release_id: &str,
     barcodes: &[String],
     row_ids: &[String],
@@ -324,7 +324,7 @@ coven::write!(
 /// Make the release `release_id`'s media exactly `media`, in order, each row
 /// under its id of `row_ids`.
 pub(super) fn replace_release_media(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     release_id: &str,
     media: &[bae_types::pressing::MediaCount],
     row_ids: &[String],
@@ -367,7 +367,7 @@ coven::write!(
 /// Make the release `release_id`'s Discogs details exactly `details`, in
 /// order, each row under its id of `row_ids`.
 pub(super) fn replace_release_discogs_details(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     release_id: &str,
     details: &[bae_types::pressing::DiscogsDetail],
     row_ids: &[String],
@@ -392,7 +392,7 @@ pub(super) fn replace_release_discogs_details(
 /// the release has in it, then `insert` once for each of `rows`, in order,
 /// with its id of `row_ids` and its position, numbered from zero.
 fn replace_release_list<R>(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     clear: &impl coven::Write,
     rows: &[R],
     row_ids: &[String],
@@ -422,7 +422,7 @@ coven::write!(
 );
 
 pub fn insert_release_medium_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     medium: &DbReleaseMedium,
 ) -> Result<(), DbError> {
     conn.run(&InsertReleaseMediumParams {
@@ -471,7 +471,7 @@ coven::write!(
 /// Write what `medium` is over the medium row `id`.
 #[cfg(desktop)]
 pub(super) fn update_release_medium_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     id: &str,
     medium: &bae_types::mediums::ReleaseMedium,
 ) -> Result<(), DbError> {
@@ -487,7 +487,7 @@ pub(super) fn update_release_medium_row(
 coven::write!(DeleteReleaseMedium(id: &'p str), "DELETE FROM release_mediums WHERE id = :id");
 
 #[cfg(desktop)]
-pub(super) fn delete_release_medium_row(conn: &CovenWrite<'_>, id: &str) -> Result<(), DbError> {
+pub(super) fn delete_release_medium_row(conn: &WriteContext<'_>, id: &str) -> Result<(), DbError> {
     conn.run(&DeleteReleaseMediumParams { id })?;
     Ok(())
 }
@@ -517,7 +517,7 @@ coven::write!(
 "#
 );
 
-pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), DbError> {
+pub fn insert_track_row(conn: &WriteContext<'_>, track: &DbTrack) -> Result<(), DbError> {
     conn.run(&InsertTrackParams {
         id: &track.id,
         release_id: &track.release_id,
@@ -532,7 +532,7 @@ pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), Db
     Ok(())
 }
 
-pub fn insert_track_artist_row(conn: &CovenWrite<'_>, ta: &DbTrackArtist) -> Result<(), DbError> {
+pub fn insert_track_artist_row(conn: &WriteContext<'_>, ta: &DbTrackArtist) -> Result<(), DbError> {
     insert_track_credit(conn, ta, &ta.created_at.to_rfc3339())
 }
 
@@ -564,7 +564,7 @@ coven::write!(
 /// `(release, catalog)`: one catalog's record of a release is one row.
 #[cfg(any(test, feature = "test-utils", desktop))]
 pub fn write_release_records(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     release_id: &str,
     records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<(), DbError> {
@@ -596,7 +596,7 @@ coven::write!(
 /// Make `album_id`'s credit list exactly `artists`. An artist of another
 /// album is a bug of the caller's, which panics in the store's work.
 pub fn replace_album_artists(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     album_id: &str,
     artists: &[DbAlbumArtist],
     now: &str,
@@ -627,7 +627,7 @@ coven::write!(
 /// the album). An artist of a track outside `track_ids` is a bug of the
 /// caller's, which panics in the store's work.
 pub(super) fn replace_track_artists(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     track_ids: &[&str],
     artists: &[DbTrackArtist],
     now: &str,
@@ -666,7 +666,7 @@ coven::write!(
 
 /// Insert `credit` as a place of its album's credit list, made at `created_at`.
 fn insert_album_credit(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     credit: &DbAlbumArtist,
     created_at: &str,
 ) -> Result<(), DbError> {
@@ -703,7 +703,7 @@ coven::write!(
 
 /// Insert `credit` as a place of its track's credit list, made at `created_at`.
 fn insert_track_credit(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     credit: &DbTrackArtist,
     created_at: &str,
 ) -> Result<(), DbError> {

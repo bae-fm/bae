@@ -351,7 +351,7 @@ impl People {
         &self,
         id: uuid::Uuid,
         change: impl for<'ctx> FnOnce(
-                &CovenWrite<'ctx>,
+                &WriteContext<'ctx>,
                 PersonProfile,
             ) -> Result<Result<(), CollectionError>, DbError>
             + Send
@@ -410,7 +410,7 @@ coven::read!(
 "#
 );
 
-fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> Result<Vec<PlaylistEntry>, DbError> {
+fn entries(sql: &ReadContext<'_>, playlist: uuid::Uuid) -> Result<Vec<PlaylistEntry>, DbError> {
     let statement = EntriesOfPlaylistParams { playlist: playlist.to_string() };
     bae_store::statement_rows(sql, &statement)?
         .into_iter()
@@ -489,7 +489,7 @@ coven::read!(
 /// of the entry `moved` to `place` puts it at; none when the playlist holds no
 /// such entry, or no entry `place` names.
 fn place_among_others_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     playlist: uuid::Uuid,
     moved: uuid::Uuid,
     place: EntryPlace,
@@ -509,7 +509,7 @@ fn place_among_others_on(
 /// place `beside` names; none when the playlist holds no entry `beside`
 /// names, `beside` names `moved`, or the playlist holds no `moved`.
 fn entries_before_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     playlist: uuid::Uuid,
     beside: BesideEntry,
     moved: Option<uuid::Uuid>,

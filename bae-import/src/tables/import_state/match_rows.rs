@@ -145,7 +145,7 @@ coven::write!(
 /// Delete the rows below every match the verdict `verdict` holds, so the
 /// matches a write stores next carry only their own.
 pub(super) fn delete_verdict_match_entries(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     verdict: VerdictId,
 ) -> Result<(), DbError> {
     sql.run(&DeleteVerdictCoverCopiesParams { verdict })?;
@@ -167,7 +167,7 @@ coven::write!(
 /// Delete `verdict`'s matches from `position` on: those an earlier verdict
 /// held past the ones a write just stored.
 pub(super) fn delete_verdict_matches_from(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     verdict: VerdictId,
     position: usize,
 ) -> Result<(), DbError> {
@@ -184,7 +184,7 @@ coven::write!(
 
 /// Delete every release a search part asking `catalog` returned.
 pub(super) fn delete_search_matches_of(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     catalog: LookupCatalog,
 ) -> Result<(), DbError> {
     sql.run(&DeleteSearchMatchesParams { source: catalog.as_str() })?;
@@ -348,7 +348,7 @@ coven::write!(
 /// search writes a returned release, and only a verdict-shaped owner a listed
 /// or unlisted one.
 pub(super) fn store_match(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     owner: MatchOwner,
     position: usize,
     result: &MetadataResult,
@@ -527,7 +527,7 @@ coven::write!(
 
 /// The album link rows of the match `match_id`, which holds none yet.
 pub(super) fn store_album_link_rows(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     match_id: MatchId,
     links: &AlbumLinks,
 ) -> Result<(), DbError> {

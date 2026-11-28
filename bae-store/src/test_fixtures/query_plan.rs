@@ -2,7 +2,7 @@
 //! or a write finds its rows: by an index, or by reading a whole table; and
 //! the statistics a test plants for SQLite's planner to plan by.
 
-use crate::WriterRead;
+use crate::ReadContext;
 
 /// The detail of each step of SQLite's plan for `statement` on `store`, run
 /// with the statement's parameters, in plan order.
@@ -16,7 +16,7 @@ where
 /// The steps of the plan SQLite reads `statement` by on `sql`, one line per
 /// step, with the values `statement` binds.
 pub fn plan_of<S: coven::Statement>(
-    sql: &impl WriterRead,
+    sql: &ReadContext<'_>,
     statement: &S,
 ) -> rusqlite::Result<Vec<String>> {
     Ok(plan_steps_of(sql, statement)?.into_iter().map(|step| step.detail).collect())
@@ -34,10 +34,14 @@ pub struct PlanStep {
 /// The steps of the plan SQLite reads `statement` by on `sql`, with the tree
 /// they make.
 pub fn plan_steps_of<S: coven::Statement>(
-    sql: &impl WriterRead,
+    sql: &ReadContext<'_>,
     statement: &S,
 ) -> rusqlite::Result<Vec<PlanStep>> {
-    sql.query(&format!("EXPLAIN QUERY PLAN {}", S::SQL), statement.params().as_slice(), plan_step)
+    sql.sql.query(
+        &format!("EXPLAIN QUERY PLAN {}", S::SQL),
+        statement.params().as_slice(),
+        plan_step,
+    )
 }
 
 /// The step a row of `EXPLAIN QUERY PLAN` names.
@@ -69,12 +73,10 @@ where
 /// plan order, with its parameters unbound, for a statement whose plan no
 /// bound value changes. A test that checks a list of statements of different
 /// types holds each as `plan_steps::<Q>`.
-pub fn plan_steps<Q: coven::Statement>(
-    sql: &coven::SqlReadContext<'_>,
-) -> rusqlite::Result<Vec<PlanStep>> {
+pub fn plan_steps<Q: coven::Statement>(sql: &ReadContext<'_>) -> rusqlite::Result<Vec<PlanStep>> {
     let explain = format!("EXPLAIN QUERY PLAN {}", <Q as coven::Statement>::SQL);
     let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-    sql.query(&explain, unbound, plan_step)
+    sql.sql.query(&explain, unbound, plan_step)
 }
 
 /// The detail of each step of SQLite's plan for the statement `plan_of`
@@ -91,7 +93,7 @@ pub async fn unbound_plan_steps(store: &crate::Store, plan_of: PlanOf) -> Vec<Pl
 
 /// [`plan_steps`] of one statement type, as a list of statements of
 /// different types holds it.
-pub type PlanOf = for<'a, 'b> fn(&'a coven::SqlReadContext<'b>) -> rusqlite::Result<Vec<PlanStep>>;
+pub type PlanOf = for<'a, 'b> fn(&'a ReadContext<'b>) -> rusqlite::Result<Vec<PlanStep>>;
 
 /// [`plan_of`] on a bare library a test opened on `conn`
 /// (`Schema::open_bare_library`).

@@ -49,7 +49,7 @@ coven::write!(
 /// row naming the same coven file, so nothing is uploaded again; the
 /// absorbed artist's image row goes.
 pub(crate) fn merge_artist_on(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     merge: &ArtistMerge<'_>,
 ) -> Result<(), DbError> {
     let image =
@@ -110,7 +110,10 @@ coven::write!(
 );
 
 /// Merge `merge.absorbed` into `merge.survivor` inside the caller's write.
-pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> Result<(), DbError> {
+pub(crate) fn merge_label_on(
+    conn: &WriteContext<'_>,
+    merge: &LabelMerge<'_>,
+) -> Result<(), DbError> {
     let changed = conn.run(&FillLabelIdsParams {
         id: merge.survivor,
         musicbrainz_label_id: merge.musicbrainz_label_id,

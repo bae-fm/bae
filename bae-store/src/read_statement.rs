@@ -2,17 +2,46 @@
 //! of rows its caller expects: a one-shot read, a live query and a write's
 //! transaction run the same statement.
 
+use crate::contexts::{
+    BulkContext, CommitContext, JoiningContext, MemberContext, ReadContext, WriteContext,
+};
 use crate::DbError;
 use coven::Read;
-use coven::SqlRead;
 use sqlive_reads::Writer;
 
 /// A context that reads on the store's writer, as every one of bae's does: a
-/// read's, a write's or a bulk write's. A generated read runs on one when its
-/// call marks it `writer`.
-pub trait WriterRead: SqlRead<Handle = Writer> {}
+/// read's, a write's, a bulk write's or a schema hook's. A generated read runs
+/// on one when its call marks it `writer`. Only bae-store's contexts are
+/// ones, and each runs only generated reads.
+pub trait WriterRead: sealed::Context {
+    /// Every row `statement` returns, run with the scope plan bae's build
+    /// compiled for it.
+    fn rows_of<Q: Read<Handle = Writer>>(&self, statement: &Q) -> rusqlite::Result<Vec<Q::Row>>;
+}
 
-impl<T: SqlRead<Handle = Writer>> WriterRead for T {}
+mod sealed {
+    /// bae-store's contexts, which alone read.
+    pub trait Context {}
+}
+
+/// [`WriterRead`] for each of bae-store's contexts, through the coven context
+/// it holds.
+macro_rules! writer_reads {
+    ($($context:ident),+) => {$(
+        impl sealed::Context for $context<'_> {}
+
+        impl WriterRead for $context<'_> {
+            fn rows_of<Q: Read<Handle = Writer>>(
+                &self,
+                statement: &Q,
+            ) -> rusqlite::Result<Vec<Q::Row>> {
+                self.sql.query_compiled(Q::compiled(), statement.params().as_slice(), Q::read)
+            }
+        }
+    )+};
+}
+
+writer_reads!(ReadContext, WriteContext, BulkContext, CommitContext, JoiningContext, MemberContext);
 
 /// Every row `statement` returns on `sql`, run with the scope plan bae's build
 /// compiled for it, so a live query's first run builds none. It fails with
@@ -22,7 +51,7 @@ pub fn statement_rows<Q: Read<Handle = Writer>>(
     sql: &impl WriterRead,
     statement: &Q,
 ) -> rusqlite::Result<Vec<Q::Row>> {
-    sql.query_compiled(Q::compiled(), statement.params().as_slice(), Q::read)
+    sql.rows_of(statement)
 }
 
 /// The row `statement` returns on `sql`, for a statement that returns at most

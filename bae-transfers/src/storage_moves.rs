@@ -4,9 +4,9 @@
 
 use bae_store::DbError;
 use bae_store::Store;
+use bae_store::WriteContext;
 use bae_store::WriteError;
 use bae_store::{statement_row, statement_rows};
-use coven::CovenWrite;
 
 // Whether the library holds the release `release`.
 coven::read!(
@@ -29,7 +29,7 @@ coven::read!(
 );
 
 /// Whether the library holds `release_id`, read in `sql`.
-fn release_held_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<bool, DbError> {
+fn release_held_on(sql: &WriteContext<'_>, release_id: &str) -> Result<bool, DbError> {
     Ok(statement_row(sql, &ReleaseHeldParams { release: release_id.to_string() })?.held)
 }
 
@@ -112,13 +112,16 @@ pub struct Unpinned {
 
 /// Unpin every file of `release_id`, as [`unpin_releases`] does for a
 /// release. coven has nothing to remove for a file on one device only.
-pub(crate) fn unpin_files_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
+pub(crate) fn unpin_files_on(sql: &WriteContext<'_>, release_id: &str) -> Result<(), DbError> {
     sql.unpin(&release_files_on(sql, release_id)?)?;
     Ok(())
 }
 
 /// The coven files of `release_id`'s files, in their ids' order.
-fn release_files_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<Vec<coven::FileId>, DbError> {
+fn release_files_on(
+    sql: &WriteContext<'_>,
+    release_id: &str,
+) -> Result<Vec<coven::FileId>, DbError> {
     let statement = FilesOfReleaseParams { release: release_id.to_string() };
     Ok(statement_rows(sql, &statement)?.into_iter().map(|row| row.file).collect())
 }

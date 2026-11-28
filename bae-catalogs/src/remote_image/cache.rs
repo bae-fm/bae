@@ -8,10 +8,10 @@ use super::fetch::{send_image_request, ImageResponse};
 use super::RemoteImageError;
 use bae_diagnostics::Diagnostics;
 use bae_store::query::to_i64;
+use bae_store::WriteContext;
 use bae_store::{DbError, Store, WriteStatements};
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
-use coven::CovenWrite;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -286,14 +286,19 @@ coven::write!(DeleteImage(file: &'p str), r#"DELETE FROM cached_image WHERE file
 coven::write!(DeleteAllImages, r#"DELETE FROM cached_image"#);
 
 /// Mark `file`'s row as the most recently used; whether there is one.
-fn mark_used(sql: &CovenWrite<'_>, file: &str) -> Result<bool, DbError> {
+fn mark_used(sql: &WriteContext<'_>, file: &str) -> Result<bool, DbError> {
     Ok(sql.run(&MarkImageUsedParams { file })? > 0)
 }
 
 /// Record `file`, of `bytes`, as the most recently used, then delete the
 /// least recently used rows until the rest fit `budget`, and return the
 /// files whose rows it deleted.
-fn keep(sql: &CovenWrite<'_>, file: &str, bytes: u64, budget: u64) -> Result<Vec<String>, DbError> {
+fn keep(
+    sql: &WriteContext<'_>,
+    file: &str,
+    bytes: u64,
+    budget: u64,
+) -> Result<Vec<String>, DbError> {
     sql.run(&KeepImageParams { file, bytes: to_i64(bytes, "a cached image's size")? })?;
     let budget = to_i64(budget, "the image cache's budget")?;
     let deleted = sql.returning(&DeleteImagesOverBudgetParams { budget })?;
@@ -301,13 +306,13 @@ fn keep(sql: &CovenWrite<'_>, file: &str, bytes: u64, budget: u64) -> Result<Vec
 }
 
 /// Delete `file`'s row.
-fn forget(sql: &CovenWrite<'_>, file: &str) -> Result<(), DbError> {
+fn forget(sql: &WriteContext<'_>, file: &str) -> Result<(), DbError> {
     sql.run(&DeleteImageParams { file })?;
     Ok(())
 }
 
 /// Delete every row.
-fn forget_all(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+fn forget_all(sql: &WriteContext<'_>) -> Result<(), DbError> {
     sql.run(&DeleteAllImagesParams {})?;
     Ok(())
 }

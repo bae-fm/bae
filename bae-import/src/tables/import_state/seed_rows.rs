@@ -40,7 +40,7 @@ coven::write!(
 /// blank draft that the folder's stored audio units make. A state that holds
 /// a draft keeps it.
 pub(crate) fn ensure_candidate_state(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     path: &CandidateKey,
     folder: &std::path::Path,
     files: &crate::folder_scanner::CategorizedFiles,
@@ -96,7 +96,7 @@ coven::write!(
 /// the state an undone grouping of the same files left, and when `inherited`
 /// holds file decisions, store a state row carrying them.
 pub(crate) fn restart_state_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     key: &CandidateKey,
     inherited: &crate::folder_scanner::CandidateFileEdits,
@@ -141,7 +141,7 @@ coven::read!(
 /// Forget every folder at or below `folders` that files were found at, and
 /// the state of every candidate found only there.
 pub(crate) fn forget_at_or_below(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     folders: &crate::tables::watched_folders::FoldersAtOrBelow,
 ) -> Result<(), DbError> {
     let found: Vec<String> = bae_store::statement_rows(

@@ -72,7 +72,7 @@ use bae_records::*;
 use bae_store::path_column;
 use bae_store::query::*;
 use bae_store::*;
-use coven::{CovenWrite, SqlReadContext};
+use bae_store::{ReadContext, WriteContext};
 use std::collections::HashMap;
 use std::str::FromStr;
 

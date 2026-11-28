@@ -335,7 +335,7 @@ coven::write!(
 /// medium until the layout the save writes places them.
 #[cfg(desktop)]
 pub(super) fn write_rebound_audio_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     release_id: &str,
     rebound: &ReboundAudio,
 ) -> Result<(), DbError> {

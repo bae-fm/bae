@@ -123,7 +123,9 @@ impl BenchLibrary {
                 .await
                 .map_err(|error| format!("creating the library failed: {error}"))?;
         let library = Self { handle, _installation: installation, _app_dir: app_dir };
-        match library.fill(storage, tracks).await {
+        let store =
+            bae_store::test_devices::store_under(library.handle.clone(), composition.clock.clone());
+        match library.fill(&store, storage, tracks).await {
             Ok(()) => Ok(library),
             Err(error) => match library.close().await {
                 Ok(()) => Err(error),
@@ -132,9 +134,14 @@ impl BenchLibrary {
         }
     }
 
-    async fn fill(&self, storage: &BenchStorage, tracks: usize) -> Result<(), String> {
+    async fn fill(
+        &self,
+        store: &bae_store::Store,
+        storage: &BenchStorage,
+        tracks: usize,
+    ) -> Result<(), String> {
         let track_ids = bae_records::test_fixtures::chunked_tracks::track_ids(tracks);
-        self.handle
+        store
             .write(move |sql| {
                 bae_records::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)
             })

@@ -477,7 +477,7 @@ fn composer_page_rows_before_read(
 
 /// The key of the row at `position` of `artist_id`'s page, or of its last row.
 fn composer_page_key_at_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     artist_id: &str,
     position: u64,
 ) -> Result<Option<OrderKey>, DbError> {
@@ -544,7 +544,7 @@ fn row_of_entry(entry: ComposerPageEntry) -> Result<DbComposerDetailRow, DbError
 /// `None` when the composer list doesn't show it.
 #[cfg(test)]
 fn find_composer_detail_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     artist_id: &str,
 ) -> Result<Option<DbComposerDetail>, DbError> {
     let statement = ComposerHeadParams { artist: artist_id.to_string() };

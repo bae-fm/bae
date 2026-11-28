@@ -34,7 +34,7 @@ coven::write!(
 
 /// Forget every candidate set aside at or below `folders`.
 pub(super) fn forget_at_or_below(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     folders: &super::watched_folders::FoldersAtOrBelow,
 ) -> Result<(), DbError> {
     sql.run(&ForgetSkippedAtOrBelowParams {
@@ -115,7 +115,7 @@ impl ImportTables {
 /// `false` when it already was. Setting it aside ends its identification in
 /// the same write.
 pub(super) fn set_folder_skipped_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     candidate_path: &Path,
     skipped: bool,
 ) -> Result<bool, crate::ImportError> {

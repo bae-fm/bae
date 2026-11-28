@@ -26,7 +26,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
 
     let album_title_is = |expected: &str| {
         let expected = expected.to_string();
-        move |sql: &CovenWrite<'_>| {
+        move |sql: &WriteContext<'_>| {
             let statement = crate::records::test_capabilities::TitleOfAlbumParams {
                 album: ALBUM_A.to_string(),
             };

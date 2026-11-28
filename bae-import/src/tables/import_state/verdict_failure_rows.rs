@@ -35,7 +35,7 @@ coven::write!(
 
 /// Write `failures` as `verdict`'s, over the failures it stored before.
 pub(super) fn store_failures(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     verdict: VerdictId,
     failures: &[IdentifyFailure],
 ) -> Result<(), DbError> {

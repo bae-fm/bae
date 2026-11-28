@@ -62,7 +62,7 @@ impl VerdictLayout {
     /// Store the text of each card and row as `verdict`'s own list.
     pub(super) fn store_text(
         &self,
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         verdict: VerdictId,
     ) -> Result<(), DbError> {
         store_list_text(
@@ -137,7 +137,7 @@ coven::read!(
 /// candidate's discounted numbers come from its lookup choices; a run's are
 /// the rows its `ledger` excludes.
 pub(super) fn verdict_text_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     owner: Owner<'_>,
     ledger: Option<&IdentifyRunView>,
 ) -> Result<CandidateText, DbError> {
@@ -242,7 +242,7 @@ coven::write!(
 /// Lay out `owner`'s stored releases again, at the end of a write that
 /// changes their signals' text or the discounted catalog numbers.
 /// An owner with no verdict, or one that found nothing, holds no layout.
-pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
+pub(super) fn lay_out_matches_on(sql: &WriteContext<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     let request = VerdictOfParams { content_hash: owner.content_hash(), run: owner.run() };
     let Some(stored) = statement_optional(sql, &request)? else {
         return Ok(());

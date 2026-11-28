@@ -208,7 +208,7 @@ coven::write!(
 
 /// Record what the change journaled as `operation` changes, in its write.
 pub(super) fn insert_admin_operation(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     operation: coven::OperationId,
     target: &AdminTarget,
 ) -> rusqlite::Result<()> {
@@ -231,7 +231,7 @@ impl Membership {
     pub(super) async fn admin_change<R: Send + 'static>(
         &self,
         target: AdminTarget,
-        change: impl FnOnce(&CovenWrite<'_>) -> Result<(Option<coven::OperationId>, R), coven::SyncError>
+        change: impl FnOnce(&WriteContext<'_>) -> Result<(Option<coven::OperationId>, R), coven::SyncError>
             + Send
             + 'static,
     ) -> Result<R, coven::SyncError> {

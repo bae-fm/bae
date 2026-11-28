@@ -191,7 +191,7 @@ pub fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTr
 /// Where each of `track_ids` sits, in their order, each track the library
 /// holds.
 pub(crate) fn track_places_on(
-    sql: &coven::SqlReadContext<'_>,
+    sql: &bae_store::ReadContext<'_>,
     track_ids: &[String],
 ) -> Result<Vec<DbTrackPlace>, DbError> {
     sql.reads(&track_places_read(track_ids))?.into_iter().map(track_place_of).collect()

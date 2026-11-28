@@ -85,7 +85,7 @@ pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolde
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
 pub(super) fn require_watched(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     folder: &Path,
 ) -> Result<PathBuf, crate::ImportError> {
     watched_folder_among_on(sql, folder.ancestors())?
@@ -199,7 +199,7 @@ fn watched_folders_below_on(
 
 /// Refuse `folder` when it holds, or lies in, a watched folder. The error
 /// names that watched folder.
-fn refuse_overlap_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), crate::ImportError> {
+fn refuse_overlap_on(sql: &WriteContext<'_>, folder: &Path) -> Result<(), crate::ImportError> {
     match overlapping_watched_folder_on(sql, folder)? {
         Some(watched) => {
             Err(WatchedFolderRefusal::Overlap { folder: folder.to_path_buf(), watched }.into())
@@ -221,7 +221,7 @@ coven::write!(
 /// overlaps no watched folder: the add with [`refuse_overlap_on`], and the
 /// takeover by checking that no watched folder holds `folder` and that the
 /// watched folders inside it are the ones the takeover deleted.
-pub(super) fn watch_folder_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), DbError> {
+pub(super) fn watch_folder_on(sql: &WriteContext<'_>, folder: &Path) -> Result<(), DbError> {
     sql.run(&AppendWatchedFolderParams { path: coven::path_bytes(folder) })?;
     Ok(())
 }

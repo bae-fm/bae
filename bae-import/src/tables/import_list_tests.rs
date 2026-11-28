@@ -285,7 +285,7 @@ impl Library {
     /// What `read` reads of the library.
     async fn read_rows<T: Send + 'static>(
         &self,
-        read: impl FnOnce(&coven::SqlReadContext<'_>) -> Result<T, DbError> + Send + 'static,
+        read: impl FnOnce(&bae_store::ReadContext<'_>) -> Result<T, DbError> + Send + 'static,
     ) -> T {
         self.db.read(move |sql| read(&sql)).await.unwrap()
     }

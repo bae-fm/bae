@@ -50,7 +50,7 @@ coven::write!(
 "#
 );
 
-pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_file_edits(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteSheetReferencesParams { content_hash })?;
     sql.run(&DeleteSheetPlacesParams { content_hash })?;
     Ok(())
@@ -59,7 +59,7 @@ pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Res
 /// Write every decision `edits` holds. The caller has already cleared what
 /// stood under this hash, so this is always writing into empty space.
 pub(super) fn insert_file_edits(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {
@@ -190,7 +190,7 @@ fn file_edits_of(content_hashes: &[String]) -> Result<FileEditsOfParams, DbError
 
 /// Replace every file decision held for `content_hash` with `edits`.
 pub(super) fn store_file_edits(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {
@@ -203,7 +203,7 @@ pub(super) fn store_file_edits(
 /// grouping built from one of them. Every row must still be at the revision
 /// the caller prepared against.
 pub(super) fn settle_scanned_candidates(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,

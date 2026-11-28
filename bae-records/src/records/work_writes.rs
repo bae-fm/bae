@@ -21,7 +21,7 @@ coven::write!(
 "#
 );
 
-pub fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbError> {
+pub fn insert_work_row(conn: &WriteContext<'_>, work: &DbWork) -> Result<(), DbError> {
     conn.run(&KeepWorkParams {
         id: &work.id,
         title: &work.title,
@@ -57,7 +57,7 @@ coven::write!(
 "#
 );
 
-pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Result<(), DbError> {
+pub fn insert_work_artist_row(conn: &WriteContext<'_>, link: &DbWorkArtist) -> Result<(), DbError> {
     let created_at = link.created_at.to_rfc3339();
     let credit_key = settle_credit_name(conn, &link.artist_id, link.credit.as_ref(), &created_at)?;
     let columns = link.role.columns();
@@ -92,7 +92,7 @@ coven::write!(
 "#
 );
 
-pub fn insert_work_part_row(conn: &CovenWrite<'_>, part: &DbWorkPart) -> Result<(), DbError> {
+pub fn insert_work_part_row(conn: &WriteContext<'_>, part: &DbWorkPart) -> Result<(), DbError> {
     conn.run(&KeepWorkPartParams {
         id: part.id(),
         parent_work_id: &part.parent_work_id,
@@ -119,7 +119,7 @@ coven::write!(
 "#
 );
 
-pub fn insert_track_work_row(conn: &CovenWrite<'_>, link: &DbTrackWork) -> Result<(), DbError> {
+pub fn insert_track_work_row(conn: &WriteContext<'_>, link: &DbTrackWork) -> Result<(), DbError> {
     conn.run(&InsertTrackWorkParams {
         id: &link.id,
         track_id: &link.track_id,
@@ -156,7 +156,7 @@ coven::write!(
 );
 
 pub fn insert_release_artist_role_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     role: &DbReleaseArtistRole,
 ) -> Result<(), DbError> {
     let created_at = role.created_at.to_rfc3339();
@@ -202,7 +202,7 @@ coven::write!(
 );
 
 pub fn insert_track_artist_role_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     role: &DbTrackArtistRole,
 ) -> Result<(), DbError> {
     let created_at = role.created_at.to_rfc3339();

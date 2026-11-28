@@ -164,7 +164,7 @@ coven::write!(
 /// Forget what the person let the lookups of `content_hash` use; the barcode
 /// and catalog lists hang off the choices row and go with it.
 pub(super) fn delete_lookup_choices(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
 ) -> Result<(), DbError> {
     sql.run(&DeleteLookupChoicesParams { content_hash })?;
@@ -172,7 +172,7 @@ pub(super) fn delete_lookup_choices(
 }
 
 pub(super) fn replace_lookup_choices_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     choices: &LookupChoices,
 ) -> Result<(), DbError> {

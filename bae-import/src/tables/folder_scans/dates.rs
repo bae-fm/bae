@@ -77,7 +77,7 @@ pub(super) struct FolderDiscovery {
 
 impl FolderDiscovery {
     pub(super) fn observe(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         folder: &Path,
         observed: Option<FolderDate>,
         now: i64,
@@ -113,7 +113,7 @@ impl FolderDiscovery {
 
     /// Store what is known, marking the folder read as a release or as broken
     /// when `settles`. Writes nothing when nothing changed.
-    pub(super) fn store(&self, sql: &CovenWrite<'_>, settles: bool) -> Result<(), DbError> {
+    pub(super) fn store(&self, sql: &WriteContext<'_>, settles: bool) -> Result<(), DbError> {
         let date = self.folder_date.map(date_columns);
         sql.run(&StoreFolderDiscoveryParams {
             folder: coven::path_bytes(&self.folder),
@@ -136,7 +136,7 @@ coven::write!(
 
 /// Forget when every folder at or below `folders` was found.
 pub(crate) fn forget_discovery_at_or_below(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     folders: &crate::tables::watched_folders::FoldersAtOrBelow,
 ) -> Result<(), DbError> {
     sql.run(&ForgetDiscoveryAtOrBelowParams {

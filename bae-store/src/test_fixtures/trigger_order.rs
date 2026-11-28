@@ -46,12 +46,13 @@ pub async fn first_insert(store: &Store) -> Option<String> {
     store
         .call(|sql| {
             let first = sql
+                .sql
                 .query("SELECT step FROM watched_insert ORDER BY id LIMIT 1", [], |row| {
                     row.get::<_, String>(0)
                 })?
                 .into_iter()
                 .next();
-            sql.execute("DELETE FROM watched_insert", [])?;
+            sql.sql.execute("DELETE FROM watched_insert", [])?;
             Ok(first)
         })
         .await
@@ -89,7 +90,7 @@ impl RefreshCount {
         let (statement, key) =
             (format!("SELECT count(*) FROM {} WHERE key = ?1", self.table), key.to_string());
         store
-            .read(move |sql| Ok(sql.query_row(&statement, [&key], |row| row.get(0))?))
+            .read(move |sql| Ok(sql.sql.query_row(&statement, [&key], |row| row.get(0))?))
             .await
             .unwrap()
     }
@@ -97,6 +98,6 @@ impl RefreshCount {
     /// Start the count again from nothing.
     pub async fn clear(&self, store: &Store) {
         let statement = format!("DELETE FROM {}", self.table);
-        store.call(move |sql| Ok(sql.execute(&statement, [])?)).await.unwrap();
+        store.call(move |sql| Ok(sql.sql.execute(&statement, [])?)).await.unwrap();
     }
 }

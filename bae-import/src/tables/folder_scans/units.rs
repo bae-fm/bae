@@ -77,7 +77,7 @@ coven::write!(
 /// in the same write, and `scan_candidate_file` refuses an audio file without
 /// the facts the scan measured, so every audio file here has them.
 pub(super) fn insert_units(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     files: &CategorizedFiles,

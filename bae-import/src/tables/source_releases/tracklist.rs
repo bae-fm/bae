@@ -16,7 +16,7 @@ pub(super) struct Numbering {
 }
 
 pub(super) fn insert_entry(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     catalog: &str,
     key: &str,
     medium: i64,
@@ -105,7 +105,7 @@ fn direction_column(direction: PartDirection) -> &'static str {
 }
 
 fn insert_work(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     catalog: &str,
     key: &str,
     place: WorkPlace,
@@ -374,7 +374,7 @@ fn credited_as(
 
 /// Write the credit `role` the release states for itself.
 pub(super) fn insert_release_role(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     catalog: &str,
     key: &str,
     role: &RoleCredit,

@@ -17,7 +17,7 @@ coven::write!(
 /// Write an artist image's row, pointing it at `file`, the coven file its
 /// write staged.
 pub fn upsert_artist_image_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     image: &DbArtistImage,
     file: &coven::FileId,
 ) -> Result<(), DbError> {
@@ -91,7 +91,7 @@ coven::write!(
 
 /// Write a cover's row, pointing it at the files its write staged.
 pub fn upsert_cover_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     cover: &NewCover,
     staged: &StagedCover,
 ) -> Result<(), DbError> {
@@ -136,7 +136,7 @@ coven::write!(
 /// Write a release file's preview row, pointing it at `file`, the coven file
 /// its write staged.
 pub fn insert_preview_row(
-    conn: &CovenWrite<'_>,
+    conn: &WriteContext<'_>,
     preview: &NewReleasePreview,
     file: &coven::FileId,
 ) -> Result<(), DbError> {

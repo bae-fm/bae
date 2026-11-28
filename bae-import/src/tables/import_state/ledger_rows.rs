@@ -262,7 +262,7 @@ coven::write!(
 
 /// Clear the ledger rows `verdict` holds; the lookups and the releases they
 /// found go with their rows, and each cell's list with its cards.
-pub(super) fn delete_ledger(sql: &CovenWrite<'_>, verdict: VerdictId) -> Result<(), DbError> {
+pub(super) fn delete_ledger(sql: &WriteContext<'_>, verdict: VerdictId) -> Result<(), DbError> {
     sql.run(&DeleteLookupValuesParams { verdict })?;
     sql.run(&DeleteLookupProvidersParams { verdict })?;
     sql.run(&DeleteLookupIsrcsParams { verdict })?;
@@ -281,7 +281,7 @@ pub(super) type MatchPositions<'a> = HashMap<(LookupCatalog, &'a str), (usize, &
 /// ledger this is, whose cells may be queued or looking up; none for a ledger
 /// that has settled.
 pub(super) fn store_ledger(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     verdict: VerdictId,
     ledger: &IdentifyRunView,
     matches: &MatchPositions<'_>,
@@ -379,7 +379,7 @@ struct LookupKey<'a> {
 /// One cell, and the releases it found linked to their match rows; queued
 /// or looking up only in a run's ledger in flight (`asked_by` names the run).
 fn store_lookup(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     owner: VerdictId,
     key: LookupKey<'_>,
     catalog: Option<Catalog>,

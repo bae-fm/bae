@@ -107,7 +107,7 @@ impl ReleaseSaveInputs {
 /// what the save read before it, `read`. The check refuses the save as gone
 /// once the release is, and as stale once any of what it read changed.
 pub fn release_save_inputs_unchanged_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     form: &ReleaseEditForm,
     read: &ReleaseSaveInputs,
 ) -> Result<Result<(), bae_records::ReleaseEditRefusal>, DbError> {

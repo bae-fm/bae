@@ -67,7 +67,7 @@ coven::write!(
 /// stays, so the draft never reads as read from nowhere on its way from one
 /// source to another.
 pub(crate) fn store_provenance(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     provenance: Option<&MetadataProvenance>,
 ) -> Result<(), DbError> {
@@ -87,7 +87,7 @@ pub(crate) fn store_provenance(
 
 /// Write the provenance of a draft just written, which has none yet.
 pub(crate) fn insert_provenance(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     provenance: &MetadataProvenance,
 ) -> Result<(), DbError> {

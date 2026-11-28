@@ -23,7 +23,7 @@ pub fn release_edit_layout_on(
 /// lines: `honored` holds the picked sides the save's layout
 /// ([`release_edit_layout_on`]) gave their sheets.
 pub fn store_release_edit_sheet_decisions_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     form: &ReleaseEditForm,
     bindings: &[bae_records::records::sheet_files::SheetFilePick],
     honored: &[(String, MediumSide)],

@@ -22,7 +22,7 @@ pub fn track_ids(count: usize) -> Vec<String> {
 /// Write the fixture artist, album and release, its one medium, and a track
 /// on it for each of `track_ids`, in order.
 pub fn seed_release(
-    conn: &coven::CovenWrite<'_>,
+    conn: &bae_store::WriteContext<'_>,
     track_ids: &[String],
 ) -> Result<(), crate::IdentityWriteError> {
     let titles: Vec<String> =

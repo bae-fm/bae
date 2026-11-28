@@ -15,7 +15,7 @@ coven::write!(
 
 /// The next scan generation, from the counter's one row, which the schema
 /// seeds. A library without the row fails the write.
-pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, DbError> {
+pub(super) fn next_folder_scan_generation(sql: &WriteContext<'_>) -> Result<i64, DbError> {
     Ok(sql.returning_one(&NextScanGenerationParams {})?.last_generation)
 }
 

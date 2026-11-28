@@ -31,7 +31,7 @@ pub(super) enum OriginRecord {
 /// `content_hash`, inside the import's commit. The unique hash refuses a
 /// second release for the same files, naming the one that holds them.
 pub(super) fn record_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
     content_hash: &str,
 ) -> Result<OriginRecord, DbError> {

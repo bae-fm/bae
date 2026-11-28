@@ -105,7 +105,7 @@ coven::write!(DeleteResume, r#"DELETE FROM playback_state"#);
 /// Write the single device-local `playback_state` row (id = 'current'),
 /// replacing any existing one. Never synced.
 pub(super) fn save_resume_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     state: &PlaybackResumeRow,
 ) -> Result<(), DbError> {
     let (current_entry, current_track_id) = match &state.current {

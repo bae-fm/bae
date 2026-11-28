@@ -20,7 +20,7 @@ use crate::release_queue::ReleaseQueueRow;
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_store::{DbError, Store, WriteStatements};
-use coven::{CovenWrite, SqlReadContext};
+use bae_store::{ReadContext, WriteContext};
 
 /// What a queue's entries carry beyond their release, and how the queue reads
 /// and writes its table.
@@ -36,7 +36,7 @@ pub trait QueuedPayload: QueueWrites + Clone + PartialEq + Send + Sync + 'static
     /// one the worker took and has not ended, so after a restart it is taken
     /// first. Beside it, what the look saw of the network.
     #[doc(hidden)]
-    fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError>;
+    fn next_up_on(sql: &ReadContext<'_>) -> Result<rows::NextUp<Self>, DbError>;
     /// Resolves once the network may let an entry go that it held back from
     /// the look that saw `seen`; never for a queue that needs no network.
     #[doc(hidden)]
@@ -46,17 +46,17 @@ pub trait QueuedPayload: QueueWrites + Clone + PartialEq + Send + Sync + 'static
     ) -> impl std::future::Future<Output = ()> + Send;
     /// How many entries the queue holds in each phase, and what holds it
     /// back.
-    fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError>;
+    fn counts_on(sql: &ReadContext<'_>) -> Result<ReleaseQueueCounts, DbError>;
     /// Every entry of the queue, in the order queued, each beside its
     /// release.
     #[cfg(any(desktop, test, feature = "test-utils"))]
-    fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError>;
+    fn rows_on(sql: &ReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError>;
     /// Follow every entry of the queue and its counts, read on one snapshot.
     #[cfg(any(test, feature = "test-utils"))]
     fn subscribe_queue(store: &Store) -> coven::LiveQuery<ReleaseQueueSnapshot<Self, ()>, DbError>;
     /// What cancelling `release_id`'s entry does in the write that takes it
     /// out of the queue, before it goes.
-    fn cancelling_in(_sql: &CovenWrite<'_>, _release_id: &str) -> Result<(), DbError> {
+    fn cancelling_in(_sql: &WriteContext<'_>, _release_id: &str) -> Result<(), DbError> {
         Ok(())
     }
 }
@@ -67,7 +67,7 @@ impl QueuedPayload for DownloadRequest {
     const QUEUE: &'static str = "download";
     type Network = Option<bool>;
 
-    fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
+    fn next_up_on(sql: &ReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
         rows::next_download_on(sql)
     }
 
@@ -78,12 +78,12 @@ impl QueuedPayload for DownloadRequest {
         super::network_changed_from(store, seen)
     }
 
-    fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
+    fn counts_on(sql: &ReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
         rows::download_counts_on(sql)
     }
 
     #[cfg(any(desktop, test, feature = "test-utils"))]
-    fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
+    fn rows_on(sql: &ReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
         let every = bae_store::ListWindow::top(u64::MAX);
         let read = super::download_list::download_window_on(sql, &every)?;
         Ok(read.rows.into_iter().map(|(row, _key)| row).collect())
@@ -112,7 +112,7 @@ impl QueuedPayload for DownloadRequest {
     /// leave this device in the write that takes the entry out, the partial
     /// download a stopped pin keeps among them. A move-to-this-device's cancel leaves
     /// the files as they are.
-    fn cancelling_in(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
+    fn cancelling_in(sql: &WriteContext<'_>, release_id: &str) -> Result<(), DbError> {
         let statement = QueuedDownloadKindParams { release: release_id.to_string() };
         let kind = bae_store::statement_optional(sql, &statement)?.map(|row| row.kind);
         if kind.as_deref() == Some("pin") {
@@ -128,7 +128,7 @@ impl QueuedPayload for OutputRequest {
     const QUEUE: &'static str = "output";
     type Network = ();
 
-    fn next_up_on(sql: &SqlReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
+    fn next_up_on(sql: &ReadContext<'_>) -> Result<rows::NextUp<Self>, DbError> {
         rows::next_output_on(sql)
     }
 
@@ -139,12 +139,12 @@ impl QueuedPayload for OutputRequest {
         std::future::pending()
     }
 
-    fn counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
+    fn counts_on(sql: &ReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
         rows::output_counts_on(sql)
     }
 
     #[cfg(any(desktop, test, feature = "test-utils"))]
-    fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
+    fn rows_on(sql: &ReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
         rows::output_rows_on(sql)
     }
 
@@ -211,7 +211,7 @@ pub(super) fn output_request(
 
 #[cfg(any(desktop, test, feature = "test-utils"))]
 pub(crate) fn release_queue_on<P: QueuedPayload>(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
 ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
     Ok(queue_snapshot(P::rows_on(sql)?, P::counts_on(sql)?))
 }
@@ -230,7 +230,7 @@ fn queue_snapshot<P>(
 /// one the library doesn't hold; `true` when any went in.
 #[cfg(desktop)]
 pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     entries: &[ReleaseQueueEntry<P>],
 ) -> Result<bool, DbError> {
     let mut added = false;
@@ -245,7 +245,7 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
 /// and names each one the library no longer holds.
 #[cfg(desktop)]
 pub(crate) fn enqueue_held_releases_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     entries: Vec<ReleaseQueueEntry<P>>,
 ) -> Result<ReleasesQueued, DbError> {
     let release_ids =
@@ -303,7 +303,7 @@ coven::read!(
 
 /// The releases of `release_ids` (a JSON array) the library no longer holds,
 /// in the selection's order.
-fn missing_releases_on(sql: &CovenWrite<'_>, release_ids: &str) -> Result<Vec<String>, DbError> {
+fn missing_releases_on(sql: &WriteContext<'_>, release_ids: &str) -> Result<Vec<String>, DbError> {
     let statement = MissingReleasesParams { releases: release_ids.to_string() };
     Ok(bae_store::statement_rows(sql, &statement)?.into_iter().map(|row| row.release_id).collect())
 }
@@ -316,7 +316,7 @@ fn missing_releases_on(sql: &CovenWrite<'_>, release_ids: &str) -> Result<Vec<St
 /// files is coven's to say when the pin runs: it refuses a file not in the
 /// cloud, and the entry fails with its reason.
 pub(crate) fn enqueue_pins_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_ids: &[String],
     created_at: i64,
 ) -> Result<ReleasesQueued, DbError> {
@@ -330,7 +330,7 @@ pub(crate) fn enqueue_pins_on(
 /// cancelled or never queued, or when the queue is paused, a pause having
 /// landed after the worker picked the entry.
 pub(crate) fn activate_queued_release_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
     Ok(P::activate_on(sql, release_id)? > 0)
@@ -339,7 +339,7 @@ pub(crate) fn activate_queued_release_on<P: QueuedPayload>(
 /// The active entry for `release_id` finished: it leaves the queue.
 /// `false` when it had already left, cancelled while it ran.
 pub(crate) fn finish_queued_release_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
     Ok(P::finish_on(sql, release_id)? > 0)
@@ -348,7 +348,7 @@ pub(crate) fn finish_queued_release_on<P: QueuedPayload>(
 /// `release_id`'s entry failed, starting or running: it stays listed
 /// with `error` until retried. `false` when it had already left.
 pub(crate) fn fail_queued_release_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
     error: &str,
 ) -> Result<bool, DbError> {
@@ -359,7 +359,7 @@ pub(crate) fn fail_queued_release_on<P: QueuedPayload>(
 /// `error` until retried. `false` when the entry is no longer active, having
 /// left the queue or gone back to queued when a pause stopped its work.
 pub(crate) fn fail_active_release_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
     error: &str,
 ) -> Result<bool, DbError> {
@@ -369,7 +369,7 @@ pub(crate) fn fail_active_release_on<P: QueuedPayload>(
 /// Queue every failed entry again, in its place; `true` when any had
 /// failed.
 pub(crate) fn retry_failed_releases_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
 ) -> Result<bool, DbError> {
     Ok(P::retry_all_on(sql)? > 0)
 }
@@ -377,7 +377,7 @@ pub(crate) fn retry_failed_releases_on<P: QueuedPayload>(
 /// Queue `release_id`'s failed entry again, in its place; `true` when it
 /// had failed.
 pub(crate) fn retry_failed_release_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
     Ok(P::retry_on(sql, release_id)? > 0)
@@ -387,7 +387,7 @@ pub(crate) fn retry_failed_release_on<P: QueuedPayload>(
 /// active entry back to queued, in its place, since its work is stopped with
 /// the pause: resuming starts it again.
 pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     paused: bool,
 ) -> Result<bool, DbError> {
     let was =
@@ -403,7 +403,7 @@ pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
 /// that kind of entry does in the same write; `false` when the queue does not
 /// hold it.
 pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
 ) -> Result<bool, DbError> {
     P::cancelling_in(sql, release_id)?;
@@ -419,7 +419,7 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
 /// with its reason.
 #[cfg(desktop)]
 pub(crate) fn enqueue_moves_to_this_device_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_ids: &[String],
     target_dir: &std::path::Path,
     created_at: i64,
@@ -437,7 +437,7 @@ pub(crate) fn enqueue_moves_to_this_device_on(
 /// with, since it does not outlive the process that ran it. The download
 /// queue and its pause are kept, as coven's upload pause is: the entry that
 /// was downloading runs again.
-pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+pub fn clear_transfers_on(sql: &WriteContext<'_>) -> Result<(), DbError> {
     sql.run(&writes::ClearOutputQueueParams {})?;
     sql.run(&writes::SetQueuePausedParams { queue: OutputRequest::QUEUE, paused: false })?;
     Ok(())
@@ -454,7 +454,7 @@ pub mod worker_moves {
     /// same write, and no worker is woken: one parked on the paused queue
     /// stays parked, leaving the entry to the test.
     pub fn activate_on<P: QueuedPayload>(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         release_id: &str,
     ) -> Result<bool, DbError> {
         set_release_queue_paused_on::<P>(sql, false)?;
@@ -469,7 +469,7 @@ pub mod worker_moves {
 
     /// Finish `release_id`'s active entry, as the worker does on success.
     pub fn finish_on<P: QueuedPayload>(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         release_id: &str,
     ) -> Result<bool, DbError> {
         finish_queued_release_on::<P>(sql, release_id)
@@ -477,7 +477,7 @@ pub mod worker_moves {
 
     /// Fail `release_id`'s entry with `error`, as the worker does on failure.
     pub fn fail_on<P: QueuedPayload>(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         release_id: &str,
         error: &str,
     ) -> Result<bool, DbError> {
@@ -494,7 +494,7 @@ pub mod bulk {
     /// one a place later. No one queues a hundred thousand releases within a
     /// run, so they go in by one set-based statement.
     pub fn queue_downloads_on(
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         start: u64,
         release_ids: &[String],
     ) -> Result<(), DbError> {

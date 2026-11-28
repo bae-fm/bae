@@ -129,7 +129,7 @@ fn activity_bars_of(TransferBarsRow { uploads, pins, moves }: TransferBarsRow) -
 
 /// Every transfer line's bar as the tables give it.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRows, DbError> {
+pub fn activity_bars_on(sql: &bae_store::ReadContext<'_>) -> Result<ActivityBarRows, DbError> {
     Ok(activity_bars_of(bae_store::statement_row(sql, &activity_bars_read())?))
 }
 

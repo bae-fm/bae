@@ -392,7 +392,7 @@ impl FillCursor {
 }
 
 pub(super) fn fill_on(
-    sql: &coven::BulkSqlContext<'_>,
+    sql: &bae_store::BulkContext<'_>,
     fill: ContextFill,
 ) -> Result<ContextFilled, DbError> {
     let (source, rows, whole_shuffled, start, left_out) = match fill {

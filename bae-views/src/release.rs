@@ -150,7 +150,7 @@ coven::read!(
 /// The release's detail rows beside its album's compilation flag and year;
 /// `None` when the release doesn't exist.
 pub(crate) fn find_release_detail_context_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseDetailRows>, DbError> {
     let statement = ViewedReleaseDetailParams { release: release_id.to_owned() };

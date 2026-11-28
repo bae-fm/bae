@@ -14,8 +14,8 @@ use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_store::DbError;
 use bae_store::Store;
+use bae_store::WriteContext;
 use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
-use coven::CovenWrite;
 use rows::NextUp;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -77,7 +77,7 @@ impl<Extra: QueuedPayload> ActiveEntry<Extra> {
     /// work: it leaves the queue. Fails the write, rolling the work back
     /// with it, with [`DbError::EntryCancelled`] when the entry had already
     /// left, cancelled while it ran.
-    pub fn finish_on(&self, sql: &CovenWrite<'_>) -> Result<Finished, DbError> {
+    pub fn finish_on(&self, sql: &WriteContext<'_>) -> Result<Finished, DbError> {
         if tables::finish_queued_release_on::<Extra>(sql, &self.release_id)? {
             Ok(Finished(()))
         } else {

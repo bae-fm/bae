@@ -50,7 +50,7 @@ fn seed_of(
 
 /// The seed of the release `release_id` as the write `sql` finds it.
 fn seed_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
 ) -> Result<Result<ReleaseEditSeed, ReleaseEditSeedRefusal>, DbError> {
     seed_of(release_id, editor_release_on(sql, release_id)?)
@@ -59,7 +59,7 @@ fn seed_on(
 /// The form an editor opens on the release `release_id` as the write `sql`
 /// holds it: what a save hands its editor once it has written the release.
 pub fn release_edit_form_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     release_id: &str,
 ) -> Result<ReleaseEditForm, DbError> {
     match seed_on(sql, release_id)? {

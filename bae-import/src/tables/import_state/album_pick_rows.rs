@@ -44,7 +44,7 @@ coven::write!(
 );
 
 /// Leave the candidate `content_hash` to the album its records name.
-pub(super) fn delete_album_pick(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_album_pick(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteAlbumPickParams { content_hash })?;
     Ok(())
 }

@@ -77,7 +77,7 @@ fn commit_error(error: IdentityWriteError) -> ImportCommitError {
 /// [`ImportExpectation::verify`](crate::service::ImportExpectation::verify)'s
 /// to say.
 fn require_import_commit_guard(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), ImportCommitError> {
     match guard {
@@ -102,13 +102,13 @@ coven::read!(
 /// Whether the library holds the album `album_id`, read inside the commit's
 /// own write, so no write that adds or deletes the album can land between
 /// this read and the release's rows.
-fn album_held_on(sql: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
+fn album_held_on(sql: &WriteContext<'_>, album_id: &str) -> Result<bool, DbError> {
     Ok(bae_store::statement_row(sql, &AlbumHeldParams { album_id: album_id.to_owned() })?.held)
 }
 
 /// Refuse the import unless the existing album its release files under is
 /// still in the library.
-fn require_album_on(sql: &CovenWrite<'_>, album_id: &str) -> Result<(), ImportCommitError> {
+fn require_album_on(sql: &WriteContext<'_>, album_id: &str) -> Result<(), ImportCommitError> {
     if album_held_on(sql, album_id)? {
         Ok(())
     } else {
@@ -132,7 +132,7 @@ pub(crate) struct NewAlbum<'a> {
 /// keeps its own id when the library already holds the group's album, even
 /// one an import of the group committed after this import was prepared.
 fn new_album_id_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     album: &DbAlbum,
     picked_new: bool,
     records: &[bae_catalogs::records::ReleaseRecord],
@@ -152,7 +152,7 @@ fn new_album_id_on(
 /// this write — an attempt that never commits, cancelled or failing with a
 /// failure of its own, leaves it as it found it or replaces it.
 fn end_import_attempt_of_commit(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
@@ -174,7 +174,7 @@ fn end_import_attempt_of_commit(
 /// that landed in between leaves the hash taken, and the unique hash refuses
 /// this commit whole as [`ImportCommitRefusal::FilesAlreadyImported`].
 fn record_import_origin_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     guard: &ImportCommitGuard,
     release_id: &str,
 ) -> Result<(), ImportCommitError> {
@@ -205,7 +205,7 @@ fn record_import_origin_on(
 /// commit that does not land deletes none of it, so a retry finds the
 /// candidate as the failed attempt left it.
 fn delete_what_the_import_spent_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
@@ -249,7 +249,7 @@ coven::read!(
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
 /// when the scan no longer lists one there.
 fn load_committing_candidate(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     candidate_key: &crate::CandidateKey,
     expectation: &crate::service::ImportExpectation,
 ) -> Result<Option<CommittingCandidate>, DbError> {
@@ -374,7 +374,7 @@ impl Carving {
     /// fails the commit.
     fn store_on(
         &self,
-        sql: &CovenWrite<'_>,
+        sql: &WriteContext<'_>,
         file_ids: &HashMap<&str, &str>,
     ) -> Result<(), DbError> {
         for track in &self.tracks {

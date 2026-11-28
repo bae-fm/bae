@@ -87,7 +87,7 @@ pub(super) struct StoredRelease {
 /// items of its range, each with its key, and each member of a group with its
 /// group's header.
 pub(super) fn read_window(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     request: &ImportListRequest,
     window: &ListWindow,
 ) -> Result<WindowRows, DbError> {
@@ -255,7 +255,7 @@ impl WindowStatement {
     #[cfg(test)]
     pub(super) fn plan(
         &self,
-        sql: &impl bae_store::WriterRead,
+        sql: &bae_store::ReadContext<'_>,
     ) -> rusqlite::Result<Vec<bae_store::test_fixtures::query_plan::PlanStep>> {
         use bae_store::test_fixtures::query_plan::plan_steps_of;
         match self {
@@ -350,7 +350,7 @@ impl WindowItemRow {
 /// holds each order to its indexes with.
 #[cfg(test)]
 pub(super) fn window_plans(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     request: &ImportListRequest,
 ) -> Result<Vec<Vec<String>>, DbError> {
     let top = bae_store::ListWindow::top(50);

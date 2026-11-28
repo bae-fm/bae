@@ -280,7 +280,7 @@ coven::read!(
 /// The failure the pane states for `candidate`'s last command, or `None`
 /// when that command did not fail.
 pub(super) fn load_pane_failure_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     candidate: OneCandidate<'_>,
 ) -> Result<Option<PaneFailure>, DbError> {
     let OneCandidate::Hash(content_hash) = candidate;
@@ -327,7 +327,10 @@ coven::write!(
 );
 
 /// Forget the failure the pane states for `content_hash`'s last command.
-pub(super) fn delete_pane_failure(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_pane_failure(
+    sql: &WriteContext<'_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
     sql.run(&DeletePaneFailureParams { content_hash })?;
     Ok(())
 }

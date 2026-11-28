@@ -68,7 +68,7 @@ impl ReleaseDeletion {
         }))
     }
 
-    pub(super) fn apply_on(&self, sql: &CovenWrite<'_>) -> Result<(), DeletionError> {
+    pub(super) fn apply_on(&self, sql: &WriteContext<'_>) -> Result<(), DeletionError> {
         let current = Self::plan_on(sql, &self.release_id)?;
         if current.as_ref() != Some(self) {
             return Err(WriteError::Refused(DeletionRefusal::PlanChanged(Deleted::Release(

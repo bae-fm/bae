@@ -137,7 +137,7 @@ coven::write!(
 
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
 /// it: they hang off the verdict row.
-pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_verdict(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteVerdictParams { content_hash })?;
     Ok(())
 }
@@ -148,7 +148,7 @@ pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result
 /// no matches on its way from one verdict to another, and the matches past
 /// the new last go.
 pub(super) fn store_verdict(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     identification: &DbCandidateIdentifyResult,
 ) -> Result<(), DbError> {
@@ -206,7 +206,7 @@ coven::write!(
 /// [`store_verdict`] writes a verdict. Only a run in flight stores a ledger
 /// that has not settled.
 pub(super) fn store_outcome(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     owner: Owner<'_>,
     outcome: Outcome<'_>,
     kept_own_draft: bool,
@@ -365,7 +365,7 @@ pub(super) fn declined_of(
 /// other kinds hold no findings, and a ledger of theirs lists nothing.
 /// Answers the releases written, in position order.
 fn store_matches<'a>(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     verdict: VerdictId,
     outcome: Outcome<'a>,
     layout: &VerdictLayout,

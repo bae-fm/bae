@@ -302,7 +302,7 @@ fn storage_counts_read(scope: &StorageScope) -> coven::ReadAs<crate::storage_tot
 /// How many releases the list of `scope` holds and their files' total size.
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn storage_counts_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     scope: &StorageScope,
 ) -> Result<(u64, u64), DbError> {
     crate::storage_totals::storage_totals_of(sql.reads(&storage_counts_read(scope))?)
@@ -346,7 +346,7 @@ fn storage_selection_of(found: Vec<SelectedStorageRowsRow>) -> Result<DbStorageS
 /// The releases `list` shows from the release `from` to the release `to`,
 /// both included, in its order.
 fn storage_ids_between_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     list: &StorageList,
     from: String,
     to: String,
@@ -358,7 +358,7 @@ fn storage_ids_between_on(
 }
 
 /// Every release the list of `scope` shows.
-fn storage_ids_on(sql: &SqlReadContext<'_>, scope: &StorageScope) -> Result<Vec<String>, DbError> {
+fn storage_ids_on(sql: &ReadContext<'_>, scope: &StorageScope) -> Result<Vec<String>, DbError> {
     let (stored, search) = scope.bound();
     Ok(statement_rows(sql, &StorageIdsParams { stored, search })?
         .into_iter()

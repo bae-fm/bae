@@ -68,7 +68,7 @@ coven::write!(
 /// stays is written in place, so the candidate never reads as unlinked on
 /// its way from one link to another.
 pub(super) fn store_release_link(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     link: Option<&ReleaseLink>,
 ) -> Result<(), DbError> {

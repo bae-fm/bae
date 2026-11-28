@@ -132,7 +132,7 @@ coven::read!(
 /// Whether the library holds the album `album_id`, as the write `tx` finds
 /// it.
 #[cfg(desktop)]
-pub(super) fn album_held_on(tx: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
+pub(super) fn album_held_on(tx: &WriteContext<'_>, album_id: &str) -> Result<bool, DbError> {
     let statement = AlbumHeldParams { album: album_id.to_owned() };
     Ok(bae_store::statement_row(tx, &statement)?.held)
 }
@@ -176,7 +176,7 @@ coven::write!(
 /// release used may be another candidate's.
 #[cfg(desktop)]
 pub(super) fn set_records_on(
-    tx: &CovenWrite<'_>,
+    tx: &WriteContext<'_>,
     change: &RecordsChange,
     now_dt: time::UtcDateTime,
     ids: &dyn coven::IdSource,

@@ -28,7 +28,7 @@ coven::read!(
 /// The failure the last import of `candidate` left.
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub(super) fn load_failure_on(
-    sql: &SqlReadContext<'_>,
+    sql: &ReadContext<'_>,
     candidate: OneCandidate<'_>,
 ) -> Result<Option<ImportFailure>, DbError> {
     let OneCandidate::Hash(content_hash) = candidate;
@@ -72,7 +72,7 @@ coven::write!(
 );
 
 /// Drop the failure the last import of `content_hash` left.
-pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(crate) fn delete_failure_on(sql: &WriteContext<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.run(&DeleteImportFailureParams { content_hash })?;
     Ok(())
 }
@@ -80,7 +80,7 @@ pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Res
 /// Record that an import of `content_hash` at `edit_revision` failed, inside
 /// the caller's write.
 fn save_failure_on(
-    sql: &CovenWrite<'_>,
+    sql: &WriteContext<'_>,
     content_hash: &str,
     edit_revision: u64,
     failure: &ImportFailure,

@@ -1502,7 +1502,7 @@ tables = [
 # with its reason.
 [read_shapes]
 rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries.md in agent-instructions"
-read_types = ["coven::SqlRead", "coven::SqlReadContext", "bae_store::live_query::read::ReadFor", "bae_store::store_read::StoreRead", "coven::LiveQuery", "coven::ReconfigurableLiveQuery"]
+read_types = ["bae_store::read_statement::WriterRead", "bae_store::contexts::ReadContext", "bae_store::live_query::read::ReadFor", "bae_store::store_read::StoreRead", "coven::LiveQuery", "coven::ReconfigurableLiveQuery"]
 live_query_types = ["coven::LiveQuery", "coven::ReconfigurableLiveQuery", "bae_store::live_results::LiveResults", "bae_store::live_query::CancellableLiveQuery", "bae_store::live_query::read::LiveRead", "bae_store::live_query::values::LiveValues"]
 statement_rows = ["coven::Row"]
 column_values = ["coven::types::FromSql"]
