@@ -187,7 +187,7 @@ async fn every_storage_sort_seeks_its_window_through_its_index() {
     for &(plan_of, name) in windows {
         let steps = unbound_plan_steps(&db, plan_of).await;
         let own: Vec<&str> =
-            steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
+            steps.iter().filter(|step| step.own()).map(|step| step.detail.as_str()).collect();
         let first = own.first().expect("the statement has a plan");
         let index = format!("INDEX idx_release_listing_{name}");
         let reads_index = first

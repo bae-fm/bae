@@ -962,7 +962,7 @@ async fn a_spoken_play_reads_tracks_and_albums_from_the_stored_title_keys() {
         );
     }
     assert!(
-        !plan.iter().any(|step| !step.own && step.detail == "USE TEMP B-TREE FOR ORDER BY"),
+        !plan.iter().any(|step| !step.own() && step.detail == "USE TEMP B-TREE FOR ORDER BY"),
         "{plan:?}"
     );
 }

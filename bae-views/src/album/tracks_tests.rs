@@ -103,7 +103,7 @@ async fn an_albums_tracks_are_read_in_order_from_the_position_index() {
             "{steps:?}"
         );
         assert!(
-            !steps.iter().any(|step| step.own && step.detail.starts_with("USE TEMP B-TREE")),
+            !steps.iter().any(|step| step.own() && step.detail.starts_with("USE TEMP B-TREE")),
             "{steps:?}"
         );
     }

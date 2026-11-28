@@ -369,7 +369,7 @@ async fn artist_detail_reads_its_albums_from_the_link_index() {
     .await;
     // The statement's own steps, apart from its column subqueries' steps.
     let own: Vec<&str> =
-        plan.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
+        plan.iter().filter(|step| step.own()).map(|step| step.detail.as_str()).collect();
     assert_eq!(
         own.first().copied(),
         Some("SEARCH link USING INDEX idx_album_artist_link_artist_page (artist_id=?)"),

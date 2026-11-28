@@ -155,7 +155,7 @@ pub(super) async fn assert_tops_read_their_first_term(tops: &[(PlanOf, &str)]) {
 /// the first term of the order `index` leads with.
 fn assert_sorts_only_ties(index: &str, steps: &[PlanStep]) {
     assert!(
-        steps.iter().filter(|step| step.own).all(|step| !step.detail.contains("TEMP B-TREE")
+        steps.iter().filter(|step| step.own()).all(|step| !step.detail.contains("TEMP B-TREE")
             || step.detail.contains("TERMS OF ORDER BY")
             || step.detail.contains("RIGHT PART OF ORDER BY")),
         "{index} sorts the whole list: {steps:?}"

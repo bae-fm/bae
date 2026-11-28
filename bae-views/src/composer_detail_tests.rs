@@ -323,7 +323,7 @@ fn assert_reads_the_page_index(steps: &[PlanStep]) {
     assert!(seeks, "{steps:?}");
     assert!(
         !steps.iter().any(|step| step.detail.starts_with("MATERIALIZE")
-            || (step.own && step.detail.contains("TEMP B-TREE"))
+            || (step.own() && step.detail.contains("TEMP B-TREE"))
             || step.detail.starts_with("SCAN work")
             // The links of the works' performances, which a work's cover
             // finds through its work.
