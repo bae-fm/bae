@@ -106,61 +106,84 @@ pub(super) fn reset_playback_timeline_on(sql: &coven::BulkSqlContext<'_>) -> rus
     Ok(())
 }
 
-// Where playback is: the playing track's line and the preview's.
-sqlive_compose::read!(
-    writer TimelineLines {
-        track_id: Option<String>,
-        position_ms: Option<u64>,
+// The playing track's line, while the playing track has reported a position.
+sqlive_compose::fragment!(
+    LibraryTimelineLine {
+        track_id: String,
+        position_ms: u64,
         duration_ms: Option<u64>,
-        moving: Option<bool>,
-        started_at_seek: Option<bool>,
-        preview_path: Option<Vec<u8>>,
-        preview_start_sample: Option<u64>,
-        preview_end_sample: Option<u64>,
-        preview_position_ms: Option<u64>,
-        preview_duration_ms: Option<u64>,
-        preview_moving: Option<bool>
+        moving: bool,
+        started_at_seek: bool
     },
     r#"
-    SELECT line.track_id, line.position_ms, line.duration_ms, line.moving, line.started_at_seek,
-           line.preview_path, line.preview_start_sample, line.preview_end_sample,
-           line.preview_position_ms, line.preview_duration_ms, line.preview_moving
+    SELECT line.singleton AS library_singleton, line.track_id, line.position_ms,
+           line.duration_ms, line.moving, line.started_at_seek
     FROM playback_timeline AS line
+    WHERE line.track_id IS NOT NULL AND line.position_ms IS NOT NULL
+      AND line.moving IS NOT NULL AND line.started_at_seek IS NOT NULL
 "#
 );
 
-/// Where playback is, as the row's columns hold it. The table's CHECKs keep
-/// each line's columns set together.
-fn playback_timeline_of(row: TimelineLinesRow) -> Result<PlaybackTimeline, DbError> {
-    let library = match row.track_id {
-        None => None,
-        Some(track_id) => Some(TimelinePoint {
-            track_id,
-            position_ms: set(row.position_ms, "position_ms")?,
-            duration_ms: row.duration_ms,
-            moving: set(row.moving, "moving")?,
-            started_at_seek: set(row.started_at_seek, "started_at_seek")?,
-        }),
-    };
-    let preview = match row.preview_path {
-        None => None,
-        Some(path) => Some(PreviewTimelinePoint {
-            target: PreviewTarget::sample_range(
-                bae_store::path_column::decode(path)?,
-                set(row.preview_start_sample, "preview_start_sample")?,
-                row.preview_end_sample,
-            ),
-            position_ms: set(row.preview_position_ms, "preview_position_ms")?,
-            duration_ms: set(row.preview_duration_ms, "preview_duration_ms")?,
-            moving: set(row.preview_moving, "preview_moving")?,
-        }),
-    };
-    Ok(PlaybackTimeline { library, preview })
-}
+// The preview clip's line, while a preview is loaded.
+sqlive_compose::fragment!(
+    PreviewTimelineLine {
+        preview_path: Vec<u8>,
+        preview_start_sample: u64,
+        preview_end_sample: Option<u64>,
+        preview_position_ms: u64,
+        preview_duration_ms: u64,
+        preview_moving: bool
+    },
+    r#"
+    SELECT line.singleton AS preview_singleton, line.preview_path, line.preview_start_sample,
+           line.preview_end_sample, line.preview_position_ms, line.preview_duration_ms,
+           line.preview_moving
+    FROM playback_timeline AS line
+    WHERE line.preview_path IS NOT NULL AND line.preview_start_sample IS NOT NULL
+      AND line.preview_position_ms IS NOT NULL AND line.preview_duration_ms IS NOT NULL
+      AND line.preview_moving IS NOT NULL
+"#
+);
 
-/// `value`, the column `column` of a line the row holds, which the line sets.
-fn set<T>(value: Option<T>, column: &str) -> Result<T, DbError> {
-    value.ok_or_else(|| DbError::unreadable(format!("playback_timeline.{column}"), None::<String>))
+// Where playback is: the playing track's line and the preview's, each absent
+// while it is not set.
+sqlive_compose::read!(
+    writer TimelineLines,
+    r#"
+    SELECT library.*, preview.*
+    FROM playback_timeline AS line
+    LEFT JOIN @crate::tables::timeline::LibraryTimelineLine AS library
+           ON library.library_singleton = line.singleton
+    LEFT JOIN @crate::tables::timeline::PreviewTimelineLine AS preview
+           ON preview.preview_singleton = line.singleton
+"#
+);
+
+/// Where playback is, as the row's lines hold it.
+fn playback_timeline_of(row: TimelineLinesRow) -> Result<PlaybackTimeline, DbError> {
+    let library = row.library.map(|line| TimelinePoint {
+        track_id: line.track_id,
+        position_ms: line.position_ms,
+        duration_ms: line.duration_ms,
+        moving: line.moving,
+        started_at_seek: line.started_at_seek,
+    });
+    let preview = row
+        .preview
+        .map(|line| {
+            Ok::<_, DbError>(PreviewTimelinePoint {
+                target: PreviewTarget::sample_range(
+                    bae_store::path_column::decode(line.preview_path)?,
+                    line.preview_start_sample,
+                    line.preview_end_sample,
+                ),
+                position_ms: line.preview_position_ms,
+                duration_ms: line.preview_duration_ms,
+                moving: line.preview_moving,
+            })
+        })
+        .transpose()?;
+    Ok(PlaybackTimeline { library, preview })
 }
 
 #[cfg(test)]
