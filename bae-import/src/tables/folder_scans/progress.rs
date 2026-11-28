@@ -16,46 +16,59 @@ use crate::folder_scan_status::{
     WatchedFolderScanStatus,
 };
 
-// Each watched folder's status, in the order the folders are listed (their
-// `position`, by its index), and whether it is a problem owed an alert: a
-// failed or not-watched folder that is not among the raised alerts `raised`
-// names, a JSON array of each one's folder path in hex, kind and detail.
-sqlive_compose::read!(
-    writer FolderScanStatuses(raised: String) {
+// Each watched folder's status, with the `position` the folders are listed in.
+sqlive_compose::fragment!(
+    WatchedScanStatus {
         watched_folder_path: Vec<u8>,
         status: String,
         detail: Option<String>,
         unwatched_directory: Option<Vec<u8>>,
         unwatched_cause: Option<String>,
-        volume: Option<String>,
-        owed: bool
+        volume: Option<String>
     },
     r#"
-    SELECT folder.watched_folder_path, folder.status, folder.detail, folder.unwatched_directory,
-           folder.unwatched_cause, folder.volume,
-           folder.status IN ('failed', 'unwatched')
-               AND NOT EXISTS (SELECT 1 FROM json_each(:raised) AS alert
-                               WHERE unhex(alert.value ->> 0) = folder.watched_folder_path
-                                 AND alert.value ->> 1 = folder.status
-                                 AND alert.value ->> 2 = folder.detail) AS owed
+    SELECT folder.position, folder.watched_folder_path, folder.status, folder.detail,
+           folder.unwatched_directory, folder.unwatched_cause, folder.volume
     FROM folder_scan_status AS folder
-    ORDER BY folder.position
+"#
+);
+
+// Each watched folder's status, in the order the folders are listed (their
+// `position`, by its index).
+sqlive_compose::read!(
+    writer FolderScanStatuses,
+    r#"
+    SELECT shown.*
+    FROM @crate::tables::folder_scans::progress::WatchedScanStatus AS shown
+    ORDER BY shown.position
 "#
 );
 
 // Whether any folder's scan failed or left it not watched, and whether any
-// folder is being scanned.
+// folder is being scanned, beside each problem owed an alert, in the order the
+// folders are listed: a failed or not-watched folder that is not among the
+// raised alerts `raised` names, a JSON array of each one's folder path in hex,
+// kind and detail. One row with no alert when none is owed.
 sqlive_compose::read!(
-    writer FolderScanFlags { has_problem: bool, scanning: bool },
+    writer FolderScanAlerts(raised: String) { has_problem: bool, scanning: bool },
     r#"
     SELECT EXISTS (SELECT 1 FROM folder_scan_status AS folder
                    WHERE folder.status IN ('failed', 'unwatched')) AS has_problem,
            EXISTS (SELECT 1 FROM folder_scan_status AS folder
-                   WHERE folder.status = 'scanning') AS scanning
+                   WHERE folder.status = 'scanning') AS scanning,
+           owed.*
+    FROM (SELECT 1) AS flags
+    LEFT JOIN @crate::tables::folder_scans::progress::WatchedScanStatus AS owed
+           ON owed.status IN ('failed', 'unwatched')
+          AND NOT EXISTS (SELECT 1 FROM json_each(:raised) AS alert
+                          WHERE unhex(alert.value ->> 0) = owed.watched_folder_path
+                            AND alert.value ->> 1 = owed.status
+                            AND alert.value ->> 2 = owed.detail)
+    ORDER BY owed.position
 "#
 );
 
-/// `raised` as the JSON array [`FolderScanStatuses`] binds.
+/// `raised` as the JSON array [`FolderScanAlerts`] binds.
 fn raised_alerts_json(raised: &RaisedScanAlerts) -> String {
     serde_json::to_string(
         &raised
@@ -118,60 +131,60 @@ fn folder_scan_status(
 fn load_folder_scan_statuses_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
-    let statuses =
-        FolderScanStatusesParams { raised: raised_alerts_json(&RaisedScanAlerts::new()) };
-    let rows = bae_store::statement_rows(sql, &statuses)?;
-    Ok(folder_scan_statuses_of(rows)?.into_iter().map(|(status, _owed)| status).collect())
+    bae_store::statement_rows(sql, &FolderScanStatusesParams {})?
+        .into_iter()
+        .map(|row| watched_scan_status_of(row.shown))
+        .collect()
 }
 
-/// Each watched folder's status from its row of [`FolderScanStatuses`],
-/// beside whether it is owed an alert.
-fn folder_scan_statuses_of(
-    rows: Vec<FolderScanStatusesRow>,
-) -> Result<Vec<(WatchedFolderScanStatus, bool)>, DbError> {
-    rows.into_iter()
-        .map(|row| {
-            let watched_folder_path = path_column::decode(row.watched_folder_path)?;
-            let directory = row.unwatched_directory.map(path_column::decode).transpose()?;
-            let status = folder_scan_status(
-                &watched_folder_path,
-                row.status,
-                row.detail,
-                directory.zip(row.unwatched_cause),
-                row.volume,
-            )?;
-            let folder = crate::WatchedFolder::from_path(watched_folder_path);
-            Ok((WatchedFolderScanStatus { status, folder }, row.owed))
-        })
-        .collect()
+/// A watched folder's status from its [`WatchedScanStatus`] row.
+fn watched_scan_status_of(row: WatchedScanStatus) -> Result<WatchedFolderScanStatus, DbError> {
+    let watched_folder_path = path_column::decode(row.watched_folder_path)?;
+    let directory = row.unwatched_directory.map(path_column::decode).transpose()?;
+    let status = folder_scan_status(
+        &watched_folder_path,
+        row.status,
+        row.detail,
+        directory.zip(row.unwatched_cause),
+        row.volume,
+    )?;
+    let folder = crate::WatchedFolder::from_path(watched_folder_path);
+    Ok(WatchedFolderScanStatus { status, folder })
 }
 
 /// The reads of where each watched folder's scan stands, with an alert for
 /// each problem not among `raised`.
 fn folder_scan_progress_read(
     raised: &RaisedScanAlerts,
-) -> coven::Both<FolderScanStatusesParams, FolderScanFlagsParams> {
+) -> coven::Both<FolderScanStatusesParams, FolderScanAlertsParams> {
     coven::Both(
-        FolderScanStatusesParams { raised: raised_alerts_json(raised) },
-        FolderScanFlagsParams {},
+        FolderScanStatusesParams {},
+        FolderScanAlertsParams { raised: raised_alerts_json(raised) },
     )
 }
 
 /// Where each watched folder's scan stands, as its reads return it.
 fn folder_scan_progress_of(
-    (statuses, flags): (Vec<FolderScanStatusesRow>, Vec<FolderScanFlagsRow>),
+    (statuses, alerts): (Vec<FolderScanStatusesRow>, Vec<FolderScanAlertsRow>),
 ) -> Result<FolderScanProgress, DbError> {
-    let flags = bae_store::exactly_one::<FolderScanFlagsParams, _>(flags)?;
-    let mut alerts = Vec::new();
-    let mut listed = Vec::new();
-    for (status, owed) in folder_scan_statuses_of(statuses)? {
-        if owed {
-            let problem = match &status.status {
-                FolderScanStatus::Failed { error, .. } => {
-                    FolderScanProblem::Failed { error: error.clone() }
-                }
+    let statuses = statuses
+        .into_iter()
+        .map(|row| watched_scan_status_of(row.shown))
+        .collect::<Result<_, _>>()?;
+    // Every row holds the same flags.
+    let (has_problem, scanning) = alerts
+        .first()
+        .map(|row| (row.has_problem, row.scanning))
+        .ok_or_else(|| DbError::unreadable("the folder scans' flags", None::<String>))?;
+    let alerts = alerts
+        .into_iter()
+        .filter_map(|row| row.owed)
+        .map(|owed| {
+            let status = watched_scan_status_of(owed)?;
+            let problem = match status.status {
+                FolderScanStatus::Failed { error, .. } => FolderScanProblem::Failed { error },
                 FolderScanStatus::NotWatched { reason, .. } => {
-                    FolderScanProblem::NotWatched { reason: reason.clone() }
+                    FolderScanProblem::NotWatched { reason }
                 }
                 other => {
                     return Err(DbError::unreadable(
@@ -180,16 +193,10 @@ fn folder_scan_progress_of(
                     ))
                 }
             };
-            alerts.push(FolderScanAlert { folder: status.folder.clone(), problem });
-        }
-        listed.push(status);
-    }
-    Ok(FolderScanProgress {
-        statuses: listed,
-        has_problem: flags.has_problem,
-        scanning: flags.scanning,
-        alerts,
-    })
+            Ok(FolderScanAlert { folder: status.folder, problem })
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(FolderScanProgress { statuses, has_problem, scanning, alerts })
 }
 
 sqlive_compose::write!(

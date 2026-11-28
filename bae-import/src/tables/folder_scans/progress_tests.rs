@@ -470,10 +470,8 @@ async fn progress_lists_the_folders_in_their_order_from_the_index() {
     );
 
     use sqlive_compose::Read;
-    // The statuses bind the raised scans as a JSON array; the scanning
-    // folders bind nothing.
-    let statuses = (super::FolderScanStatusesParams::compiled().sql, vec!["[]"]);
-    let scanning = (super::ScanningFoldersParams::compiled().sql, vec![]);
+    let statuses = (super::FolderScanStatusesParams::compiled().sql, vec![]);
+    let scanning = (super::ScanningFoldersParams::compiled().sql, Vec::<&str>::new());
     for (statement, values) in [statuses, scanning] {
         let plan = db
             .read(move |sql| {
