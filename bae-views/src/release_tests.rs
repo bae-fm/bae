@@ -5,6 +5,7 @@ use crate::*;
 use bae_records::test_fixtures::aggregate_ordering::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::*;
+use bae_store::test_fixtures::query_plan::query_plan;
 use bae_store::test_fixtures::temp_db;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
@@ -61,17 +62,11 @@ async fn release_detail_files_are_in_case_insensitive_natural_order() {
         detail.files.files.iter().map(|f| f.original_filename.as_str()).collect();
     assert_eq!(names, FILES_IN_NATURAL_ORDER, "the release's detail");
 
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::storage_inspector::InspectedFiles::SQL),
-                rusqlite::named_params! { ":release": RELEASE_A },
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
+    let plan = query_plan(
+        &db,
+        crate::storage_inspector::InspectedFilesParams { release: RELEASE_A.into() },
+    )
+    .await;
     assert!(
         plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order"))
             && !plan.iter().any(|step| step.contains("TEMP B-TREE") && step.contains("ORDER BY")),
@@ -543,17 +538,9 @@ async fn a_long_group_splits_its_tracks_across_two_columns() {
 #[tokio::test]
 async fn the_detail_finds_a_tracks_stars_by_the_ratings_key() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::release::ViewedReleaseDetail::SQL),
-                rusqlite::named_params! { ":release": RELEASE_A },
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
+    let plan =
+        query_plan(&db, crate::release::ViewedReleaseDetailParams { release: RELEASE_A.into() })
+            .await;
     assert!(
         plan.iter().any(|step| step.starts_with("SEARCH rated USING")
             && step.contains("person_id=? AND track_id=?")),

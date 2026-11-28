@@ -13,6 +13,7 @@ use bae_records::test_fixtures::{
     credit, delete_release, test_records, ARTIST_A, ARTIST_B, ARTIST_C,
 };
 use bae_records::DbArtist;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_store::{ListWindow, WindowRead};
 use bae_util::test_channels::HANG_GUARD;
@@ -751,36 +752,34 @@ async fn an_artist_section_carries_the_artists_picture() {
 async fn every_first_sort_seeks_its_window_through_its_index() {
     use crate::album::{top_reads::*, window_reads::*};
     let (db, _tmp) = library().await;
-    let windows = [
-        (FlatWindowTitle::SQL, "SEARCH", "idx_album_listing_title"),
-        (FlatWindowTitleBack::SQL, "SEARCH", "idx_album_listing_title_back"),
-        (FlatWindowArtist::SQL, "SEARCH", "idx_album_listing_artist"),
-        (FlatWindowArtistBack::SQL, "SEARCH", "idx_album_listing_artist_back"),
-        (FlatWindowYear::SQL, "SEARCH", "idx_album_listing_year"),
-        (FlatWindowYearBack::SQL, "SEARCH", "idx_album_listing_year_back"),
-        (FlatWindowAdded::SQL, "SEARCH", "idx_album_listing_added"),
-        (FlatWindowAddedBack::SQL, "SEARCH", "idx_album_listing_added_back"),
-        (GroupedWindowArtist::SQL, "SEARCH", "idx_album_artist_link_artists"),
-        (GroupedWindowArtistBack::SQL, "SEARCH", "idx_album_artist_link_artists_back"),
-        (FlatTopTitle::SQL, "SCAN", "idx_album_listing_title"),
-        (FlatTopTitleBack::SQL, "SCAN", "idx_album_listing_title_back"),
-        (FlatTopArtist::SQL, "SCAN", "idx_album_listing_artist"),
-        (FlatTopArtistBack::SQL, "SCAN", "idx_album_listing_artist_back"),
-        (FlatTopYear::SQL, "SCAN", "idx_album_listing_year"),
-        (FlatTopYearBack::SQL, "SCAN", "idx_album_listing_year_back"),
-        (FlatTopAdded::SQL, "SCAN", "idx_album_listing_added"),
-        (FlatTopAddedBack::SQL, "SCAN", "idx_album_listing_added_back"),
-        (GroupedTopArtist::SQL, "SCAN", "idx_album_artist_link_artists"),
-        (GroupedTopArtistBack::SQL, "SCAN", "idx_album_artist_link_artists_back"),
+    let windows: &[(PlanOf, &str, &str)] = &[
+        (plan_steps::<FlatWindowTitleParams>, "SEARCH", "idx_album_listing_title"),
+        (plan_steps::<FlatWindowTitleBackParams>, "SEARCH", "idx_album_listing_title_back"),
+        (plan_steps::<FlatWindowArtistParams>, "SEARCH", "idx_album_listing_artist"),
+        (plan_steps::<FlatWindowArtistBackParams>, "SEARCH", "idx_album_listing_artist_back"),
+        (plan_steps::<FlatWindowYearParams>, "SEARCH", "idx_album_listing_year"),
+        (plan_steps::<FlatWindowYearBackParams>, "SEARCH", "idx_album_listing_year_back"),
+        (plan_steps::<FlatWindowAddedParams>, "SEARCH", "idx_album_listing_added"),
+        (plan_steps::<FlatWindowAddedBackParams>, "SEARCH", "idx_album_listing_added_back"),
+        (plan_steps::<GroupedWindowArtistParams>, "SEARCH", "idx_album_artist_link_artists"),
+        (
+            plan_steps::<GroupedWindowArtistBackParams>,
+            "SEARCH",
+            "idx_album_artist_link_artists_back",
+        ),
+        (plan_steps::<FlatTopTitleParams>, "SCAN", "idx_album_listing_title"),
+        (plan_steps::<FlatTopTitleBackParams>, "SCAN", "idx_album_listing_title_back"),
+        (plan_steps::<FlatTopArtistParams>, "SCAN", "idx_album_listing_artist"),
+        (plan_steps::<FlatTopArtistBackParams>, "SCAN", "idx_album_listing_artist_back"),
+        (plan_steps::<FlatTopYearParams>, "SCAN", "idx_album_listing_year"),
+        (plan_steps::<FlatTopYearBackParams>, "SCAN", "idx_album_listing_year_back"),
+        (plan_steps::<FlatTopAddedParams>, "SCAN", "idx_album_listing_added"),
+        (plan_steps::<FlatTopAddedBackParams>, "SCAN", "idx_album_listing_added_back"),
+        (plan_steps::<GroupedTopArtistParams>, "SCAN", "idx_album_artist_link_artists"),
+        (plan_steps::<GroupedTopArtistBackParams>, "SCAN", "idx_album_artist_link_artists_back"),
     ];
-    for (statement, read, index) in windows {
-        let steps = db
-            .read(move |sql| {
-                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-                crate::tests::plan_steps(&sql, statement, unbound)
-            })
-            .await
-            .unwrap();
+    for &(plan_of, read, index) in windows {
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
         let own: Vec<&str> =
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         assert_eq!(

@@ -3,6 +3,7 @@
 use crate::*;
 use bae_records::test_fixtures::aggregate_ordering::*;
 use bae_records::test_fixtures::*;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
 
 /// A release's files come back in each order the Storage sheet sorts them
 /// by — name, size, or kind, each forward or backward, ties by name and then
@@ -106,18 +107,9 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             expected,
             "{column:?} descending: {descending}"
         );
-        let statement = crate::release_files::release_files_sql(order(column, descending));
-        let plan = db
-            .read(move |sql| {
-                sql.query(
-                    &format!("EXPLAIN QUERY PLAN {statement}"),
-                    rusqlite::named_params! { ":release": RELEASE_A },
-                    |row| row.get::<_, String>(3),
-                )
-                .map_err(DbError::from)
-            })
-            .await
-            .unwrap();
+        let plan_of = plan_of_order(column, descending);
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let plan: Vec<String> = steps.into_iter().map(|step| step.detail).collect();
         match index {
             Some(index) => assert!(
                 plan.iter().any(|step| step.contains(index))
@@ -133,5 +125,19 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
                 "{column:?} descending: {descending} finds the release's files by index: {plan:?}"
             ),
         }
+    }
+}
+
+/// The plan of the statement that reads a release's files by `column`, in
+/// `descending` order or not.
+fn plan_of_order(column: ReleaseFileColumn, descending: bool) -> PlanOf {
+    use crate::release_files::*;
+    match (column, descending) {
+        (ReleaseFileColumn::Name, false) => plan_steps::<ReleaseFilesByNameParams>,
+        (ReleaseFileColumn::Name, true) => plan_steps::<ReleaseFilesByNameBackwardParams>,
+        (ReleaseFileColumn::Size, false) => plan_steps::<ReleaseFilesBySizeParams>,
+        (ReleaseFileColumn::Size, true) => plan_steps::<ReleaseFilesBySizeBackwardParams>,
+        (ReleaseFileColumn::Kind, false) => plan_steps::<ReleaseFilesByKindParams>,
+        (ReleaseFileColumn::Kind, true) => plan_steps::<ReleaseFilesByKindBackwardParams>,
     }
 }

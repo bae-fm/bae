@@ -6,6 +6,7 @@
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
+use bae_store::test_fixtures::query_plan::{PlanOf, PlanStep};
 use bae_store::test_fixtures::temp_db;
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
@@ -122,57 +123,17 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
     assert_eq!(grid.iter().map(|album| album.id.as_str()).collect::<Vec<_>>(), expected);
 }
 
-/// One step of a statement's plan: what SQLite does, and whether the
-/// statement's own SELECT does it, rather than a subquery or a table it
-/// builds first.
-#[derive(Debug)]
-pub(super) struct PlanStep {
-    pub detail: String,
-    pub own: bool,
-}
-
-/// The plan of `statement` under `params`, one step per line.
-pub(super) fn plan_steps(
-    sql: &SqlReadContext<'_>,
-    statement: &str,
-    params: impl rusqlite::Params,
-) -> Result<Vec<PlanStep>, DbError> {
-    Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params, |row| {
-        Ok(PlanStep { detail: row.get(3)?, own: row.get::<_, i64>(1)? == 0 })
-    })?)
-}
-
 /// Assert that each of a list's `windows`, a statement with the index leading
 /// with its first term and that term's column, seeks to its key through that
 /// index, and sorts at most the rows that tie on that term, which lets SQLite
-/// stop at the limit. A sort of the list stacks up to `places` criteria.
-pub(super) async fn assert_windows_seek_their_first_term(
-    windows: &[(&str, &str, &str)],
-    places: usize,
-) {
+/// stop at the limit.
+pub(super) async fn assert_windows_seek_their_first_term(windows: &[(PlanOf, &str, &str)]) {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(super::TEST_SCHEMA).await;
-    for &(statement, index, column) in windows {
-        let statement = statement.to_string();
-        let steps = db
-            .read(move |sql| {
-                // The statement names the later places, then the key's
-                // values (two terms for each later place, the first's one, the
-                // name and the id) and the limit.
-                let mut params = vec![rusqlite::types::Value::Null; places - 1];
-                params.extend(vec![rusqlite::types::Value::Integer(0); 2 * places + 1]);
-                params.push(rusqlite::types::Value::Integer(50));
-                plan_steps(&sql, &statement, rusqlite::params_from_iter(params))
-            })
-            .await
-            .unwrap();
+    for &(plan_of, index, column) in windows {
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
         let seek = format!("SEARCH listing USING INDEX {index} ({column}>?)");
         assert!(steps.iter().any(|step| step.detail == seek), "{index}: {steps:?}");
-        assert!(
-            steps.iter().filter(|step| step.own).all(|step| !step.detail.contains("TEMP B-TREE")
-                || step.detail.contains("TERMS OF ORDER BY")
-                || step.detail.contains("RIGHT PART OF ORDER BY")),
-            "{index} sorts the whole list: {steps:?}"
-        );
+        assert_sorts_only_ties(index, &steps);
     }
 }
 
@@ -180,26 +141,25 @@ pub(super) async fn assert_windows_seek_their_first_term(
 /// order's first row with the index leading with its first term, reads that
 /// index in order and sorts at most the rows that tie on the first term,
 /// which lets SQLite stop at the limit.
-pub(super) async fn assert_tops_read_their_first_term(tops: &[(&str, &str)]) {
+pub(super) async fn assert_tops_read_their_first_term(tops: &[(PlanOf, &str)]) {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(super::TEST_SCHEMA).await;
-    for &(statement, index) in tops {
-        let statement = statement.to_string();
-        let steps = db
-            .read(move |sql| {
-                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-                plan_steps(&sql, &statement, unbound)
-            })
-            .await
-            .unwrap();
+    for &(plan_of, index) in tops {
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
         let scan = format!("SCAN listing USING INDEX {index}");
         assert!(steps.iter().any(|step| step.detail == scan), "{index}: {steps:?}");
-        assert!(
-            steps.iter().filter(|step| step.own).all(|step| !step.detail.contains("TEMP B-TREE")
-                || step.detail.contains("TERMS OF ORDER BY")
-                || step.detail.contains("RIGHT PART OF ORDER BY")),
-            "{index} sorts the whole list: {steps:?}"
-        );
+        assert_sorts_only_ties(index, &steps);
     }
+}
+
+/// Assert that the statement's own steps sort at most the rows that tie on
+/// the first term of the order `index` leads with.
+fn assert_sorts_only_ties(index: &str, steps: &[PlanStep]) {
+    assert!(
+        steps.iter().filter(|step| step.own).all(|step| !step.detail.contains("TEMP B-TREE")
+            || step.detail.contains("TERMS OF ORDER BY")
+            || step.detail.contains("RIGHT PART OF ORDER BY")),
+        "{index} sorts the whole list: {steps:?}"
+    );
 }
 
 /// Both ways of each of `fields`, each alone and then before the next field:

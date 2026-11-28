@@ -7,6 +7,7 @@ use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::{test_records, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
 use bae_store::test_fixtures::live_query::*;
+use bae_store::test_fixtures::query_plan::query_plan_steps;
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -360,20 +361,14 @@ fn artist_detail_follows_the_primary_releases_audio_location() {
 #[tokio::test]
 async fn artist_detail_reads_its_albums_from_the_link_index() {
     let (db, _tmp) = seeded_db().await;
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::album::ArtistAlbums::SQL),
-                &[(":artist", &ARTIST_PRIMARY as &dyn rusqlite::ToSql)][..],
-                |row| Ok((row.get::<_, i64>(1)?, row.get::<_, String>(3)?)),
-            )
-            .map_err(bae_store::DbError::from)
-        })
-        .await
-        .unwrap();
+    let plan = query_plan_steps(
+        &db,
+        crate::album::ArtistAlbumsParams { artist: ARTIST_PRIMARY.to_string() },
+    )
+    .await;
     // The statement's own steps, apart from its column subqueries' steps.
     let own: Vec<&str> =
-        plan.iter().filter(|(parent, _)| *parent == 0).map(|(_, step)| step.as_str()).collect();
+        plan.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
     assert_eq!(
         own.first().copied(),
         Some("SEARCH link USING INDEX idx_album_artist_link_artist_page (artist_id=?)"),

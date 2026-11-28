@@ -2,12 +2,16 @@
 //! of a key are separate live queries, and a write to an artist the search
 //! finds reruns them.
 
-use super::{ArtistSearchBefore, ArtistSearchCount, ArtistSearchKeyAt, ArtistSearchWindow};
+use super::{
+    ArtistSearchBeforeParams, ArtistSearchCountParams, ArtistSearchKeyAtParams,
+    ArtistSearchWindowParams,
+};
 use crate::LibrarySearchQuery;
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::live_query::write_artist_image;
 use bae_records::test_fixtures::{credit, test_records};
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -276,19 +280,14 @@ async fn the_picker_folds_case_past_ascii() {
 #[tokio::test]
 async fn artist_search_reads_scan_no_artists() {
     let (db, _tmp) = seeded().await;
-    for statement in [
-        ArtistSearchWindow::SQL,
-        ArtistSearchBefore::SQL,
-        ArtistSearchKeyAt::SQL,
-        ArtistSearchCount::SQL,
-    ] {
-        let steps = db
-            .read(move |sql| {
-                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-                crate::tests::plan_steps(&sql, statement, unbound)
-            })
-            .await
-            .unwrap();
+    let reads: [PlanOf; 4] = [
+        plan_steps::<ArtistSearchWindowParams>,
+        plan_steps::<ArtistSearchBeforeParams>,
+        plan_steps::<ArtistSearchKeyAtParams>,
+        plan_steps::<ArtistSearchCountParams>,
+    ];
+    for plan_of in reads {
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
         assert!(
             !steps.iter().any(|step| ["artist", "discogs", "musicbrainz"]
                 .iter()

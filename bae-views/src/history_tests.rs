@@ -2,31 +2,26 @@
 //! from the top or from a key, with or without a person, and each finds a day's newest play by its day.
 
 use super::*;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
 
-/// The plan SQLite chooses for `statement`, whose parameters stay unbound,
-/// one detail line per step.
-async fn plan(store: &Store, statement: &'static str) -> Vec<String> {
-    let statement = format!("EXPLAIN QUERY PLAN {statement}");
-    store
-        .read(move |sql| {
-            let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-            sql.query(&statement, unbound, |row| row.get::<_, String>(3))
-                .map_err(bae_store::DbError::from)
-        })
-        .await
-        .unwrap()
+/// The detail of each step of the plan SQLite chooses for the statement
+/// `plan_of` names, whose parameters stay unbound.
+async fn plan(store: &Store, plan_of: PlanOf) -> Vec<String> {
+    let steps = store.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+    steps.into_iter().map(|step| step.detail).collect()
 }
 
 #[tokio::test]
 async fn the_window_reads_follow_their_indexes_without_a_sort() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
-    for (statement, order_index, day_index) in [
-        (HistoryWindow::SQL, "history_order", "history_day"),
-        (HistoryTop::SQL, "history_order", "history_day"),
-        (PersonHistoryWindow::SQL, "history_person_order", "history_person_day"),
-        (PersonHistoryTop::SQL, "history_person_order", "history_person_day"),
-    ] {
-        let plan = plan(&db, statement).await;
+    let windows: &[(PlanOf, &str, &str)] = &[
+        (plan_steps::<HistoryWindowParams>, "history_order", "history_day"),
+        (plan_steps::<HistoryTopParams>, "history_order", "history_day"),
+        (plan_steps::<PersonHistoryWindowParams>, "history_person_order", "history_person_day"),
+        (plan_steps::<PersonHistoryTopParams>, "history_person_order", "history_person_day"),
+    ];
+    for &(plan_of, order_index, day_index) in windows {
+        let plan = plan(&db, plan_of).await;
         for index in [order_index, day_index] {
             assert!(
                 plan.iter().any(|step| step.split(' ').any(|word| word == index)),

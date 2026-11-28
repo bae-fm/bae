@@ -9,6 +9,7 @@ use bae_records::test_fixtures::album_listing::listed_db;
 use bae_records::test_fixtures::bulk_library;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::storage_listing::*;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf, PlanStep};
 use bae_store::test_fixtures::trigger_order::{
     count_refreshes, first_insert, run_trigger_first, watch_first_insert, RefreshCount,
 };
@@ -118,13 +119,8 @@ const FIELDS: [StorageSortField; 7] = [
 ];
 
 /// The plan of the compiled `statement`, whose parameters stay unbound.
-async fn compiled_plan(db: &Store, statement: &'static str) -> Vec<crate::tests::PlanStep> {
-    db.read(move |sql| {
-        let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-        crate::tests::plan_steps(&sql, statement, unbound)
-    })
-    .await
-    .unwrap()
+async fn compiled_plan(db: &Store, plan_of: PlanOf) -> Vec<PlanStep> {
+    db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap()
 }
 
 /// Whatever the list sorts by, whole or filtered, its window from a key or
@@ -134,66 +130,66 @@ async fn compiled_plan(db: &Store, statement: &'static str) -> Vec<crate::tests:
 async fn every_storage_sort_seeks_its_window_through_its_index() {
     use crate::storage::{kept_window_reads::*, top_reads::*, window_reads::*};
     let (db, _tmp) = library().await;
-    let windows = [
-        (AllWindowTitle::SQL, "title"),
-        (AllWindowTitleBack::SQL, "title_back"),
-        (AllWindowArtist::SQL, "artist"),
-        (AllWindowArtistBack::SQL, "artist_back"),
-        (AllWindowMedia::SQL, "media"),
-        (AllWindowMediaBack::SQL, "media_back"),
-        (AllWindowFiles::SQL, "files"),
-        (AllWindowFilesBack::SQL, "files_back"),
-        (AllWindowSize::SQL, "size"),
-        (AllWindowSizeBack::SQL, "size_back"),
-        (AllWindowStorage::SQL, "storage"),
-        (AllWindowStorageBack::SQL, "storage_back"),
-        (AllWindowAdded::SQL, "added"),
-        (AllWindowAddedBack::SQL, "added_back"),
-        (KeptWindowTitle::SQL, "stored_title"),
-        (KeptWindowTitleBack::SQL, "stored_title_back"),
-        (KeptWindowArtist::SQL, "stored_artist"),
-        (KeptWindowArtistBack::SQL, "stored_artist_back"),
-        (KeptWindowMedia::SQL, "stored_media"),
-        (KeptWindowMediaBack::SQL, "stored_media_back"),
-        (KeptWindowFiles::SQL, "stored_files"),
-        (KeptWindowFilesBack::SQL, "stored_files_back"),
-        (KeptWindowSize::SQL, "stored_size"),
-        (KeptWindowSizeBack::SQL, "stored_size_back"),
-        (KeptWindowStorage::SQL, "stored_storage"),
-        (KeptWindowStorageBack::SQL, "stored_storage_back"),
-        (KeptWindowAdded::SQL, "stored_added"),
-        (KeptWindowAddedBack::SQL, "stored_added_back"),
-        (AllTopTitle::SQL, "title"),
-        (AllTopTitleBack::SQL, "title_back"),
-        (AllTopArtist::SQL, "artist"),
-        (AllTopArtistBack::SQL, "artist_back"),
-        (AllTopMedia::SQL, "media"),
-        (AllTopMediaBack::SQL, "media_back"),
-        (AllTopFiles::SQL, "files"),
-        (AllTopFilesBack::SQL, "files_back"),
-        (AllTopSize::SQL, "size"),
-        (AllTopSizeBack::SQL, "size_back"),
-        (AllTopStorage::SQL, "storage"),
-        (AllTopStorageBack::SQL, "storage_back"),
-        (AllTopAdded::SQL, "added"),
-        (AllTopAddedBack::SQL, "added_back"),
-        (KeptTopTitle::SQL, "stored_title"),
-        (KeptTopTitleBack::SQL, "stored_title_back"),
-        (KeptTopArtist::SQL, "stored_artist"),
-        (KeptTopArtistBack::SQL, "stored_artist_back"),
-        (KeptTopMedia::SQL, "stored_media"),
-        (KeptTopMediaBack::SQL, "stored_media_back"),
-        (KeptTopFiles::SQL, "stored_files"),
-        (KeptTopFilesBack::SQL, "stored_files_back"),
-        (KeptTopSize::SQL, "stored_size"),
-        (KeptTopSizeBack::SQL, "stored_size_back"),
-        (KeptTopStorage::SQL, "stored_storage"),
-        (KeptTopStorageBack::SQL, "stored_storage_back"),
-        (KeptTopAdded::SQL, "stored_added"),
-        (KeptTopAddedBack::SQL, "stored_added_back"),
+    let windows: &[(PlanOf, &str)] = &[
+        (plan_steps::<AllWindowTitleParams>, "title"),
+        (plan_steps::<AllWindowTitleBackParams>, "title_back"),
+        (plan_steps::<AllWindowArtistParams>, "artist"),
+        (plan_steps::<AllWindowArtistBackParams>, "artist_back"),
+        (plan_steps::<AllWindowMediaParams>, "media"),
+        (plan_steps::<AllWindowMediaBackParams>, "media_back"),
+        (plan_steps::<AllWindowFilesParams>, "files"),
+        (plan_steps::<AllWindowFilesBackParams>, "files_back"),
+        (plan_steps::<AllWindowSizeParams>, "size"),
+        (plan_steps::<AllWindowSizeBackParams>, "size_back"),
+        (plan_steps::<AllWindowStorageParams>, "storage"),
+        (plan_steps::<AllWindowStorageBackParams>, "storage_back"),
+        (plan_steps::<AllWindowAddedParams>, "added"),
+        (plan_steps::<AllWindowAddedBackParams>, "added_back"),
+        (plan_steps::<KeptWindowTitleParams>, "stored_title"),
+        (plan_steps::<KeptWindowTitleBackParams>, "stored_title_back"),
+        (plan_steps::<KeptWindowArtistParams>, "stored_artist"),
+        (plan_steps::<KeptWindowArtistBackParams>, "stored_artist_back"),
+        (plan_steps::<KeptWindowMediaParams>, "stored_media"),
+        (plan_steps::<KeptWindowMediaBackParams>, "stored_media_back"),
+        (plan_steps::<KeptWindowFilesParams>, "stored_files"),
+        (plan_steps::<KeptWindowFilesBackParams>, "stored_files_back"),
+        (plan_steps::<KeptWindowSizeParams>, "stored_size"),
+        (plan_steps::<KeptWindowSizeBackParams>, "stored_size_back"),
+        (plan_steps::<KeptWindowStorageParams>, "stored_storage"),
+        (plan_steps::<KeptWindowStorageBackParams>, "stored_storage_back"),
+        (plan_steps::<KeptWindowAddedParams>, "stored_added"),
+        (plan_steps::<KeptWindowAddedBackParams>, "stored_added_back"),
+        (plan_steps::<AllTopTitleParams>, "title"),
+        (plan_steps::<AllTopTitleBackParams>, "title_back"),
+        (plan_steps::<AllTopArtistParams>, "artist"),
+        (plan_steps::<AllTopArtistBackParams>, "artist_back"),
+        (plan_steps::<AllTopMediaParams>, "media"),
+        (plan_steps::<AllTopMediaBackParams>, "media_back"),
+        (plan_steps::<AllTopFilesParams>, "files"),
+        (plan_steps::<AllTopFilesBackParams>, "files_back"),
+        (plan_steps::<AllTopSizeParams>, "size"),
+        (plan_steps::<AllTopSizeBackParams>, "size_back"),
+        (plan_steps::<AllTopStorageParams>, "storage"),
+        (plan_steps::<AllTopStorageBackParams>, "storage_back"),
+        (plan_steps::<AllTopAddedParams>, "added"),
+        (plan_steps::<AllTopAddedBackParams>, "added_back"),
+        (plan_steps::<KeptTopTitleParams>, "stored_title"),
+        (plan_steps::<KeptTopTitleBackParams>, "stored_title_back"),
+        (plan_steps::<KeptTopArtistParams>, "stored_artist"),
+        (plan_steps::<KeptTopArtistBackParams>, "stored_artist_back"),
+        (plan_steps::<KeptTopMediaParams>, "stored_media"),
+        (plan_steps::<KeptTopMediaBackParams>, "stored_media_back"),
+        (plan_steps::<KeptTopFilesParams>, "stored_files"),
+        (plan_steps::<KeptTopFilesBackParams>, "stored_files_back"),
+        (plan_steps::<KeptTopSizeParams>, "stored_size"),
+        (plan_steps::<KeptTopSizeBackParams>, "stored_size_back"),
+        (plan_steps::<KeptTopStorageParams>, "stored_storage"),
+        (plan_steps::<KeptTopStorageBackParams>, "stored_storage_back"),
+        (plan_steps::<KeptTopAddedParams>, "stored_added"),
+        (plan_steps::<KeptTopAddedBackParams>, "stored_added_back"),
     ];
-    for (statement, name) in windows {
-        let steps = compiled_plan(&db, statement).await;
+    for &(plan_of, name) in windows {
+        let steps = compiled_plan(&db, plan_of).await;
         let own: Vec<&str> =
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         let first = own.first().expect("the statement has a plan");
@@ -213,10 +209,15 @@ async fn every_storage_sort_seeks_its_window_through_its_index() {
 async fn a_searched_storage_read_never_scans_the_listing() {
     use crate::storage::found_reads::*;
     let (db, _tmp) = library().await;
-    for statement in
-        [FoundWindow::SQL, FoundTop::SQL, FoundBefore::SQL, FoundKeyAt::SQL, FoundTotals::SQL]
-    {
-        let steps = compiled_plan(&db, statement).await;
+    let found: [PlanOf; 5] = [
+        plan_steps::<FoundWindowParams>,
+        plan_steps::<FoundTopParams>,
+        plan_steps::<FoundBeforeParams>,
+        plan_steps::<FoundKeyAtParams>,
+        plan_steps::<FoundTotalsParams>,
+    ];
+    for plan_of in found {
+        let steps = compiled_plan(&db, plan_of).await;
         assert!(
             !steps.iter().any(|step| ["entry", "sorted", "counted", "kept"].iter().any(|alias| {
                 step.detail == format!("SCAN {alias}")

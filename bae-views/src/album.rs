@@ -5,8 +5,6 @@
 
 use super::*;
 use bae_records::records::track_display::DisplayedTrack;
-#[cfg(test)]
-pub(crate) use card::ArtistAlbums;
 pub(crate) use card::{artist_albums_of, AlbumAppearanceRow, ArtistAlbumsParams, ArtistAlbumsRow};
 #[cfg(test)]
 pub(crate) use listing::albums_before_on;

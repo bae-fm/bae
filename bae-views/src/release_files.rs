@@ -152,19 +152,6 @@ fn release_files(rows: Vec<Option<ReleaseFileRecord>>) -> Result<Option<Vec<DbFi
     rows.into_iter().flatten().map(ReleaseFileRecord::into_file).collect::<Result<_, _>>().map(Some)
 }
 
-/// The statement reading a release's files in `order`.
-#[cfg(test)]
-pub(crate) fn release_files_sql(order: ReleaseFileOrder) -> &'static str {
-    match (order.column, order.descending) {
-        (ReleaseFileColumn::Name, false) => ReleaseFilesByName::SQL,
-        (ReleaseFileColumn::Name, true) => ReleaseFilesByNameBackward::SQL,
-        (ReleaseFileColumn::Size, false) => ReleaseFilesBySize::SQL,
-        (ReleaseFileColumn::Size, true) => ReleaseFilesBySizeBackward::SQL,
-        (ReleaseFileColumn::Kind, false) => ReleaseFilesByKind::SQL,
-        (ReleaseFileColumn::Kind, true) => ReleaseFilesByKindBackward::SQL,
-    }
-}
-
 impl LibraryViews {
     /// Follow the files of the release `initial` names, or none, in its
     /// order. Another release or order is a new request on the same query.

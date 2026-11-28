@@ -9,6 +9,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
 use bae_store::test_fixtures::live_query::top_window;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf, PlanStep};
 use bae_store::test_fixtures::temp_db;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
@@ -302,24 +303,19 @@ async fn the_page_rows_follow_writes_in_their_windows() {
 async fn a_composer_page_window_seeks_the_pages_index_and_builds_no_whole_table() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     write_page(&db).await;
-    for statement in [
-        crate::composer_detail::ComposerPageWindow::SQL,
-        crate::composer_detail::ComposerPageTop::SQL,
-    ] {
-        let steps = db
-            .read(move |sql| {
-                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-                crate::tests::plan_steps(&sql, statement, unbound)
-            })
-            .await
-            .unwrap();
+    let reads: [PlanOf; 2] = [
+        plan_steps::<crate::composer_detail::ComposerPageWindowParams>,
+        plan_steps::<crate::composer_detail::ComposerPageTopParams>,
+    ];
+    for plan_of in reads {
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
         assert_reads_the_page_index(&steps);
     }
 }
 
 /// Asserts that `steps` search the page's index, build no whole table and sort
 /// nothing in the statement's own SELECT.
-fn assert_reads_the_page_index(steps: &[crate::tests::PlanStep]) {
+fn assert_reads_the_page_index(steps: &[PlanStep]) {
     let seeks = steps.iter().any(|step| {
         step.detail.starts_with("SEARCH listing USING")
             && step.detail.contains("idx_composer_detail_row_order")

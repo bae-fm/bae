@@ -10,6 +10,7 @@ use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::*;
 use bae_records::{DbArtist, DbRelease};
 use bae_store::test_fixtures::live_query::*;
+use bae_store::test_fixtures::query_plan::query_plan_steps;
 use bae_store::test_fixtures::*;
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
@@ -917,18 +918,15 @@ async fn a_limited_search_keeps_the_first_titles() {
 #[tokio::test]
 async fn a_search_reads_its_albums_tracks_and_works_from_the_title_indexes() {
     let (db, _tmp) = crate::tests::library().await;
-    let plan = db
-        .read(|sql| {
-            crate::tests::plan_steps(
-                &sql,
-                crate::library_search::LibrarySearch::SQL,
-                rusqlite::named_params! {
-                    ":pattern": search_pattern("1"), ":places": "[1,2]", ":limit": 2
-                },
-            )
-        })
-        .await
-        .unwrap();
+    let plan = query_plan_steps(
+        &db,
+        crate::library_search::LibrarySearchParams {
+            pattern: Some(search_pattern("1")),
+            places: "[1,2]".into(),
+            limit: 2,
+        },
+    )
+    .await;
     for index in
         ["idx_album_listing_title", "idx_track_search_entry_title", "idx_work_search_entry_title"]
     {
@@ -951,16 +949,11 @@ async fn a_search_reads_its_albums_tracks_and_works_from_the_title_indexes() {
 #[tokio::test]
 async fn a_spoken_play_reads_tracks_and_albums_from_the_stored_title_keys() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let plan = db
-        .read(|sql| {
-            crate::tests::plan_steps(
-                &sql,
-                crate::library_search::TopPlayable::SQL,
-                rusqlite::named_params! { ":pattern": "Probe*" },
-            )
-        })
-        .await
-        .unwrap();
+    let plan = query_plan_steps(
+        &db,
+        crate::library_search::TopPlayableParams { pattern: Some("Probe*".into()) },
+    )
+    .await;
     for index in ["idx_track_search_entry_title", "idx_album_listing_title"] {
         assert!(
             plan.iter().any(|step| step.detail.ends_with(&format!("USING COVERING INDEX {index}"))),

@@ -6,6 +6,7 @@
 use super::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -137,15 +138,13 @@ async fn a_search_counts_its_albums_live() {
 #[tokio::test]
 async fn a_search_reads_its_albums_in_order_from_the_title_index() {
     let (db, _tmp) = crate::tests::library().await;
-    for (what, statement) in [("page", SearchAlbums::SQL), ("count", SearchAlbumCount::SQL)] {
+    let reads: [(&str, &str, PlanOf); 2] = [
+        ("page", SearchAlbums::SQL, plan_steps::<SearchAlbumsParams>),
+        ("count", SearchAlbumCount::SQL, plan_steps::<SearchAlbumCountParams>),
+    ];
+    for (what, statement, plan_of) in reads {
         assert!(!statement.contains("bae_name_key"), "{what}: {statement}");
-        let steps = db
-            .read(move |sql| {
-                let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
-                crate::tests::plan_steps(&sql, statement, unbound)
-            })
-            .await
-            .unwrap();
+        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
         if what != "count" {
             assert!(
                 steps.iter().any(|step| step
