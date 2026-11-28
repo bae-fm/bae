@@ -14,10 +14,10 @@ coven::read!(
     SELECT state.*, cards.*
     FROM (SELECT :key AS key) AS stored
     LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(
-        owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key)) AS state
+        owner: @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT :key AS candidate_key))) AS state
         ON 1
     LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(
-        owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key)) AS cards
+        owner: @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT :key AS candidate_key))) AS cards
         ON 1
 "#
 );

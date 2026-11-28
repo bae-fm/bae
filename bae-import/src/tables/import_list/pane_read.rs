@@ -24,11 +24,11 @@ coven::read!(
     LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(keys: (SELECT :key AS candidate_key))
         AS imported ON 1
     LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(
-        owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key))
+        owner: @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT :key AS candidate_key)))
         AS state ON 1
     LEFT JOIN @crate::tables::import_state::fragments::FileEvidence(key: :key) AS evidence ON 1
     LEFT JOIN @crate::tables::import_state::card_fragments::VerdictCards(
-        owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key))
+        owner: @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT :key AS candidate_key)))
         AS cards ON 1
 "#
 );

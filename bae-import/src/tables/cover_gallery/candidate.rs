@@ -94,7 +94,7 @@ coven::read!(
         WHERE NOT EXISTS (SELECT 1 FROM fetched_covers)
           AND EXISTS (SELECT 1
                       FROM @crate::tables::import_state::current_owner::CurrentOwner(
-                          key: :key) AS owner)
+                          keys: (SELECT :key AS candidate_key)) AS owner)
           AND :filter IN ('all', offers.source)
         UNION ALL
         SELECT 2, file.position, 'file', file.relative_path,

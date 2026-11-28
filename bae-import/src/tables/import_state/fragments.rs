@@ -42,7 +42,7 @@ coven::fragment!(
                           WHERE signals.content_hash = (
                               SELECT owner.content_hash
                               FROM @crate::tables::import_state::current_owner::CurrentOwner(
-                                  key: :key) AS owner))
+                                  keys: (SELECT :key AS candidate_key)) AS owner))
                   AND listed.list IN ('disc_id', 'barcode')
                   AND listed.origin_path IS NOT NULL),
                '[]') AS file_evidence
@@ -282,7 +282,7 @@ coven::fragment!(
     SELECT :key AS claimed_key, (
             SELECT CASE WHEN EXISTS (
             SELECT 1
-            FROM @crate::tables::import_state::current_owner::CurrentOwner(key: :key) AS owner
+            FROM @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT :key AS candidate_key)) AS owner
             ) THEN (
             SELECT json_group_array(json_object('catalog', claimed.catalog, 'kind',
                 claimed.kind, 'key', claimed.key, 'album', claimed.album) ORDER BY
