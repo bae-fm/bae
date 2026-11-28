@@ -121,6 +121,8 @@ pub mod tables;
 pub mod test_fixtures;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_imports;
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub mod test_verdicts;
 #[cfg(desktop)]
 pub(crate) mod track_numbers;
 #[cfg(desktop)]

@@ -58,6 +58,9 @@ bae-identify = { workspace = true, features = ["test-utils"] }
 # The catalog fakes and releases the import tests seed.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
+# The library albums and the store the candidate tests write them to.
+bae-records = { workspace = true, features = ["test-utils"] }
+bae-store = { workspace = true }
 # The hang guard bounding the scan waits.
 bae-util = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }

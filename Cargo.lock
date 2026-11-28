@@ -861,6 +861,7 @@ dependencies = [
  "bae-mirror",
  "bae-preferences",
  "bae-records",
+ "bae-store",
  "bae-transfers",
  "bae-types",
  "bae-util",

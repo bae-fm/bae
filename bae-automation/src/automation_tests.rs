@@ -17,6 +17,7 @@ fn hang_guard_ms() -> u64 {
 /// reads.
 pub(super) struct Fixture {
     automation: Automation,
+    store: bae_store::Store,
     tables: bae_import::tables::ImportTables,
     services: AppServices,
     tmp: bae_util::test_files::TestFolder,
@@ -70,12 +71,13 @@ impl Fixture {
 pub(super) async fn automation_over() -> Fixture {
     let tmp = bae_util::test_files::TestFolder::new();
     let library = bae_library::test_libraries::open_test_library(tmp.path()).await;
-    let tables = bae_import::tables::ImportTables::new(library.store().clone());
+    let store = library.store().clone();
+    let tables = bae_import::tables::ImportTables::new(store.clone());
     let services = bae_app::test_services::start_services(&library)
         .await
         .expect("the test library's services start");
     let automation = Automation::new(services.clone());
-    Fixture { automation, tables, services, tmp }
+    Fixture { automation, store, tables, services, tmp }
 }
 
 #[tokio::test]
@@ -421,6 +423,9 @@ async fn a_scan_waited_on_names_a_folder_whose_read_failed() {
         .expect_err("the read of a folder that is gone fails");
     assert!(error.message().contains(&path), "{}", error.message());
 }
+
+#[path = "automation_tests/candidate_answers.rs"]
+mod candidate_answers;
 
 /// A candidate key that names nothing fails as `not_found` before anything is
 /// fetched, so a typo never reads as a candidate awaiting identification.
