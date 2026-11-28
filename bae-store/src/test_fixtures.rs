@@ -47,22 +47,6 @@ pub async fn empty_db(schema: crate::Schema) -> (crate::Store, bae_util::test_fi
     (db, tmp)
 }
 
-/// How many rows `table` holds.
-pub async fn row_count(db: &crate::Store, table: &str) -> usize {
-    let query = format!("SELECT COUNT(*) FROM \"{table}\"");
-    let count: i64 = db
-        .read(move |sql| sql.query_row(&query, [], |row| row.get(0)).map_err(crate::DbError::from))
-        .await
-        .unwrap();
-    usize::try_from(count).expect("a row count is never negative")
-}
-
-/// `exec` for a multi-statement script, which takes no bound parameters.
-pub async fn exec_batch(db: &crate::Store, sql: &str) {
-    let sql = sql.to_string();
-    db.call(move |conn| conn.execute_batch(&sql).map_err(crate::DbError::from)).await.unwrap();
-}
-
 pub mod bare_statements;
 pub mod kept_store;
 pub mod live_query;
