@@ -138,7 +138,8 @@ coven::read!(
     writer LeftOutAudioOf(key: crate::CandidateKey),
     r#"
     SELECT unread.*
-    FROM @crate::tables::import_list::fragments::LeftOutAudio(key: :key) AS unread
+    FROM @crate::tables::import_list::fragments::LeftOutAudio AS unread
+    WHERE unread.candidate_key = :key
 "#
 );
 
@@ -147,8 +148,8 @@ coven::read!(
     writer DraftTrackWithoutUnit(key: crate::CandidateKey),
     r#"
     SELECT played.*
-    FROM @crate::tables::import_list::fragments::DraftUnits(key: :key) AS played
-    WHERE played.draft_unit_position IS NULL
+    FROM @crate::tables::import_list::fragments::DraftUnits AS played
+    WHERE played.candidate_key = :key AND played.draft_unit_position IS NULL
     ORDER BY played.draft_track_id
     LIMIT 1
 "#

@@ -12,7 +12,7 @@ coven::read!(
     SELECT listed.*, scan.*, grouping.*, files.*, standing.*, imported.*, state.*, evidence.*,
            cards.*
     FROM (SELECT :key AS key) AS pane
-    JOIN @crate::tables::import_list::fragments::Listed(key: :key) AS listed ON 1
+    JOIN @crate::tables::import_list::fragments::Listed(keys: (SELECT :key AS candidate_key)) AS listed ON 1
     LEFT JOIN @crate::tables::folder_scans::fragments::ScanItems(
         keys: (SELECT :key AS candidate_key)) AS scan ON 1
     LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(keys: (SELECT :key AS candidate_key))
@@ -53,9 +53,9 @@ coven::read!(
         ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::PaneFailure(keys: (SELECT :key AS candidate_key)) AS pane_failure
         ON imported.imported_key IS NULL
-    LEFT JOIN @crate::tables::import_list::fragments::Mapping(key: :key) AS mapping
+    LEFT JOIN @crate::tables::import_list::fragments::Mapping(keys: (SELECT :key AS candidate_key)) AS mapping
         ON imported.imported_key IS NULL
-    LEFT JOIN @crate::tables::import_list::fragments::ArtistField(key: :key) AS artist_field
+    LEFT JOIN @crate::tables::import_list::fragments::ArtistField(keys: (SELECT :key AS candidate_key)) AS artist_field
         ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::ClaimedRecords(keys: (SELECT :key AS candidate_key)) AS claimed
         ON imported.imported_key IS NULL
