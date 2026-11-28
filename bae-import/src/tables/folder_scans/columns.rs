@@ -217,6 +217,10 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
 /// A sheet's binding from its column and its stored audio pairing. A bound or
 /// timing-refused spelling with no pairing rows is a store nothing here
 /// wrote.
+#[expect(
+    clippy::read_length_branch,
+    reason = "refuses a stored sheet binding that pairs no audio file: checks what the statement returned for damage, and no screen shows it"
+)]
 pub(super) fn sheet_binding_of(
     stored: &str,
     audio_files: Vec<SheetAudioFile>,

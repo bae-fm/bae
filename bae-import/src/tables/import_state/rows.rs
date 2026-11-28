@@ -192,6 +192,10 @@ impl<Stored> StoredCandidate<Stored> {
             }
             // The match rows hang off the verdict row, so a candidate
             // without one has none.
+            #[expect(
+                clippy::read_aggregate,
+                reason = "refuses a candidate with match rows but no verdict row they hang off: checks what the statement returned for damage, and no screen shows it"
+            )]
             None => match match_rows_of(&content_hash, &matches)?.rows.len() {
                 0 => None,
                 held => {

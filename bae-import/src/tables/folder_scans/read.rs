@@ -156,6 +156,10 @@ pub(crate) fn load_item_by_key_rows(
     sources: RowSources,
 ) -> Result<Option<FinishRead<(PathBuf, StoredScanItem)>>, DbError> {
     let mut rows = rows_at_keys(sql, std::iter::once(entry_key), sources)?;
+    #[expect(
+        clippy::read_length_branch,
+        reason = "refuses a key the watched folders store more than one candidate under: checks what the statement returned for damage, and no screen shows it"
+    )]
     if rows.len() > 1 {
         return Err(DbError::unreadable(
             format!("the watched folders scan_candidate stores {entry_key} under"),

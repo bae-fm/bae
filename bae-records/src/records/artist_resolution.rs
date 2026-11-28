@@ -258,6 +258,10 @@ pub(crate) fn resolve_artists_on<Q: bae_store::WriterRead>(
     picked: &HashSet<String>,
     gone: GonePicked,
 ) -> Result<ResolvedArtists, IdentityWriteError> {
+    #[expect(
+        clippy::read_aggregate,
+        reason = "sizes the list of ids for the credits it resolves; no screen shows the count"
+    )]
     let mut ids = Vec::with_capacity(credits.len());
     let mut inserts: Vec<DbArtist> = Vec::new();
     let mut external_id_updates: Vec<DbArtist> = Vec::new();
@@ -304,6 +308,10 @@ pub(crate) fn resolve_artists_on<Q: bae_store::WriterRead>(
                         id
                     }
                     Holder::New(pending) => {
+                        #[expect(
+                            clippy::read_pick,
+                            reason = "kept finding: finds the new artist the catalog step names among the artists this write makes"
+                        )]
                         let new = inserts
                             .iter_mut()
                             .find(|new| new.id == pending.id)
@@ -415,6 +423,10 @@ fn resolve_by_name(
     external_id_updates: &mut Vec<DbArtist>,
     merges: &[ArtistIdMerge],
 ) -> String {
+    #[expect(
+        clippy::read_filter,
+        reason = "kept finding: keeps the new artists of this write whose name and catalog ids match the credit"
+    )]
     let pending: Vec<usize> = inserts
         .iter()
         .enumerate()
@@ -431,7 +443,15 @@ fn resolve_by_name(
     if pending.is_empty() {
         // An artist this write merges into another is that one.
         let mut named = name_matches(library_named, credit, external_id_updates);
+        #[expect(
+            clippy::read_filter,
+            reason = "kept finding: drops the matched artists this write merges into another"
+        )]
         named.retain(|artist| !merges.iter().any(|merge| merge.absorbed.id == artist.id));
+        #[expect(
+            clippy::read_length_branch,
+            reason = "kept finding: links the credit to the library artist its name matches only when exactly one matches"
+        )]
         if let [only] = named.as_slice() {
             let mut linked = only.clone();
             linked.fill_missing(credit);
@@ -533,6 +553,11 @@ fn settled_catalog_match(
 /// Of `named`, the shown library artists that go by the credit's folded
 /// name, those whose catalog ids — as this write's own fills leave them —
 /// agree with the credit's.
+#[expect(
+    clippy::read_filter,
+    clippy::read_pick,
+    reason = "kept finding: puts this write's staged fills over the artists the name matched, and keeps those whose catalog ids agree with the credit's"
+)]
 fn name_matches(named: &[DbArtist], credit: &DbArtist, staged: &[DbArtist]) -> Vec<DbArtist> {
     named
         .iter()
@@ -600,6 +625,10 @@ fn merge_into(
     }
 }
 
+#[expect(
+    clippy::read_pick,
+    reason = "kept finding: finds the staged update of the artist among this write's staged updates"
+)]
 fn stage_artist_update(staged_updates: &mut Vec<DbArtist>, artist: DbArtist) {
     match staged_updates.iter_mut().find(|staged| staged.id == artist.id) {
         Some(staged) => *staged = artist,
@@ -614,6 +643,10 @@ fn remove_pending_artists(
     survivor_id: &str,
 ) {
     let absorbed_ids = absorbed.iter().map(|artist| artist.id.as_str()).collect::<HashSet<_>>();
+    #[expect(
+        clippy::read_filter,
+        reason = "kept finding: drops the pending artists this write merges into another"
+    )]
     pending_artists.retain(|artist| !absorbed_ids.contains(artist.id.as_str()));
     for resolved_id in resolved_ids {
         if absorbed_ids.contains(resolved_id.as_str()) {

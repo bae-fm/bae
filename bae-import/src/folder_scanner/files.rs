@@ -391,6 +391,10 @@ impl CategorizedFiles {
 /// to look up the bindings stored under it.
 pub(super) fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) -> String {
     let mut entries: Vec<&ScannedFile> = files.collect();
+    #[expect(
+        clippy::read_sort,
+        reason = "kept finding: sorts the files a scan fingerprint hashes by their relative paths"
+    )]
     entries.sort_unstable_by(|left, right| left.relative_path.cmp(&right.relative_path));
 
     let mut hasher = Sha256::new();
