@@ -1,7 +1,6 @@
 use super::*;
 use crate::test_fixtures::audio::store_audio;
 use crate::test_fixtures::{artist_album_release, test_records, RELEASE_A, TRACK_A, TRACK_B};
-use coven::Statement;
 
 /// `RELEASE_A` with `TRACK_A` then `TRACK_B` on its CD, and no audio.
 async fn two_tracks() -> (bae_store::Store, bae_util::test_files::TestFolder, Records) {
@@ -114,25 +113,13 @@ async fn a_save_reads_a_track_beside_the_next_and_a_release_in_order() {
 #[tokio::test]
 async fn the_track_reads_find_their_rows_by_key() {
     let (db, _temp, _records) = two_tracks().await;
-    let plans = db
-        .read(|sql| {
-            let plan = |statement: &str, params: &[(&str, &dyn rusqlite::ToSql)]| {
-                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params, |row| {
-                    row.get::<_, String>(3)
-                })
-            };
-            let track = TRACK_A.to_string();
-            let one = OneTrackAudioParams { track: track.clone() };
-            let save = TrackAndNextForSaveParams { track };
-            let release = ReleaseForSaveParams { release: RELEASE_A.to_string() };
-            Ok([
-                plan(OneTrackAudio::SQL, &one.params())?,
-                plan(TrackAndNextForSave::SQL, &save.params())?,
-                plan(ReleaseForSave::SQL, &release.params())?,
-            ])
-        })
-        .await
-        .unwrap();
+    use bae_store::test_fixtures::query_plan::query_plan;
+    let track = TRACK_A.to_string();
+    let plans = [
+        query_plan(&db, OneTrackAudioParams { track: track.clone() }).await,
+        query_plan(&db, TrackAndNextForSaveParams { track }).await,
+        query_plan(&db, ReleaseForSaveParams { release: RELEASE_A.to_string() }).await,
+    ];
     for plan in plans {
         for table in [
             "tracks",

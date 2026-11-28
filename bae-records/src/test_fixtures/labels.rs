@@ -50,16 +50,9 @@ pub async fn add_label(
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
         .await
         .unwrap();
-    let release_id = release.id;
-    db.read(move |sql| {
-        Ok(sql.query_row(
-            "SELECT label_id FROM release_labels WHERE release_id = ?",
-            [release_id],
-            |row| row.get(0),
-        )?)
-    })
-    .await
-    .unwrap()
+    let statement = crate::records::test_statements::LabelOfReleaseParams { release: release.id };
+    let placed = db.read_row(statement).await.unwrap();
+    placed.label_id.expect("the release's label row names a label")
 }
 
 /// Write `RELEASE`'s labels as an edit would.
@@ -76,16 +69,11 @@ pub async fn write(store: &Store, labels: Vec<ReleaseLabel>) -> Result<(), Ident
 
 /// The label each of `RELEASE`'s label rows names, as stored, with its number.
 pub async fn placed(db: &Store) -> Vec<(Option<String>, Option<String>)> {
-    db.read(|sql| {
-        Ok(sql.query(
-            "SELECT label_id, catalog_number FROM release_labels \
-             WHERE release_id = ? ORDER BY position",
-            [RELEASE],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?)
-    })
-    .await
-    .unwrap()
+    let statement = crate::records::test_statements::PlacedLabelsOfReleaseParams {
+        release: RELEASE.to_string(),
+    };
+    let rows = db.read_rows(statement).await.unwrap();
+    rows.into_iter().map(|row| (row.label_id, row.catalog_number)).collect()
 }
 
 pub async fn stored_label(db: &Store, id: &str) -> LabelRow {

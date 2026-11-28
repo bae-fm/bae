@@ -1,8 +1,12 @@
-use crate::records::release_with_files::{ReleaseFileById, ReleaseFileByIdParams};
+use crate::records::release_with_files::ReleaseFileByIdParams;
+use crate::records::test_statements::*;
 use crate::records::*;
-use coven::Returning as _;
-use coven::Statement as _;
-use rusqlite::{params, Connection};
+use bae_store::test_fixtures::bare_statements::{row, run};
+use rusqlite::Connection;
+
+const ALBUM: &str = "9644b84d-94b2-4b3b-863a-d6583931920c";
+const RELEASE: &str = "cccb6034-5922-40d2-8d0b-d94619230882";
+const NOW: &str = "2026-01-01T00:00:00Z";
 
 /// An in-memory DB on the real schema with one album and release whose
 /// `created_at` is valid, so a test can corrupt one column and prove the
@@ -10,17 +14,8 @@ use rusqlite::{params, Connection};
 fn seeded_conn() -> Connection {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
     crate::test_fixtures::TEST_SCHEMA.open_bare_library(&conn);
-    let now = "2026-01-01T00:00:00Z";
-    conn.execute(
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('9644b84d-94b2-4b3b-863a-d6583931920c', 'Album Title', 0, ?)",
-        params![now],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('cccb6034-5922-40d2-8d0b-d94619230882', '9644b84d-94b2-4b3b-863a-d6583931920c', ?, 0)",
-        params![now],
-    )
-    .unwrap();
+    run(&conn, &PlantAlbumParams { id: ALBUM, title: "Album Title", created_at: NOW }).unwrap();
+    run(&conn, &PlantReleaseParams { id: RELEASE, album_id: ALBUM, created_at: NOW }).unwrap();
     conn
 }
 
@@ -28,27 +23,17 @@ fn seeded_conn() -> Connection {
 fn a_release_with_a_malformed_created_at_is_unreadable() {
     // A corrupt timestamp must propagate as an error, not panic the reader.
     let conn = seeded_conn();
-    conn.execute(
-        "UPDATE releases SET created_at = 'not-a-timestamp' WHERE id = 'cccb6034-5922-40d2-8d0b-d94619230882'",
-        [],
-    )
-    .unwrap();
-    let statement =
-        OneReleaseParams { release: "cccb6034-5922-40d2-8d0b-d94619230882".to_string() };
-    let row = conn
-        .query_row(OneRelease::SQL, statement.params().as_slice(), OneReleaseParams::read)
+    run(&conn, &DamageReleaseCreatedAtParams { id: RELEASE, created_at: "not-a-timestamp" })
         .unwrap();
-    assert!(row.held.release().is_err());
+    let statement = OneReleaseParams { release: RELEASE.to_string() };
+    let read = row(&conn, &statement).unwrap();
+    assert!(read.held.release().is_err());
 }
 
 /// The release file `id`, as [`ReleaseFileById`] reads it.
 fn read_file(conn: &Connection, id: &str) -> rusqlite::Result<DbFile> {
-    let row = conn.query_row(
-        ReleaseFileById::SQL,
-        rusqlite::named_params! { ":file": id },
-        ReleaseFileByIdParams::read,
-    )?;
-    Ok(row.record.into_file().expect("the stored file decodes"))
+    let read = row(conn, &ReleaseFileByIdParams { file: id.to_string() })?;
+    Ok(read.record.into_file().expect("the stored file decodes"))
 }
 
 /// Insert one `release_files` row of the seeded release with the given
@@ -59,7 +44,6 @@ fn insert_file(
     layout: Option<&str>,
     audio: Option<(&str, i64)>,
 ) -> rusqlite::Result<usize> {
-    let now = "2026-01-01T00:00:00Z";
     let (content_type, container, duration_ms, sample_rate_hz, bits_per_sample, channels) =
         match audio {
             Some((content_type, bits)) => {
@@ -70,27 +54,25 @@ fn insert_file(
     // The record of the coven file the row references, as coven writes it: a
     // file only device 1 holds.
     let file = bae_util::test_ids::test_uuid(id);
-    conn.execute(
-        "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
-         VALUES (?1, '', 1, 'device 1', 'release_files')",
-        [&file],
-    )?;
-    conn.execute(
-        "INSERT INTO release_files (id, release_id, original_filename, content_type, file, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels, source_audio_container, role) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 'audio/flac', ?9, ?2, \
-         ?3, ?4, ?5, ?6, ?7, ?8, ?10, ?11)",
-        params![
+    run(conn, &PlantCovenFileParams { id: &file })?;
+    run(
+        conn,
+        &PlantReleaseFileParams {
             id,
-            now,
-            layout,
-            content_type,
-            duration_ms,
-            sample_rate_hz,
-            bits_per_sample,
-            channels,
-            file,
-            container,
-            if audio.is_some() { "audio" } else { "other" }
-        ],
+            release_id: RELEASE,
+            content_type: "audio/flac",
+            file: &file,
+            role: if audio.is_some() { "audio" } else { "other" },
+            document_kind: None,
+            source_audio_layout: layout,
+            source_audio_content_type: content_type,
+            source_audio_container: container,
+            source_audio_duration_ms: duration_ms,
+            source_audio_sample_rate_hz: sample_rate_hz,
+            source_audio_bits_per_sample: bits_per_sample,
+            source_audio_channels: channels,
+            created_at: NOW,
+        },
     )
 }
 
@@ -126,17 +108,25 @@ fn insert_carried_file(
     document_kind: Option<&str>,
 ) -> rusqlite::Result<usize> {
     let file = bae_util::test_ids::test_uuid(id);
-    conn.execute(
-        "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
-         VALUES (?1, '', 1, 'device 1', 'release_files')",
-        [&file],
-    )?;
-    conn.execute(
-        "INSERT INTO release_files (id, release_id, original_filename, content_type, file, \
-         created_at, role, document_kind) \
-         VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 'text/plain', ?2, \
-         '2026-01-01T00:00:00Z', ?3, ?4)",
-        params![id, file, role, document_kind],
+    run(conn, &PlantCovenFileParams { id: &file })?;
+    run(
+        conn,
+        &PlantReleaseFileParams {
+            id,
+            release_id: RELEASE,
+            content_type: "text/plain",
+            file: &file,
+            role,
+            document_kind,
+            source_audio_layout: None,
+            source_audio_content_type: None,
+            source_audio_container: None,
+            source_audio_duration_ms: None,
+            source_audio_sample_rate_hz: None,
+            source_audio_bits_per_sample: None,
+            source_audio_channels: None,
+            created_at: NOW,
+        },
     )
 }
 
@@ -174,12 +164,7 @@ fn a_stored_name_that_names_no_file_is_refused() {
         let error = insert_carried_file(&conn, name, "other", None).expect_err(name);
         assert!(error.to_string().contains("CHECK constraint failed"), "{name:?}: {error}");
     }
-    let set_folder = |name: &str| {
-        conn.execute(
-            "UPDATE releases SET source_folder_name = ?1 WHERE id = 'cccb6034-5922-40d2-8d0b-d94619230882'",
-            [name],
-        )
-    };
+    let set_folder = |name: &str| run(&conn, &SetSourceFolderNameParams { id: RELEASE, name });
     for name in ["Album Title (2020)", "../escape", "a/b"] {
         set_folder(name).unwrap_or_else(|e| panic!("{name:?}: {e}"));
     }
@@ -190,7 +175,7 @@ fn a_stored_name_that_names_no_file_is_refused() {
 /// Plant a size of -5 on each stored file's record: a size no write stores,
 /// as coven records each file's length.
 fn plant_negative_file_sizes(conn: &Connection) {
-    conn.execute("UPDATE coven_files SET size = -5", []).expect("the damage is planted");
+    run(conn, &DamageCovenFileSizesParams { size: -5 }).expect("the damage is planted");
 }
 
 #[test]
@@ -206,28 +191,31 @@ fn a_negative_file_size_is_an_unreadable_column() {
 /// over a seeded file, all with valid non-negative positions.
 fn seeded_audio_segment() -> Connection {
     let conn = seeded_conn();
-    let now = "2026-01-01T00:00:00Z";
     insert_file(&conn, "file-1", Some("file"), Some(("audio/flac", 16))).unwrap();
-    conn.execute(
-        "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('medium-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 1, 'cd', 1, ?1)",
-        params![now],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, duration_ms, created_at) VALUES ('track-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 'Track Title', 'medium-1', 1, 1, 180000, ?1)",
-        params![now],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO audio_formats (id, track_id, content_type, sample_rate, channels, created_at) VALUES ('format-1', 'track-1', 'audio/flac', 44100, 2, ?1)",
-        params![now],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO audio_format_segments (id, audio_format_id, segment_index, role, file_id, start_sample, end_sample, start_byte, end_byte, created_at) VALUES ('segment-1', 'format-1', 0, 'main', 'file-1', 0, 44100, 0, 1000, ?1)",
-        params![now],
-    )
-    .unwrap();
+    run(&conn, &PlantMediumParams { id: "medium-1", release_id: RELEASE, created_at: NOW })
+        .unwrap();
+    let track = PlantTrackParams {
+        id: "track-1",
+        release_id: RELEASE,
+        medium_id: "medium-1",
+        created_at: NOW,
+    };
+    run(&conn, &track).unwrap();
+    run(&conn, &PlantAudioFormatParams { id: "format-1", track_id: "track-1", created_at: NOW })
+        .unwrap();
+    let segment = PlantSegmentParams {
+        id: "segment-1",
+        audio_format_id: "format-1",
+        segment_index: 0,
+        role: "main",
+        file_id: "file-1",
+        start_sample: 0,
+        end_sample: Some(44_100),
+        start_byte: Some(0),
+        end_byte: Some(1_000),
+        created_at: NOW,
+    };
+    run(&conn, &segment).unwrap();
     conn
 }
 
@@ -237,15 +225,13 @@ fn seeded_audio_segment() -> Connection {
 fn the_schema_refuses_negative_audio_positions() {
     let conn = seeded_audio_segment();
     for column in ["start_sample", "end_sample", "start_byte", "end_byte"] {
-        let update = conn.execute(
-            &format!("UPDATE audio_format_segments SET {column} = -1 WHERE id = 'segment-1'"),
-            [],
-        );
+        let update =
+            run(&conn, &DamageSegmentPositionParams { id: "segment-1", column, value: -1 });
         assert!(update.is_err(), "a negative {column} was stored");
     }
     for column in ["pregap_samples", "generated_pregap_samples"] {
-        let update = conn
-            .execute(&format!("UPDATE audio_formats SET {column} = -1 WHERE id = 'format-1'"), []);
+        let update =
+            run(&conn, &DamageAudioFormatValueParams { id: "format-1", column, value: Some(-1) });
         assert!(update.is_err(), "a negative {column} was stored");
     }
 }
@@ -257,11 +243,20 @@ fn the_schema_refuses_negative_audio_positions() {
 fn the_schema_refuses_a_second_body_or_pregap_for_one_track() {
     let conn = seeded_audio_segment();
     insert_file(&conn, "file-2", Some("file"), Some(("audio/flac", 16))).unwrap();
-    let insert = |id: &str, index: i64, role: &str| {
-        conn.execute(
-            "INSERT INTO audio_format_segments (id, audio_format_id, segment_index, role, file_id, start_sample, created_at) VALUES (?1, 'format-1', ?2, ?3, 'file-2', 0, '2026-01-01T00:00:00Z')",
-            params![id, index, role],
-        )
+    let insert = |id: &str, segment_index: i64, role: &str| {
+        let segment = PlantSegmentParams {
+            id,
+            audio_format_id: "format-1",
+            segment_index,
+            role,
+            file_id: "file-2",
+            start_sample: 0,
+            end_sample: None,
+            start_byte: None,
+            end_byte: None,
+            created_at: NOW,
+        };
+        run(&conn, &segment)
     };
 
     let second_body = insert("segment-2", 1, "main").expect_err("a second body was stored");
@@ -277,27 +272,23 @@ fn the_schema_refuses_a_second_body_or_pregap_for_one_track() {
 #[test]
 fn the_schema_refuses_audio_format_values_out_of_range() {
     let conn = seeded_audio_segment();
+    let set = |column: &str, value: Option<i64>| {
+        run(&conn, &DamageAudioFormatValueParams { id: "format-1", column, value })
+    };
     for (column, value) in [
-        ("sample_rate", "0"),
-        ("sample_rate", "-44100"),
-        ("channels", "0"),
-        ("channels", "-2"),
-        ("bits_per_sample", "0"),
-        ("bits_per_sample", "-16"),
-        ("bits_per_sample", "33"),
+        ("sample_rate", 0),
+        ("sample_rate", -44_100),
+        ("channels", 0),
+        ("channels", -2),
+        ("bits_per_sample", 0),
+        ("bits_per_sample", -16),
+        ("bits_per_sample", 33),
     ] {
-        let update = conn.execute(
-            &format!("UPDATE audio_formats SET {column} = {value} WHERE id = 'format-1'"),
-            [],
-        );
-        assert!(update.is_err(), "{column} = {value} was stored");
+        assert!(set(column, Some(value)).is_err(), "{column} = {value} was stored");
     }
-    for value in ["NULL", "1", "16", "32"] {
-        conn.execute(
-            &format!("UPDATE audio_formats SET bits_per_sample = {value} WHERE id = 'format-1'"),
-            [],
-        )
-        .unwrap_or_else(|error| panic!("bits_per_sample = {value}: {error}"));
+    for value in [None, Some(1), Some(16), Some(32)] {
+        set("bits_per_sample", value)
+            .unwrap_or_else(|error| panic!("bits_per_sample = {value:?}: {error}"));
     }
 }
 

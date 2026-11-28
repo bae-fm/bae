@@ -114,7 +114,7 @@ coven::read!(
 
 // The album `album`'s credits in list order, each with the other printed
 // name it names, if any.
-#[cfg(desktop)]
+#[cfg(any(desktop, test, feature = "test-utils"))]
 coven::read!(
     writer AlbumCreditRows(album: String) { position: u32 },
     r#"

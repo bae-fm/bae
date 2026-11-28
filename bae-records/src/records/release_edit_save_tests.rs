@@ -27,10 +27,10 @@ async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
     let album_title_is = |expected: &str| {
         let expected = expected.to_string();
         move |sql: &CovenWrite<'_>| {
-            let title: String =
-                sql.query_row("SELECT title FROM albums WHERE id = ?", [ALBUM_A], |row| {
-                    row.get(0)
-                })?;
+            let statement = crate::records::test_capabilities::TitleOfAlbumParams {
+                album: ALBUM_A.to_string(),
+            };
+            let title = bae_store::statement_row(sql, &statement)?.title;
             Ok(if title == expected { Ok(()) } else { Err(ReleaseEditRefusal::Stale) })
         }
     };

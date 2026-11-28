@@ -103,6 +103,8 @@ mod seeded_albums;
 pub use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) mod test_capabilities;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) mod test_statements;
 mod track;
 mod track_list;
 pub use track::UnknownTrackSource;

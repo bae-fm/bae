@@ -7,7 +7,6 @@ use crate::{identity, DbAlbumArtist};
 use crate::{DbAlbum, DbArtist, DbRelease, DbTrack, Records};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
-use bae_store::test_fixtures::exec_batch;
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
@@ -508,11 +507,18 @@ fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
     )
 }
 
-async fn ids(store: &Store, query: &'static str) -> Vec<String> {
-    store
-        .read(move |sql| sql.query(query, [], |row| row.get::<_, String>(0)).map_err(DbError::from))
-        .await
-        .unwrap()
+/// The id of each release record.
+async fn release_record_ids(store: &Store) -> Vec<String> {
+    let rows =
+        store.read_rows(crate::records::test_statements::ReleaseRecordIdsParams {}).await.unwrap();
+    rows.into_iter().map(|row| row.id).collect()
+}
+
+/// Each album credit's album, artist and place.
+async fn album_credit_places(store: &Store) -> Vec<(String, String, i64)> {
+    let rows =
+        store.read_rows(crate::records::test_statements::AlbumCreditPlacesParams {}).await.unwrap();
+    rows.into_iter().map(|row| (row.album_id, row.artist_id, row.position)).collect()
 }
 
 /// A release's record is a fact: its row's id is computed from the fact it
@@ -548,7 +554,7 @@ async fn a_record_takes_its_id_from_its_fact() {
         .await
         .unwrap();
     assert_eq!(
-        ids(&db, "SELECT id FROM release_records").await,
+        release_record_ids(&db).await,
         vec![identity::release_record_id(&release.id, Catalog::Discogs)],
     );
 
@@ -568,11 +574,10 @@ async fn a_record_takes_its_id_from_its_fact() {
 
     // The emptied source album went with its credits; the new one holds the
     // copy.
-    let credited =
-        ids(&db, "SELECT album_id || ':' || artist_id || ':' || position FROM album_artists").await;
-    assert_eq!(credited, vec![format!("{}:{}:0", target.id, artist.id)]);
+    let credited = album_credit_places(&db).await;
+    assert_eq!(credited, vec![(target.id.clone(), artist.id.clone(), 0)]);
     assert_eq!(
-        ids(&db, "SELECT id FROM release_records").await,
+        release_record_ids(&db).await,
         vec![identity::release_record_id(&release.id, Catalog::MusicBrainz)],
     );
 }
@@ -585,16 +590,23 @@ async fn a_record_takes_its_id_from_its_fact() {
 async fn library_statuses_answer_every_check_in_order() {
     let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    exec_batch(
-        &db,
-        &format!(
-            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Older Album', 0, '2025-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', '2025-01-01T00:00:00Z', 0);
-             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES ('{IDENTITY_ID}', '{RELEASE_ID}', 'musicbrainz', 'album', 'group-1', NULL);
-             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES ('0d8f8a3e-6c1b-4d5e-9a3c-2f1e7b6a5d4c', '{OTHER_RELEASE_ID}', 'musicbrainz', 'pressing', 'pressing-1', 'group-1');"
-        ),
-    )
-    .await;
+    let older = bae_util::timestamp::parse_rfc3339("2025-01-01T00:00:00Z").unwrap();
+    let older_album = DbAlbum {
+        id: OTHER_ALBUM_ID.to_string(),
+        title: "Older Album".to_string(),
+        year: None,
+        is_compilation: false,
+        created_at: older,
+    };
+    records.insert_album(&older_album).await.unwrap();
+    let older_release =
+        DbRelease { created_at: older, ..DbRelease::new_test(OTHER_ALBUM_ID, OTHER_RELEASE_ID) };
+    records.insert_release(&older_release).await.unwrap();
+    let group = bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "group-1");
+    records.insert_release_records(RELEASE_ID, &[ReleaseRecord::album(&group)]).await.unwrap();
+    let pressing = bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "pressing-1");
+    let other_records = [ReleaseRecord::new(&pressing, Some("group-1".to_string()))];
+    records.insert_release_records(OTHER_RELEASE_ID, &other_records).await.unwrap();
     let check = |release_id: &str, group: Option<&str>| LibraryCheck {
         release_id: release_id.to_string(),
         source: Catalog::MusicBrainz,

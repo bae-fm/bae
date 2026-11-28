@@ -1,8 +1,6 @@
-//! Releases and files for the storage listing's tests, and the plan SQLite
-//! picks for a read.
+//! Releases and files for the storage listing's tests.
 
 use crate::NewReleaseFile;
-use bae_store::DbError;
 
 pub const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
 pub const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
@@ -65,16 +63,6 @@ pub async fn import_file(
         time::UtcDateTime::now(),
     );
     super::test_records(store).insert_file_for_test(&file, &original).await.unwrap();
-}
-
-/// The plan SQLite chooses for `statement`, one detail line per step.
-pub async fn plan(db: &bae_store::Store, statement: String) -> Vec<String> {
-    db.read(move |sql| {
-        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
-            .map_err(DbError::from)
-    })
-    .await
-    .unwrap()
 }
 
 pub const ALBUM_A: &str = "4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d";

@@ -1,6 +1,6 @@
 use super::*;
 use crate::test_fixtures::labels::{add_label, label, library, placed, read_labels, stored_label};
-use bae_store::test_fixtures::{empty_db, fixed_now, row_count, temp_db_hearing_bugs};
+use bae_store::test_fixtures::{empty_db, fixed_now, temp_db_hearing_bugs};
 
 fn artist(seed: &str, discogs: Option<&str>, musicbrainz: Option<&str>) -> DbArtist {
     DbArtist {
@@ -39,17 +39,18 @@ async fn merge_artist(
         .await
 }
 
-/// The artist each of `table`'s merge rows was absorbed into, by absorbed id.
-async fn merges(store: &Store, table: &'static str) -> Vec<(String, String)> {
-    store
-        .read(move |sql| {
-            let column = if table == "artist_merges" { "into_artist_id" } else { "into_label_id" };
-            Ok(sql.query(&format!("SELECT id, {column} FROM {table} ORDER BY id"), [], |row| {
-                Ok((row.get(0)?, row.get(1)?))
-            })?)
-        })
-        .await
-        .unwrap()
+/// The artist each artist merge row was absorbed into, by absorbed id.
+async fn artist_merges(store: &Store) -> Vec<(String, String)> {
+    let rows =
+        store.read_rows(crate::records::test_statements::ArtistMergeRowsParams {}).await.unwrap();
+    rows.into_iter().map(|row| (row.id, row.into_artist_id)).collect()
+}
+
+/// The label each label merge row was absorbed into, by absorbed id.
+async fn label_merges(store: &Store) -> Vec<(String, String)> {
+    let rows =
+        store.read_rows(crate::records::test_statements::LabelMergeRowsParams {}).await.unwrap();
+    rows.into_iter().map(|row| (row.id, row.into_label_id)).collect()
 }
 
 async fn store_artist_image(db: &Records, artist_id: &str, bytes: &[u8]) {
@@ -102,18 +103,11 @@ async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the
     assert_eq!(merged.musicbrainz_artist_id.as_deref(), Some("mb-1"));
     assert_eq!(merged.sort_name.as_deref(), Some("Artist Name, The"));
     assert!(records.find_artist_by_id(&absorbed.id).await.unwrap().is_some());
-    assert_eq!(merges(&db, "artist_merges").await, [(absorbed.id.clone(), survivor.id.clone())]);
-    let album_id = album.id.clone();
-    let written: Vec<String> = db
-        .read(move |sql| {
-            Ok(sql.query(
-                "SELECT artist_id FROM album_artists WHERE album_id = ? ORDER BY position",
-                [album_id],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap();
+    assert_eq!(artist_merges(&db).await, [(absorbed.id.clone(), survivor.id.clone())]);
+    let statement =
+        crate::records::test_statements::AlbumCreditArtistIdsParams { album: album.id.clone() };
+    let written: Vec<String> =
+        db.read_rows(statement).await.unwrap().into_iter().map(|row| row.artist_id).collect();
     assert_eq!(written, [survivor.id.clone(), absorbed.id.clone()], "credits stay as written");
     let shown = records.get_artists_for_album(&album.id).await.unwrap();
     assert_eq!(
@@ -239,19 +233,32 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
     let mut expected =
         vec![(earlier.id.clone(), survivor.id.clone()), (absorbed.id.clone(), survivor.id.clone())];
     expected.sort();
-    assert_eq!(merges(&db, "artist_merges").await, expected);
+    assert_eq!(artist_merges(&db).await, expected);
 }
 
-/// Each merged row of `view` and the row it shows as, by merged id.
-async fn survivors(store: &Store, view: &'static str) -> Vec<(String, String)> {
-    store
-        .read(move |sql| {
-            Ok(sql.query(&format!("SELECT * FROM {view} ORDER BY 1"), [], |row| {
-                Ok((row.get(0)?, row.get(1)?))
-            })?)
-        })
+/// Each merged artist and the artist it shows as, by merged id.
+async fn artist_survivors(store: &Store) -> Vec<(String, String)> {
+    let rows = store
+        .read_rows(crate::records::test_statements::MergedArtistSurvivorsParams {})
         .await
-        .unwrap()
+        .unwrap();
+    rows.into_iter().map(|row| (row.artist_id, row.survivor_id)).collect()
+}
+
+/// Each merged label and the label it shows as, by merged id.
+async fn label_survivors(store: &Store) -> Vec<(String, String)> {
+    let rows = store
+        .read_rows(crate::records::test_statements::MergedLabelSurvivorsParams {})
+        .await
+        .unwrap();
+    rows.into_iter().map(|row| (row.label_id, row.survivor_id)).collect()
+}
+
+/// Each label and the label it shows as, by label id.
+async fn labels_shown_as(store: &Store) -> Vec<(String, String)> {
+    let rows =
+        store.read_rows(crate::records::test_statements::LabelsShownAsParams {}).await.unwrap();
+    rows.into_iter().map(|row| (row.label_id, row.shown_label_id)).collect()
 }
 
 /// `ids` from the smallest to the largest.
@@ -278,17 +285,17 @@ async fn check_synced_artist_merge_chain(devices: &bae_store::test_devices::TwoS
         crate::test_fixtures::test_records(devices.a()).insert_artist(artist).await.unwrap();
     }
     let [smallest, middle, largest] = ordered(artists.map(|artist| artist.id));
-    devices.converge("SELECT id FROM artists").await;
+    devices.converge_rows(|| crate::records::test_statements::ArtistIdsParams {}).await;
 
     devices.pause().await;
     merge_artist(devices.a(), &smallest, &middle, None).await.unwrap();
     merge_artist(devices.b(), &middle, &largest, None).await.unwrap();
     devices.resume().await;
-    devices.converge("SELECT id || '>' || into_artist_id FROM artist_merges").await;
+    devices.converge_rows(|| crate::records::test_statements::ArtistMergeRowsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(
-            survivors(device, "merged_artist_survivors").await,
+            artist_survivors(device).await,
             [(middle.clone(), smallest.clone()), (largest.clone(), smallest.clone())]
         );
     }
@@ -310,17 +317,17 @@ async fn check_synced_label_merge_chain(devices: &bae_store::test_devices::TwoSt
         added.push(add_label(devices.a(), name, None, None).await);
     }
     let [smallest, middle, largest] = ordered(added.try_into().unwrap());
-    devices.converge("SELECT id FROM labels").await;
+    devices.converge_rows(|| crate::records::test_statements::LabelIdsParams {}).await;
 
     devices.pause().await;
     merge_label(devices.a(), &smallest, &middle).await.unwrap();
     merge_label(devices.b(), &middle, &largest).await.unwrap();
     devices.resume().await;
-    devices.converge("SELECT id || '>' || into_label_id FROM label_merges").await;
+    devices.converge_rows(|| crate::records::test_statements::LabelMergeRowsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(
-            survivors(device, "merged_label_survivors").await,
+            label_survivors(device).await,
             [(middle.clone(), smallest.clone()), (largest.clone(), smallest.clone())]
         );
         let mut shown = [
@@ -329,7 +336,7 @@ async fn check_synced_label_merge_chain(devices: &bae_store::test_devices::TwoSt
             (largest.clone(), smallest.clone()),
         ];
         shown.sort();
-        assert_eq!(survivors(device, "label_shown_as").await, shown);
+        assert_eq!(labels_shown_as(device).await, shown);
     }
 }
 
@@ -357,7 +364,7 @@ async fn an_artist_merge_into_a_missing_survivor_is_a_bug() {
 
     let bug = reported_bug(&heard, &failed);
     assert!(bug.contains("exactly its surviving artist"), "{bug}");
-    assert_eq!(row_count(&db, "artist_merges").await, 0);
+    assert_eq!(artist_merges(&db).await, []);
 }
 
 /// Merge `absorbed` into `survivor` in a write of its own, the survivor
@@ -405,7 +412,7 @@ async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_th
     assert_eq!(survivor.musicbrainz_label_id.as_deref(), Some("mb-label"));
     assert_eq!(survivor.discogs_label_id.as_deref(), Some("7190"));
     assert_eq!(stored_label(&db, &by_musicbrainz).await.id, by_musicbrainz);
-    assert_eq!(merges(&db, "label_merges").await, [(by_musicbrainz.clone(), by_discogs.clone())]);
+    assert_eq!(label_merges(&db).await, [(by_musicbrainz.clone(), by_discogs.clone())]);
     assert_eq!(placed(&db).await[0].0, Some(by_musicbrainz), "stays as written");
     assert_eq!(read_labels(&records).await, vec![label(Some("Label Name"), None)]);
 }
@@ -422,7 +429,7 @@ async fn a_label_merge_chain_ending_at_the_absorbed_label_ends_at_the_survivor()
 
     let mut expected = vec![(by_musicbrainz, by_discogs.clone()), (earlier, by_discogs)];
     expected.sort();
-    assert_eq!(merges(&db, "label_merges").await, expected);
+    assert_eq!(label_merges(&db).await, expected);
 }
 
 /// A merge's survivor is a label its write just read, and no write deletes a
@@ -436,7 +443,7 @@ async fn a_label_merge_into_a_missing_survivor_is_a_bug() {
 
     let bug = reported_bug(&heard, &failed);
     assert!(bug.contains("exactly its surviving label"), "{bug}");
-    assert_eq!(row_count(&db, "label_merges").await, 0);
+    assert_eq!(label_merges(&db).await, []);
 }
 
 /// A live read of a release's labels, with the label each shows as, reruns

@@ -638,7 +638,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
         "the release's upload is its own file"
     );
     assert_eq!(
-        manager.records.queued_upload_count_in_table_for_test("covers").await.unwrap(),
+        manager.records.queued_cover_count_for_test().await.unwrap(),
         0,
         "the cover uploads through the pause"
     );

@@ -1,6 +1,5 @@
 use super::*;
 use bae_store::FormerDeviceState;
-use rusqlite::params;
 
 /// The line naming the device a release's audio is on follows coven's
 /// registration of that device: active, removed, replaced when it was reset,
@@ -41,18 +40,14 @@ fn the_other_device_follows_its_registration_and_its_person() {
 fn a_read_names_the_device_coven_registers_under_its_id() {
     use crate::test_fixtures::*;
     bae_store::test_devices::run_two_store_test(TEST_SCHEMA, async |devices| {
-        devices.converge("SELECT hex(device), name, state FROM coven_devices").await;
+        devices.converge_rows(|| crate::records::test_statements::RegisteredDevicesParams {}).await;
         let b = devices.b();
         let device = |is_self: bool| async move {
-            b.read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT device, name FROM coven_devices WHERE is_self = ?1",
-                    params![is_self],
-                    |row| Ok((row.get::<_, coven::DeviceId>(0)?, row.get::<_, String>(1)?)),
-                )?)
-            })
-            .await
-            .unwrap()
+            let row = b
+                .read_row(crate::records::test_statements::DeviceWhereSelfParams { is_self })
+                .await
+                .unwrap();
+            (row.device, row.name)
         };
         let (a, name_of_a) = device(false).await;
         let (this, _) = device(true).await;
@@ -143,17 +138,16 @@ async fn the_statements_place_tracks_by_one_rule() {
         .unwrap();
     let groups = rows.decoded().unwrap().detail.track_groups;
 
-    let numbers = db
-        .read(move |sql| {
-            sql.query(
-                "SELECT id, track_number FROM tracks WHERE release_id = ?1 ORDER BY position",
-                [release],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, u32>(1)?)),
-            )
-            .map_err(bae_store::DbError::from)
-        })
+    let statement = crate::records::test_statements::TrackNumbersOfReleaseParams {
+        release: release.to_string(),
+    };
+    let numbers: Vec<(String, u32)> = db
+        .read_rows(statement)
         .await
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(|row| (row.id, row.track_number))
+        .collect();
     let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_owned() };
     let expected_sides = [
         TrackSide::Disc { disc: 1 },
@@ -365,7 +359,7 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
             .release(ALBUM_A, TWO_ELSEWHERE)
             .write(&test_records(a))
             .await;
-        devices.converge("SELECT id FROM releases").await;
+        devices.converge_rows(|| crate::records::test_statements::ReleaseIdsParams {}).await;
 
         storage_listing::import_file(b, &dir, PLAYS_HERE, "here.flac", Flac).await;
         storage_listing::import_file(a, &dir, ONE_ELSEWHERE, "one.flac", Flac).await;
@@ -373,19 +367,11 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
         storage_listing::import_file(a, &dir, ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
         storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "b-second.flac", Flac).await;
         storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "a-first.flac", Flac).await;
-        devices.converge("SELECT id, release_id, file FROM release_files").await;
-        devices.converge("SELECT id, coordinates FROM coven_files").await;
+        devices.converge_rows(|| crate::records::test_statements::ReleaseFileRowsParams {}).await;
+        devices.converge_rows(|| crate::records::test_statements::CovenFileIdsParams {}).await;
 
-        let name_of_a: String = b
-            .read(|sql| {
-                Ok(sql.query_row(
-                    "SELECT name FROM coven_devices WHERE NOT is_self",
-                    [],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
-            .unwrap();
+        let other = crate::records::test_statements::DeviceWhereSelfParams { is_self: false };
+        let name_of_a = b.read_row(other).await.unwrap().name;
         let a_active = Some(OtherDevice::Active { name: name_of_a });
         assert_eq!(
             elsewhere_of(b, PLAYS_HERE).await,

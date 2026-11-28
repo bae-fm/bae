@@ -2,10 +2,7 @@ use super::*;
 use crate::test_fixtures::labels::*;
 
 async fn label_count(store: &Store) -> i64 {
-    store
-        .read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
-        .await
-        .unwrap()
+    store.read_row(crate::records::test_statements::LabelCountParams {}).await.unwrap().labels
 }
 
 /// A catalog id decides: the library label holding it is the label, whatever
@@ -336,15 +333,17 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
         .unwrap();
     let first = add_label(devices.a(), "Label Name A", None, None).await;
     let second = add_label(devices.a(), "Label Name B", None, None).await;
-    let labels = "SELECT id || ':' || COALESCE(discogs_label_id, '') FROM labels \
-                  UNION ALL SELECT 'release:' || id FROM releases";
-    devices.converge(labels).await;
+    let converge = || async {
+        devices.converge_rows(|| crate::records::test_statements::LabelIdsParams {}).await;
+        devices.converge_rows(|| crate::records::test_statements::ReleaseIdsParams {}).await;
+    };
+    converge().await;
 
     devices.pause().await;
     assert_eq!(add_label(devices.a(), "Label Name A", None, Some("7190")).await, first);
     assert_eq!(add_label(devices.b(), "Label Name B", None, Some("7190")).await, second);
     devices.resume().await;
-    devices.converge(labels).await;
+    converge().await;
 
     let (survivor, name, absorbed_name) = if first < second {
         (&first, "Label Name A", "Label Name B")
@@ -360,12 +359,8 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
     )
     .await
     .unwrap();
-    devices
-        .converge(
-            "SELECT id || '>' || into_label_id FROM label_merges \
-             UNION ALL SELECT 'placed:' || COALESCE(label_id, '') FROM release_labels",
-        )
-        .await;
+    devices.converge_rows(|| crate::records::test_statements::LabelMergeRowsParams {}).await;
+    devices.converge_rows(|| crate::records::test_statements::PlacedLabelsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         let placed = placed(device).await;

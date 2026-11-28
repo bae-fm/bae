@@ -341,19 +341,21 @@ impl Records {
     /// them, remain visible in the queue but are no release uploading.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
-        self.store
-            .read(|sql| {
-                sql.query(
-                    "SELECT release_id FROM release_storage \
-                     WHERE first_queued_position IS NOT NULL ORDER BY first_queued_position",
-                    [],
-                    |row| row.get::<_, String>(0),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+        let rows = self.store.read_rows(UploadingReleasesParams {}).await?;
+        Ok(rows.into_iter().map(|row| row.release_id).collect())
     }
 }
+
+// The releases whose own files are queued, in upload queue order.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer UploadingReleases,
+    r#"
+    SELECT queued.release_id
+    FROM @crate::release_storage::QueuedReleases AS queued
+    ORDER BY queued.first_queued_position
+"#
+);
 
 // The audio and track sheet rows of the release `release`, in its file order,
 // with the path of each one's original on this device (`coven_user_files`

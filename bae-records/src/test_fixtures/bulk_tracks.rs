@@ -31,9 +31,3 @@ pub fn plant_in_library(directory: &std::path::Path, release_id: &str, count: i6
         &insert_sql(release_id, count),
     );
 }
-
-/// Put `count` tracks on `release_id`'s first medium in `plain`, a connection
-/// to a database the caller made itself.
-pub fn insert_into(plain: &rusqlite::Connection, release_id: &str, count: i64) {
-    plain.execute_batch(&insert_sql(release_id, count)).unwrap();
-}

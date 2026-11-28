@@ -4,11 +4,17 @@
 use super::*;
 use crate::UploadProgress;
 
-/// How many of the release `?1`'s files wait in this device's upload queue.
+// How many of the release `:release`'s files wait in this device's upload
+// queue.
 #[cfg(any(test, feature = "test-utils"))]
-pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release_files AS f \
-     JOIN coven_uploads AS upload ON upload.file = f.file \
-     WHERE f.release_id = ?1";
+coven::read!(
+    writer ReleaseQueuedFileCount(release: String) { queued: i64 },
+    r#"
+    SELECT COUNT(*) AS queued FROM release_files AS f
+    JOIN coven_uploads AS upload ON upload.file = f.file
+    WHERE f.release_id = :release
+"#
+);
 
 // Whether any of the release `:release`'s files waits in this device's upload
 // queue.
@@ -22,10 +28,16 @@ coven::read!(
 "#
 );
 
-/// Whether the release file `?1` waits in this device's upload queue.
+// Whether the release file `:file` waits in this device's upload queue.
 #[cfg(any(test, feature = "test-utils"))]
-pub(super) const RELEASE_FILE_QUEUED: &str = "SELECT EXISTS (SELECT 1 FROM release_files AS f \
-     JOIN coven_uploads AS upload ON upload.file = f.file WHERE f.id = ?1)";
+coven::read!(
+    writer ReleaseFileQueued(file: String) { queued: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM release_files AS f
+                   JOIN coven_uploads AS upload ON upload.file = f.file
+                   WHERE f.id = :file) AS queued
+"#
+);
 
 // Each release with files this process is sending now, and how many. One row
 // per upload in flight is read, each release file found by its file.
@@ -168,13 +180,8 @@ impl Records {
         &self,
         release_id: &str,
     ) -> Result<i64, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(RELEASE_QUEUED_FILE_COUNT, [release_id], |row| row.get(0))
-                    .map_err(DbError::from)
-            })
-            .await
+        let statement = ReleaseQueuedFileCountParams { release: release_id.to_string() };
+        Ok(self.store.read_row(statement).await?.queued)
     }
 
     /// Whether any of the release's files still waits to upload from this
@@ -208,13 +215,8 @@ impl Records {
     /// device.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
-        let file_id = file_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(RELEASE_FILE_QUEUED, [file_id], |row| row.get(0))
-                    .map_err(DbError::from)
-            })
-            .await
+        let statement = ReleaseFileQueuedParams { file: file_id.to_string() };
+        Ok(self.store.read_row(statement).await?.queued)
     }
 }
 

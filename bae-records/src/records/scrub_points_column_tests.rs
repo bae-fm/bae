@@ -57,13 +57,11 @@ fn points_out_of_order_fail_the_write() {
 fn the_table_refuses_a_blob_that_ends_inside_a_varint() {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
     crate::test_fixtures::TEST_SCHEMA.open_bare_library(&conn);
-    conn.execute_batch("PRAGMA foreign_keys = OFF").unwrap();
-    let insert = |blob: &[u8]| {
-        conn.execute(
-            "INSERT OR REPLACE INTO audio_segment_scrub_points \
-             (audio_format_segment_id, points) VALUES ('segment', ?)",
-            rusqlite::params![blob],
-        )
+    conn.pragma_update(None, "foreign_keys", false).unwrap();
+    let insert = |points: &[u8]| {
+        let plant =
+            crate::records::test_statements::PlantScrubPointsParams { segment: "segment", points };
+        bae_store::test_fixtures::bare_statements::run(&conn, &plant)
     };
     for refused in [&[][..], &[0, 0], &[0, 0, 0x80]] {
         assert!(insert(refused).is_err(), "{refused:?}");

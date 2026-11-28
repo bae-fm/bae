@@ -477,14 +477,10 @@ async fn a_merge_points_at_the_smaller_id_whichever_artist_came_first() {
             .await
             .unwrap();
 
-        let merges: Vec<(String, String)> = db
-            .read(|sql| {
-                Ok(sql.query("SELECT id, into_artist_id FROM artist_merges", [], |row| {
-                    Ok((row.get(0)?, row.get(1)?))
-                })?)
-            })
-            .await
-            .unwrap();
+        let rows =
+            db.read_rows(crate::records::test_statements::ArtistMergeRowsParams {}).await.unwrap();
+        let merges: Vec<(String, String)> =
+            rows.into_iter().map(|row| (row.id, row.into_artist_id)).collect();
         assert_eq!(merges, [("second".to_string(), "first".to_string())], "{order:?}");
     }
 }
@@ -934,7 +930,7 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
             .await
             .unwrap();
     }
-    devices.converge("SELECT id FROM artists").await;
+    devices.converge_rows(|| crate::records::test_statements::ArtistIdsParams {}).await;
 
     crate::test_fixtures::artists_apart::merge_apart(
         devices,

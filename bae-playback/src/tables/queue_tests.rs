@@ -645,15 +645,15 @@ mod playback_queue_bench {
     }
 
     /// A library of its own for the plain SQLite runs: the same schema and
-    /// tracks as `library_db`, in a database file the bench makes itself, with
-    /// a 60 second busy timeout.
+    /// tracks as `library_db`, in a database file the bench makes itself in
+    /// `folder`, which holds no other library, with a 60 second busy timeout.
     fn plain_library(folder: &bae_util::test_files::TestFolder) -> rusqlite::Connection {
         let plain = rusqlite::Connection::open(folder.join("plain-library.db")).unwrap();
         plain.busy_timeout(std::time::Duration::from_secs(60)).unwrap();
         crate::TEST_SCHEMA.open_bare_library(&plain);
         // The tracks name a release and a medium this library lacks.
         plain.pragma_update(None, "foreign_keys", false).unwrap();
-        bae_records::test_fixtures::bulk_tracks::insert_into(&plain, RELEASE_A, TRACKS);
+        bae_records::test_fixtures::bulk_tracks::plant_in_library(folder.path(), RELEASE_A, TRACKS);
         plain
     }
 
@@ -769,7 +769,7 @@ mod playback_queue_bench {
     #[tokio::test(flavor = "multi_thread")]
     #[ignore = "benchmark: fills a 1,000,000-track library"]
     async fn playback_queue_bench_library_play() {
-        let (db, tmp) = library_db().await;
+        let (db, _tmp) = library_db().await;
 
         bae_writes(&db, "no live queries").await;
 
@@ -790,7 +790,8 @@ mod playback_queue_bench {
         }
 
         // The same statements in plain SQLite, the lane empty and then full.
-        let mut plain = plain_library(&tmp);
+        let plain_folder = bae_util::test_files::TestFolder::new();
+        let mut plain = plain_library(&plain_folder);
         let into_lane = fill_into(LIBRARY_FILL, "playback_context");
         let into_unindexed = fill_into(LIBRARY_FILL, "bench_unindexed_lane");
         plain_query(&plain, "the fill's rows alone, read and counted", LIBRARY_ROWS);

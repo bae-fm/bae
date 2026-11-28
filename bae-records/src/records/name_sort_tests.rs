@@ -5,13 +5,8 @@ use crate::test_fixtures::{test_records, TEST_SCHEMA};
 
 /// The language and collation data version `name_sort` holds.
 async fn stored(db: &bae_store::Store) -> (String, u32) {
-    db.read(|sql| {
-        Ok(sql.query_row("SELECT language, data_version FROM name_sort", [], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })?)
-    })
-    .await
-    .unwrap()
+    let row = db.read_row(NameSortStateParams {}).await.unwrap();
+    (row.language, row.data_version)
 }
 
 #[tokio::test]

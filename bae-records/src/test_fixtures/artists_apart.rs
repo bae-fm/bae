@@ -46,26 +46,20 @@ pub async fn merge_apart(devices: &TwoStores, (first, second): (&str, &str), dis
     devices.resume().await;
     devices
         .settle("both artists holding the id", async |_, db| {
-            count(db, "SELECT COUNT(*) FROM artists WHERE discogs_artist_id = ?1", &[discogs]).await
-                == 2
+            let statement = crate::records::test_statements::ArtistsHoldingDiscogsIdParams {
+                discogs: discogs.to_string(),
+            };
+            db.read_row(statement).await.unwrap().holding == 2
         })
         .await;
     test_records(devices.a()).find_or_create_artists(&[crediting(first)]).await.unwrap();
     devices
         .settle("the merge", async |_, db| {
-            count(db, "SELECT COUNT(*) FROM artist_merges", &[]).await == 1
+            db.read_row(crate::records::test_statements::ArtistMergeCountParams {})
+                .await
+                .unwrap()
+                .merges
+                == 1
         })
         .await;
-}
-
-/// What `statement`, counting rows, answers with `parameters` bound.
-async fn count(db: &bae_store::Store, statement: &'static str, parameters: &[&str]) -> i64 {
-    let parameters: Vec<String> = parameters.iter().map(|value| value.to_string()).collect();
-    db.read(move |sql| {
-        Ok(sql.query_row(statement, rusqlite::params_from_iter(&parameters), |row| {
-            row.get::<_, i64>(0)
-        })?)
-    })
-    .await
-    .unwrap()
 }

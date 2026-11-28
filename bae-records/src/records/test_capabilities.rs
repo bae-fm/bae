@@ -1,5 +1,5 @@
 use super::*;
-use coven::SqlReadContext;
+use bae_store::statement_rows;
 
 // Whether the cover of the release `:release` waits in this device's upload
 // queue.
@@ -23,6 +23,126 @@ coven::read!(
 "#
 );
 
+// How many of the files waiting in this device's upload queue release files
+// reference.
+coven::read!(
+    writer QueuedReleaseFileCount { queued: i64 },
+    r#"
+    SELECT COUNT(*) AS queued FROM coven_uploads AS upload
+    JOIN release_files AS file ON file.file = upload.file
+"#
+);
+
+// How many of the files waiting in this device's upload queue covers
+// reference.
+coven::read!(
+    writer QueuedCoverCount { queued: i64 },
+    r#"
+    SELECT COUNT(*) AS queued FROM coven_uploads AS upload
+    JOIN covers AS cover ON cover.browse_file = upload.file
+"#
+);
+
+// The release `:release`'s own files and its cover that wait in this
+// device's upload queue, each with its table.
+coven::read!(
+    writer QueuedUploadsOfRelease(release: String) { queued_table: String, queued_id: String },
+    r#"
+    SELECT 'release_files' AS queued_table, file.id AS queued_id
+    FROM release_files AS file
+    JOIN coven_uploads AS upload ON upload.file = file.file
+    WHERE file.release_id = :release
+    UNION ALL
+    SELECT 'covers' AS queued_table, cover.id AS queued_id
+    FROM covers AS cover
+    JOIN coven_uploads AS upload ON upload.file = cover.browse_file
+    WHERE cover.id = :release
+"#
+);
+
+// The works the MusicBrainz work `:work` identifies.
+coven::read!(
+    writer WorksIdentifiedAs(work: String),
+    "SELECT work.id FROM works AS work WHERE work.musicbrainz_work_id = :work"
+);
+
+// The releases whose tracks perform a work the MusicBrainz work `:work`
+// identifies, in id order.
+coven::read!(
+    writer ReleasesPerformingWork(work: String),
+    r#"
+    SELECT DISTINCT track.release_id
+    FROM track_works AS link
+    JOIN tracks AS track ON track.id = link.track_id
+    JOIN works AS work ON work.id = link.work_id
+    WHERE work.musicbrainz_work_id = :work
+    ORDER BY track.release_id
+"#
+);
+
+// The tracks of the release `:release` in play order.
+coven::read!(
+    writer TracksInOrder(release: String),
+    r#"
+    SELECT track.id, track.title FROM tracks AS track
+    WHERE track.release_id = :release ORDER BY track.position
+"#
+);
+
+// The artists credited on the track `:track` in a role, in order: each its
+// MusicBrainz id, else its name.
+coven::read!(
+    writer RoleArtistsOfTrack(track: String) { source: String },
+    r#"
+    SELECT COALESCE(artist.musicbrainz_artist_id, artist.name) AS source
+    FROM track_artist_roles AS role
+    JOIN artists AS artist ON artist.id = role.artist_id
+    WHERE role.track_id = :track ORDER BY role.position
+"#
+);
+
+// The MusicBrainz ids of the works the track `:track` performs, in order.
+coven::read!(
+    writer WorkSourcesOfTrack(track: String) { musicbrainz_work_id: String },
+    r#"
+    SELECT work.musicbrainz_work_id FROM track_works AS link
+    JOIN works AS work ON work.id = link.work_id
+    WHERE link.track_id = :track ORDER BY link.position
+"#
+);
+
+// Each track of the release `:release` in play order, with the original
+// name of the file its main audio segment reads.
+coven::read!(
+    writer CommittedTrackFiles(release: String),
+    r#"
+    SELECT track.title, file.original_filename
+    FROM tracks AS track
+    JOIN audio_formats AS format ON format.track_id = track.id
+    JOIN audio_format_segments AS segment
+      ON segment.audio_format_id = format.id AND segment.role = 'main'
+    JOIN release_files AS file ON file.id = segment.file_id
+    WHERE track.release_id = :release
+    ORDER BY track.position
+"#
+);
+
+// The track `:track`'s own credits in list order, each with the other
+// printed name it names, if any.
+coven::read!(
+    writer TrackCreditRows(track: String) { position: u32 },
+    r#"
+    SELECT credit.artist_id, credit.position, credit.join_phrase,
+           credit_name.name_key, credit_name.name
+    FROM track_artists AS credit
+    LEFT JOIN artist_credits AS credit_name
+           ON credit_name.artist_id = credit.artist_id
+          AND credit_name.name_key = credit.credit_key
+    WHERE credit.track_id = :track
+    ORDER BY credit.position
+"#
+);
+
 // The title of the album `:album`.
 #[cfg(test)]
 coven::read!(
@@ -41,15 +161,16 @@ impl Records {
         self.store.subscribe_row(statement).process(|row| Ok(row.queued))
     }
 
-    /// How many of the files waiting in this device's upload queue `table`'s
-    /// rows reference.
-    pub async fn queued_upload_count_in_table_for_test(&self, table: &str) -> Result<i64, DbError> {
-        let statement = format!(
-            "SELECT COUNT(*) FROM coven_uploads AS upload \
-             JOIN {table} AS t ON t.{column} = upload.file",
-            column = file_column_for_test(table),
-        );
-        self.store.read(move |sql| Ok(sql.query_row(&statement, [], |row| row.get(0))?)).await
+    /// How many of the files waiting in this device's upload queue release
+    /// files reference.
+    pub async fn queued_release_file_count_for_test(&self) -> Result<i64, DbError> {
+        Ok(self.store.read_row(QueuedReleaseFileCountParams {}).await?.queued)
+    }
+
+    /// How many of the files waiting in this device's upload queue covers
+    /// reference.
+    pub async fn queued_cover_count_for_test(&self) -> Result<i64, DbError> {
+        Ok(self.store.read_row(QueuedCoverCountParams {}).await?.queued)
     }
 
     pub async fn queued_upload_count_for_release_for_test(
@@ -63,47 +184,24 @@ impl Records {
         &self,
         release_id: &str,
     ) -> Result<Vec<(String, String)>, DbError> {
-        // The release's own files and its cover, whose row the release's id
-        // keys.
-        let root_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                Ok(sql.query(
-                    "SELECT 'release_files', f.id FROM release_files AS f \
-                 JOIN coven_uploads AS upload ON upload.file = f.file \
-                 WHERE f.release_id = ?1 \
-                 UNION ALL \
-                 SELECT 'covers', cover.id FROM covers AS cover \
-                 JOIN coven_uploads AS upload ON upload.file = cover.browse_file \
-                 WHERE cover.id = ?1",
-                    [root_id],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
-                )?)
-            })
-            .await
+        let statement = QueuedUploadsOfReleaseParams { release: release_id.to_string() };
+        let rows = self.store.read_rows(statement).await?;
+        Ok(rows.into_iter().map(|row| (row.queued_table, row.queued_id)).collect())
     }
 
     pub async fn work_links_for_test(
         &self,
         musicbrainz_work_id: &str,
     ) -> Result<(Vec<String>, Vec<String>), DbError> {
-        let musicbrainz_work_id = musicbrainz_work_id.to_string();
+        let work = musicbrainz_work_id.to_string();
         self.store
             .read(move |sql| {
-                let work_ids = sql.query(
-                    "SELECT id FROM works WHERE musicbrainz_work_id = ?1",
-                    [&musicbrainz_work_id],
-                    |row| row.get::<_, String>(0),
-                )?;
-                let linked_release_ids = sql.query(
-                    "SELECT DISTINCT t.release_id FROM track_works tw \
-                 JOIN tracks t ON t.id = tw.track_id \
-                 JOIN works w ON w.id = tw.work_id \
-                 WHERE w.musicbrainz_work_id = ?1 ORDER BY t.release_id",
-                    [&musicbrainz_work_id],
-                    |row| row.get::<_, String>(0),
-                )?;
-                Ok((work_ids, linked_release_ids))
+                let works = statement_rows(&sql, &WorksIdentifiedAsParams { work: work.clone() })?;
+                let releases = statement_rows(&sql, &ReleasesPerformingWorkParams { work })?;
+                Ok((
+                    works.into_iter().map(|row| row.id).collect(),
+                    releases.into_iter().map(|row| row.release_id).collect(),
+                ))
             })
             .await
     }
@@ -118,28 +216,17 @@ impl Records {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| {
-                let tracks = sql.query(
-                    "SELECT id, title FROM tracks WHERE release_id = ?1 ORDER BY position",
-                    [&release_id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )?;
-                let mut out = Vec::with_capacity(tracks.len());
-                for (track_id, title) in tracks {
-                    let roles = sql.query(
-                    "SELECT COALESCE(a.musicbrainz_artist_id, a.name) FROM track_artist_roles r \
-                     JOIN artists a ON a.id = r.artist_id \
-                     WHERE r.track_id = ?1 ORDER BY r.position",
-                    [&track_id],
-                    |row| row.get::<_, String>(0),
-                )?;
-                    let works = sql.query(
-                        "SELECT w.musicbrainz_work_id FROM track_works tw \
-                     JOIN works w ON w.id = tw.work_id \
-                     WHERE tw.track_id = ?1 ORDER BY tw.position",
-                        [&track_id],
-                        |row| row.get::<_, String>(0),
-                    )?;
-                    out.push((title, roles, works));
+                let tracks = statement_rows(&sql, &TracksInOrderParams { release: release_id })?;
+                let mut out = Vec::new();
+                for TracksInOrderRow { id, title } in tracks {
+                    let roles =
+                        statement_rows(&sql, &RoleArtistsOfTrackParams { track: id.clone() })?;
+                    let works = statement_rows(&sql, &WorkSourcesOfTrackParams { track: id })?;
+                    out.push((
+                        title,
+                        roles.into_iter().map(|row| row.source).collect(),
+                        works.into_iter().map(|row| row.musicbrainz_work_id).collect(),
+                    ));
                 }
                 Ok(out)
             })
@@ -150,24 +237,9 @@ impl Records {
         &self,
         release_id: &str,
     ) -> Result<Vec<(String, String)>, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query(
-                    "SELECT t.title, rf.original_filename \
-                 FROM tracks t \
-                 JOIN audio_formats af ON af.track_id = t.id \
-                 JOIN audio_format_segments seg \
-                   ON seg.audio_format_id = af.id AND seg.role = 'main' \
-                 JOIN release_files rf ON rf.id = seg.file_id \
-                 WHERE t.release_id = ?1 \
-                 ORDER BY t.position",
-                    [&release_id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+        let statement = CommittedTrackFilesParams { release: release_id.to_string() };
+        let rows = self.store.read_rows(statement).await?;
+        Ok(rows.into_iter().map(|row| (row.title, row.original_filename)).collect())
     }
 }
 
@@ -222,13 +294,36 @@ impl Records {
             .store
             .read(move |sql| {
                 let mut track_credits = Vec::new();
-                for track_id in &track_ids {
-                    track_credits.push((
-                        track_id.clone(),
-                        credits_for_test(&sql, "track_artists", "track_id", track_id)?,
-                    ));
+                for track_id in track_ids {
+                    let statement = TrackCreditRowsParams { track: track_id.clone() };
+                    let credits: Vec<CreditForTest> = statement_rows(&sql, &statement)?
+                        .into_iter()
+                        .map(|row| {
+                            credit_for_test(
+                                row.artist_id,
+                                row.position,
+                                row.name_key,
+                                row.name,
+                                row.join_phrase,
+                            )
+                        })
+                        .collect::<Result<_, _>>()?;
+                    track_credits.push((track_id, credits));
                 }
-                Ok((credits_for_test(&sql, "album_artists", "album_id", &album_id)?, track_credits))
+                let statement = super::release_records::AlbumCreditRowsParams { album: album_id };
+                let album_credits: Vec<CreditForTest> = statement_rows(&sql, &statement)?
+                    .into_iter()
+                    .map(|row| {
+                        credit_for_test(
+                            row.artist_id,
+                            row.position,
+                            row.name_key,
+                            row.name,
+                            row.join_phrase,
+                        )
+                    })
+                    .collect::<Result<_, _>>()?;
+                Ok((album_credits, track_credits))
             })
             .await?;
         let mut credits = Vec::new();
@@ -415,40 +510,18 @@ impl Records {
 /// printed name it prints if any, and what follows it.
 type CreditForTest = (String, u32, Option<crate::credits::CreditName>, Option<String>);
 
-/// The credits `table` holds for `owner_column = owner`, in order.
-fn credits_for_test(
-    sql: &SqlReadContext<'_>,
-    table: &str,
-    owner_column: &str,
-    owner: &str,
-) -> Result<Vec<CreditForTest>, DbError> {
-    Ok(sql.query(
-        &format!(
-            "SELECT c.artist_id, c.position, c.credit_key, n.name, c.join_phrase FROM {table} AS c \
-             LEFT JOIN artist_credits AS n \
-               ON n.artist_id = c.artist_id AND n.name_key = c.credit_key \
-             WHERE c.{owner_column} = ?1 ORDER BY c.position"
-        ),
-        [owner],
-        |row| {
-            let credit = match (row.get::<_, Option<String>>(2)?, row.get::<_, Option<String>>(3)?)
-            {
-                (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
-                _ => None,
-            };
-            Ok((row.get(0)?, row.get(1)?, credit, row.get(4)?))
-        },
-    )?)
-}
-
-/// The column of `table` that references a coven file.
-fn file_column_for_test(table: &str) -> &'static str {
-    match table {
-        "release_files" | "artist_images" => "file",
-        "covers" => "browse_file",
-        "people" => "avatar_id",
-        other => panic!("{other} references no coven file"),
-    }
+/// One credit as a test writes it back, from the columns of a credit row
+/// and the other printed name it joins.
+fn credit_for_test(
+    artist_id: String,
+    position: u32,
+    name_key: Option<String>,
+    name: Option<String>,
+    join_phrase: Option<String>,
+) -> Result<CreditForTest, DbError> {
+    let credit = super::read::joined_credit_name(name_key, name)
+        .map_err(|reason| DbError::unreadable("a credit's name", reason))?;
+    Ok((artist_id, position, credit, join_phrase))
 }
 
 impl crate::test_fixtures::library::LibraryRows {

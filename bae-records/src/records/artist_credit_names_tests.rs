@@ -18,11 +18,12 @@ async fn a_name_for_an_artist_no_longer_held_is_refused() {
         matches!(&refused, Err(CreditNameError::ArtistMissing(artist)) if artist == "gone"),
         "{refused:?}"
     );
-    let held: i64 = records
+    let held = records
         .store
-        .read(|sql| Ok(sql.query_row("SELECT COUNT(*) FROM artist_credits", [], |row| row.get(0))?))
+        .read_row(crate::records::test_statements::CreditNameCountParams {})
         .await
-        .unwrap();
+        .unwrap()
+        .names;
     assert_eq!(held, 0);
 }
 
@@ -72,21 +73,12 @@ async fn role_and_work_credits_link_the_names_they_print() {
         .write(&records)
         .await;
     let linked = || async {
-        records
+        let rows = records
             .store
-            .read(|sql| {
-                ["work_artists", "release_artist_roles", "track_artist_roles"]
-                    .into_iter()
-                    .map(|table| {
-                        sql.query_row(&format!("SELECT credit_key FROM {table}"), [], |row| {
-                            row.get::<_, Option<String>>(0)
-                        })
-                        .map_err(DbError::from)
-                    })
-                    .collect::<Result<Vec<_>, DbError>>()
-            })
+            .read_rows(crate::records::test_statements::RoleCreditKeysParams {})
             .await
-            .unwrap()
+            .unwrap();
+        rows.into_iter().map(|row| row.credit_key).collect::<Vec<_>>()
     };
 
     let (held, count) = records

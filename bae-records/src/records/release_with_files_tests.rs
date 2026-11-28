@@ -1,6 +1,5 @@
 use super::*;
 use crate::test_fixtures::{artist_album_release, test_records, write_cover, RELEASE_A, RELEASE_B};
-use coven::Statement;
 
 /// `RELEASE_A` with a log and then a cover image among its files.
 async fn release_of_two_files() -> (bae_store::Store, bae_util::test_files::TestFolder, Records) {
@@ -66,18 +65,8 @@ async fn a_releases_files_are_one_statement() {
     assert_eq!(counter.take().app_read_statements, 1);
     drop(counter);
 
-    let plan = db
-        .read(|sql| {
-            let whole = OneReleaseWithFilesParams { release: RELEASE_A.to_string() };
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", OneReleaseWithFiles::SQL),
-                whole.params().as_slice(),
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
+    let whole = OneReleaseWithFilesParams { release: RELEASE_A.to_string() };
+    let plan = bae_store::test_fixtures::query_plan::query_plan(&db, whole).await;
     let walked: Vec<_> =
         plan.iter().filter(|step| step.starts_with("SCAN release_files")).collect();
     assert!(walked.is_empty(), "the read walks every release's files: {plan:#?}");

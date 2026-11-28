@@ -5,8 +5,10 @@
 //! A release's media, barcodes and labels are rows, one per place in their
 //! list: a save replaces the whole list, and reaches every other device.
 
+use crate::records::test_statements::*;
 use crate::test_fixtures::*;
 use bae_store::test_fixtures::*;
+use bae_store::WriteStatements as _;
 use bae_types::pressing::{DiscogsDetail, MediaCount, Medium};
 
 const RELEASE: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
@@ -43,16 +45,25 @@ async fn seed_two_discs(db: &bae_store::Store) -> [String; 2] {
 fn insert_track(
     conn: &coven::CovenWrite<'_>,
     track: &str,
-    position: i64,
+    track_number: u32,
     medium: &str,
 ) -> Result<(), bae_store::DbError> {
-    conn.execute(
-        "INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, \
-             duration_ms, position, created_at) \
-         VALUES (?1, ?2, 'Track Title', ?3, 1, 1, 1000, ?4, '2026-01-01T00:00:00Z')",
-        rusqlite::params![track, RELEASE, medium, position],
-    )?;
-    Ok(())
+    let track = crate::DbTrack {
+        medium_id: medium.to_string(),
+        ..crate::DbTrack::new_test(RELEASE, track, "Track Title", track_number)
+    };
+    crate::records::write::insert_track_row(conn, &track)
+}
+
+/// Move every track on the medium `from` to `to`, then remove `from`, in
+/// `conn`'s write.
+fn empty_and_remove_medium(
+    conn: &coven::CovenWrite<'_>,
+    from: &str,
+    to: &str,
+) -> Result<(), bae_store::DbError> {
+    conn.run(&MoveTracksBetweenMediumsParams { from, to })?;
+    crate::records::write::delete_release_medium_row(conn, from)
 }
 
 /// Removing a medium a track still sits on fails at commit; moving the track
@@ -64,24 +75,11 @@ async fn a_medium_still_holding_a_track_cannot_be_removed() {
     let [disc_one, disc_two] = seed_two_discs(&db).await;
 
     let second = disc_two.clone();
-    let refused = db
-        .call(move |conn| {
-            conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![second])?;
-            Ok(())
-        })
-        .await;
+    let refused =
+        db.call(move |conn| crate::records::write::delete_release_medium_row(conn, &second)).await;
     assert!(refused.is_err(), "the track on disc 2 keeps its medium");
 
-    db.call(move |conn| {
-        conn.execute(
-            "UPDATE tracks SET medium_id = ?1 WHERE medium_id = ?2",
-            rusqlite::params![disc_one, disc_two],
-        )?;
-        conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![disc_two])?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    db.call(move |conn| empty_and_remove_medium(conn, &disc_two, &disc_one)).await.unwrap();
     assert_eq!(
         records.get_release_mediums(RELEASE).await.unwrap().len(),
         1,
@@ -91,18 +89,8 @@ async fn a_medium_still_holding_a_track_cannot_be_removed() {
 
 /// The tracks of either device that sit on no medium row its library holds.
 async fn tracks_on_missing_mediums(db: &bae_store::Store) -> Vec<String> {
-    db.read(|sql| {
-        sql.query(
-            "SELECT t.id FROM tracks t \
-             LEFT JOIN release_mediums m ON m.id = t.medium_id \
-             WHERE m.id IS NULL",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(bae_store::DbError::from)
-    })
-    .await
-    .unwrap()
+    let rows = db.read_rows(TracksOnMissingMediumsParams {}).await.unwrap();
+    rows.into_iter().map(|row| row.id).collect()
 }
 
 /// One device removes disc 2, moving its track to disc 1, while the other,
@@ -118,27 +106,14 @@ fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium(
 
 async fn check_concurrent_medium_removal(devices: &bae_store::test_devices::TwoStores) {
     let [disc_one, disc_two] = seed_two_discs(devices.a()).await;
-    let rows = "SELECT t.id || ':' || t.medium_id FROM tracks t \
-         UNION ALL SELECT 'medium:' || m.id FROM release_mediums m";
-    devices.converge(rows).await;
+    devices.converge_rows(|| TracksAndMediumsParams {}).await;
 
     devices.pause().await;
     let (kept, removed) = (disc_one, disc_two.clone());
-    devices
-        .a()
-        .call(move |conn| {
-            conn.execute(
-                "UPDATE tracks SET medium_id = ?1 WHERE medium_id = ?2",
-                rusqlite::params![kept, removed],
-            )?;
-            conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![removed])?;
-            Ok(())
-        })
-        .await
-        .unwrap();
+    devices.a().call(move |conn| empty_and_remove_medium(conn, &removed, &kept)).await.unwrap();
     devices.b().call(move |conn| insert_track(conn, STRAY_TRACK, 2, &disc_two)).await.unwrap();
     devices.resume().await;
-    devices.converge(rows).await;
+    devices.converge_rows(|| TracksAndMediumsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(tracks_on_missing_mediums(device).await, Vec::<String>::new());
@@ -166,27 +141,28 @@ async fn set_media(db: &bae_store::Store, media: Vec<MediaCount>) -> Vec<String>
     given
 }
 
-/// The ids of `table`'s rows of `RELEASE`, in the order of their places.
-async fn row_ids_of(db: &bae_store::Store, table: &'static str) -> Vec<String> {
-    db.read(move |sql| {
-        Ok(sql.query(
-            &format!("SELECT id FROM {table} WHERE release_id = ? ORDER BY position"),
-            [RELEASE],
-            |row| row.get(0),
-        )?)
-    })
-    .await
-    .unwrap()
+/// The ids of `RELEASE`'s media rows, in the order of their places.
+async fn media_ids_of(db: &bae_store::Store) -> Vec<String> {
+    let rows = db.read_rows(MediaRowsOfReleaseParams { release: RELEASE.to_string() });
+    rows.await.unwrap().into_iter().map(|row| row.id).collect()
+}
+
+/// The ids of `RELEASE`'s Discogs detail rows, in the order of their places.
+async fn discogs_detail_ids_of(db: &bae_store::Store) -> Vec<String> {
+    let rows = db.read_rows(DiscogsDetailRowsOfReleaseParams { release: RELEASE.to_string() });
+    rows.await.unwrap().into_iter().map(|row| row.id).collect()
+}
+
+/// The ids of `RELEASE`'s barcode rows, in the order of their places.
+async fn barcode_ids_of(db: &bae_store::Store) -> Vec<String> {
+    let rows = db.read_rows(BarcodeRowsOfReleaseParams { release: RELEASE.to_string() });
+    rows.await.unwrap().into_iter().map(|row| row.id).collect()
 }
 
 /// `RELEASE`'s media as `db` reads the release.
 async fn media_on(db: &crate::Records) -> Vec<MediaCount> {
     db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.facts.media
 }
-
-/// The rows both devices must agree on.
-const MEDIA_ROWS: &str = "SELECT id || ':' || position || ':' || medium || ':' || count \
-     FROM release_media ORDER BY id";
 
 /// A save of a release's media makes them exactly the list it gives, in its
 /// order, whether it grows, reorders or empties the list.
@@ -204,17 +180,10 @@ async fn a_media_save_replaces_the_list() {
     ] {
         let ids = set_media(&db, media.clone()).await;
         assert_eq!(media_on(&records).await, media);
-        assert_eq!(row_ids_of(&db, "release_media").await, ids, "each place is a row of its own");
-        let positions: Vec<i64> = db
-            .read(|sql| {
-                Ok(sql.query(
-                    "SELECT position FROM release_media WHERE release_id = ? ORDER BY position",
-                    [RELEASE],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
-            .unwrap();
+        assert_eq!(media_ids_of(&db).await, ids, "each place is a row of its own");
+        let statement = MediaRowsOfReleaseParams { release: RELEASE.to_string() };
+        let rows = db.read_rows(statement).await.unwrap();
+        let positions: Vec<i64> = rows.into_iter().map(|row| row.position).collect();
         assert_eq!(positions, (0..media.len() as i64).collect::<Vec<_>>());
     }
 }
@@ -232,10 +201,10 @@ fn a_media_edit_reaches_the_other_device() {
 async fn check_media_edit_reaches(devices: &bae_store::test_devices::TwoStores) {
     seed_artist_album_release(devices.a()).await;
     set_media(devices.a(), vec![count(Medium::Cd, 1)]).await;
-    devices.converge(MEDIA_ROWS).await;
+    devices.converge_rows(|| MediaRowsParams {}).await;
 
     set_media(devices.a(), vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]).await;
-    devices.converge(MEDIA_ROWS).await;
+    devices.converge_rows(|| MediaRowsParams {}).await;
 
     assert_eq!(
         media_on(&crate::test_fixtures::test_records(devices.b())).await,
@@ -270,11 +239,7 @@ async fn a_discogs_detail_save_replaces_the_list() {
         .await
         .unwrap();
         assert_eq!(details_on(&records).await, details);
-        assert_eq!(
-            row_ids_of(&db, "release_discogs_details").await,
-            ids,
-            "each place is a row of its own"
-        );
+        assert_eq!(discogs_detail_ids_of(&db).await, ids, "each place is a row of its own");
     }
 }
 
@@ -296,9 +261,9 @@ async fn a_pressing_fact_change_rewrites_only_what_it_changes() {
 
     assert!(held);
     assert_eq!(media_on(&records).await, vec![count(Medium::Cd, 2)]);
-    assert_eq!(row_ids_of(&db, "release_media").await, media_ids, "the media rows stay");
+    assert_eq!(media_ids_of(&db).await, media_ids, "the media rows stay");
     assert_eq!(details_on(&records).await, vec![DiscogsDetail::Stereo]);
-    let detail_ids = row_ids_of(&db, "release_discogs_details").await;
+    let detail_ids = discogs_detail_ids_of(&db).await;
 
     records
         .change_release_pressing_facts(RELEASE, |facts| facts.media.push(count(Medium::Dvd, 1)))
@@ -306,7 +271,7 @@ async fn a_pressing_fact_change_rewrites_only_what_it_changes() {
         .unwrap();
 
     assert_eq!(media_on(&records).await, vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)]);
-    assert_eq!(row_ids_of(&db, "release_discogs_details").await, detail_ids);
+    assert_eq!(discogs_detail_ids_of(&db).await, detail_ids);
 }
 
 #[tokio::test]
@@ -354,11 +319,7 @@ async fn a_barcode_save_replaces_the_list() {
     ] {
         let ids = set_barcodes(&db, &barcodes).await;
         assert_eq!(barcodes_on(&records).await, barcodes);
-        assert_eq!(
-            row_ids_of(&db, "release_barcodes").await,
-            ids,
-            "each place is a row of its own"
-        );
+        assert_eq!(barcode_ids_of(&db).await, ids, "each place is a row of its own");
     }
 }
 

@@ -49,17 +49,20 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
 #[tokio::test]
 async fn release_records_are_read_in_catalog_order() {
     let (db, _tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
-    db.call(|conn| {
-        conn.execute_batch(&format!(
-            "INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES
-             ('3f0c5d1e-8a2b-4c6d-9e7f-1a2b3c4d5e6f', '{RELEASE_A}', 'spotify', 'album', 'album-s', NULL),
-             ('4a1d6e2f-9b3c-4d7e-8f0a-2b3c4d5e6f7a', '{RELEASE_A}', 'discogs', 'pressing', 'pressing-d', NULL),
-             ('5b2e7f3a-0c4d-4e8f-9a1b-3c4d5e6f7a8b', '{RELEASE_A}', 'musicbrainz', 'pressing', 'pressing-m', 'group-m');"
-        ))?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    {
+        use bae_catalogs::catalog::Catalog;
+        use bae_catalogs::records::{MetadataRef, ReleaseRecord};
+        let written = [
+            ReleaseRecord::album(&MetadataRef::new(Catalog::Spotify, "album-s")),
+            ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "pressing-d"), None),
+            ReleaseRecord::new(
+                &MetadataRef::new(Catalog::MusicBrainz, "pressing-m"),
+                Some("group-m".to_string()),
+            ),
+        ];
+        let records = crate::test_fixtures::test_records(&db);
+        records.insert_release_records(RELEASE_A, &written).await.unwrap();
+    }
 
     let counter = db.track_work_for_test().await.unwrap();
     let records =
@@ -75,17 +78,9 @@ async fn release_records_are_read_in_catalog_order() {
         ]
     );
 
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::records::read::OneReleaseRecords::SQL),
-                [RELEASE_A],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
+    let statement =
+        crate::records::read::OneReleaseRecordsParams { release: RELEASE_A.to_string() };
+    let plan = bae_store::test_fixtures::query_plan::query_plan(&db, statement).await;
     assert!(
         plan.iter()
             .any(|step| step.starts_with("SEARCH record USING INDEX")
@@ -173,30 +168,23 @@ async fn a_medium_id_belongs_to_one_release() {
 #[tokio::test]
 async fn coven_connection_orders_by_bae_natural_order() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let ordered = db
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT column1 FROM (VALUES ('Disc 10'), ('disc 2'), ('Disc 2'), ('Disc 1'))
-                 ORDER BY column1 COLLATE natural_order",
-                [],
-                |row| row.get::<_, String>(0),
-            )?)
-        })
+    let rows = db
+        .read_rows(crate::records::test_statements::NaturallyOrderedNamesParams {})
         .await
         .unwrap();
+    let ordered: Vec<String> = rows.into_iter().map(|row| row.name).collect();
     assert_eq!(ordered, ["Disc 1", "Disc 2", "disc 2", "Disc 10"]);
 }
 
 #[tokio::test]
 async fn single_table_subscription_ignores_a_different_primary_key() {
     let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
-    exec(
-        &db,
-        "INSERT INTO albums
-         (id, title, is_compilation, created_at) VALUES (?1, 'Other Album', 0, '2026-01-01T00:00:00Z')",
-        &[OTHER_ALBUM_ID],
-    )
-    .await;
+    let records = crate::test_fixtures::test_records(&db);
+    crate::test_fixtures::library::RecordsFixture::new()
+        .album(OTHER_ALBUM_ID, "Other Album", None, &[])
+        .release(OTHER_ALBUM_ID, OTHER_RELEASE_ID)
+        .write(&records)
+        .await;
     // The request only gives the test a change of its own to make; the query
     // reads the same row whatever it is.
     let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> = db
@@ -216,8 +204,7 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
         "Album Title"
     );
 
-    exec(&db, "UPDATE albums SET title = 'Renamed Other Album' WHERE id = ?1", &[OTHER_ALBUM_ID])
-        .await;
+    records.rename_album_for_test(OTHER_ALBUM_ID, "Renamed Other Album").await.unwrap();
 
     let moved = next_run_is_only_the_request(&mut live, 1).await;
     assert_eq!(moved.result.unwrap(), "Album Title");
@@ -245,28 +232,13 @@ async fn a_work_credit_reads_back_with_its_role_and_qualifiers() {
 
     let stored = records
         .store
-        .read(|sql| {
-            sql.query(
-                "SELECT role, role_words, qualifiers FROM work_artists ORDER BY position",
-                [],
-                |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, Option<String>>(1)?,
-                        row.get::<_, String>(2)?,
-                    ))
-                },
-            )
-            .map_err(DbError::from)
-        })
+        .read_rows(crate::records::test_statements::WorkCreditRolesParams {})
         .await
         .unwrap();
 
     let credits: Vec<CreditedAs> = stored
         .into_iter()
-        .map(|(role, words, qualifiers)| {
-            CreditedAs::from_columns(&role, words, &qualifiers).unwrap()
-        })
+        .map(|row| CreditedAs::from_columns(&row.role, row.role_words, &row.qualifiers).unwrap())
         .collect();
     let mut expected: Vec<CreditedAs> =
         CreditRoleKind::ALL.iter().map(|kind| CreditedAs::of(*kind)).collect();
@@ -278,13 +250,8 @@ async fn a_work_credit_reads_back_with_its_role_and_qualifiers() {
 #[tokio::test]
 async fn the_writing_roles_view_is_the_vocabularys_writing_roles() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let stored: Vec<String> = db
-        .read(|sql| {
-            sql.query("SELECT role FROM writing_credit_roles", [], |row| row.get::<_, String>(0))
-                .map_err(bae_store::DbError::from)
-        })
-        .await
-        .unwrap();
+    let rows = db.read_rows(crate::records::test_statements::WritingRolesParams {}).await.unwrap();
+    let stored: Vec<String> = rows.into_iter().map(|row| row.role).collect();
     let expected: Vec<&str> =
         bae_types::credit_role::CreditRoleKind::writing().map(|kind| kind.key()).collect();
     assert_eq!(stored, expected);

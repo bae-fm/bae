@@ -59,6 +59,31 @@ coven::fragment!(
 "#
 );
 
+// Each release whose own files wait in this device's upload queue, with its
+// first file's place in the queue.
+#[cfg(any(test, feature = "test-utils"))]
+coven::fragment!(
+    QueuedReleases,
+    r#"
+    SELECT storage.release_id, storage.first_queued_position
+    FROM release_storage AS storage
+    WHERE storage.first_queued_position IS NOT NULL
+"#
+);
+
+// The device, as coven stores it, that the release `:release`'s storage row
+// names as alone holding one of its audio files.
+#[cfg(test)]
+coven::read!(
+    writer AudioElsewhereDevice(release: String) {
+        audio_elsewhere_device: Option<coven::DeviceId>,
+    },
+    r#"
+    SELECT storage.audio_elsewhere_device FROM release_storage AS storage
+    WHERE storage.release_id = :release
+"#
+);
+
 impl ReleaseStorage {
     /// Whether this device keeps every file of the release pinned and whole.
     pub fn pinned(&self) -> bool {

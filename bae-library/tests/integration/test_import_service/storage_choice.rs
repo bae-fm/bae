@@ -121,12 +121,12 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
     }
 
     assert_eq!(
-        f.library.records().queued_upload_count_in_table_for_test("release_files").await.unwrap(),
+        f.library.records().queued_release_file_count_for_test().await.unwrap(),
         0,
         "no release's files wait to upload"
     );
     assert_eq!(
-        f.library.records().queued_upload_count_in_table_for_test("covers").await.unwrap(),
+        f.library.records().queued_cover_count_for_test().await.unwrap(),
         release_ids.len() as i64,
         "each cover waits to upload"
     );

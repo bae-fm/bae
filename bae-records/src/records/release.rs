@@ -229,7 +229,7 @@ impl Records {
         self.store
             .write(move |sql| {
                 let changes = |sql: &CovenWrite<'_>| {
-                    sql.query_row("SELECT total_changes()", [], |row| row.get::<_, i64>(0))
+                    Ok::<_, DbError>(bae_store::statement_row(sql, &TotalChangesParams {})?.changes)
                 };
                 let before = changes(&sql)?;
                 insert_release_row(&sql, &release, &pressing_write(&pressing))?;
@@ -550,6 +550,11 @@ pub fn edited_release_of(head: EditedHead) -> Result<EditedRelease, DbError> {
         records: super::read::records_of_json(head.described.records_json())?,
     })
 }
+
+// How many rows the connection's writes have changed since it opened, the
+// triggers' writes included.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(writer TotalChanges { changes: i64 }, "SELECT total_changes() AS changes");
 
 #[cfg(test)]
 #[path = "release_tests.rs"]

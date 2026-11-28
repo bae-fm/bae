@@ -2,36 +2,27 @@
 //! files by index, one release's files at a time, not by reading the queue.
 
 use crate::records::queued_uploads::{
-    ReleaseHasQueuedFileParams, RELEASE_FILE_QUEUED, RELEASE_QUEUED_FILE_COUNT,
+    ReleaseFileQueuedParams, ReleaseHasQueuedFileParams, ReleaseQueuedFileCountParams,
 };
-use bae_store::Store;
-use coven::Read;
-
-async fn plan(store: &Store, statement: &'static str) -> Vec<String> {
-    store
-        .read(move |sql| {
-            sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), ["id"], |row| {
-                row.get::<_, String>(3)
-            })
-            .map_err(crate::records::DbError::from)
-        })
-        .await
-        .unwrap()
-}
+use bae_store::test_fixtures::query_plan::query_plan;
 
 #[tokio::test]
 async fn a_releases_queued_files_are_found_by_its_files() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let has_queued = ReleaseHasQueuedFileParams::compiled().sql;
-    for statement in [RELEASE_QUEUED_FILE_COUNT, has_queued, RELEASE_FILE_QUEUED] {
-        let plan = plan(&db, statement).await;
+    let release = || "id".to_string();
+    let plans = [
+        query_plan(&db, ReleaseQueuedFileCountParams { release: release() }).await,
+        query_plan(&db, ReleaseHasQueuedFileParams { release: release() }).await,
+        query_plan(&db, ReleaseFileQueuedParams { file: release() }).await,
+    ];
+    for plan in plans {
         assert!(
             plan.iter().any(|step| step.starts_with("SEARCH") && step.contains("(file=?)")),
             "the queue is not searched by file: {plan:?}"
         );
         assert!(
             !plan.iter().any(|step| step.starts_with("SCAN f") || step.starts_with("SCAN upload")),
-            "{statement} reads a whole table: {plan:?}"
+            "the read reads a whole table: {plan:?}"
         );
     }
 }
