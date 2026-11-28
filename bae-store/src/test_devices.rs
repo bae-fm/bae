@@ -307,6 +307,35 @@ pub async fn settle<F, Fut>(
     }
 }
 
+/// Run sync on both devices until the generated read each `statement()`
+/// makes returns the same rows on both, in any order, and neither holds
+/// anything back: each has pulled what the other wrote.
+pub async fn converge_rows<Q>(
+    a: (&Store, &SyncCycles),
+    b: (&Store, &SyncCycles),
+    statement: impl Fn() -> Q,
+) where
+    Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+    Q::Row: std::fmt::Debug + Send + 'static,
+{
+    settle(a, b, &format!("the rows of {}", std::any::type_name::<Q>()), || async {
+        row_texts(a.0, statement()).await == row_texts(b.0, statement()).await
+    })
+    .await;
+}
+
+/// The rows `statement` returns on `store`, each as its debug text, sorted.
+async fn row_texts<Q>(store: &Store, statement: Q) -> Vec<String>
+where
+    Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+    Q::Row: std::fmt::Debug + Send + 'static,
+{
+    let rows = store.read_rows(statement).await.expect("read the compared rows");
+    let mut texts: Vec<String> = rows.iter().map(|row| format!("{row:?}")).collect();
+    texts.sort();
+    texts
+}
+
 /// Run sync on both devices until they answer `query` with the same rows
 /// and neither holds anything back: each has pulled what the other wrote.
 pub async fn converge(a: (&Store, &SyncCycles), b: (&Store, &SyncCycles), query: &str) {
@@ -446,6 +475,17 @@ impl TwoStores {
         for store in [&self.a, &self.b] {
             store.store.start_sync().await.unwrap();
         }
+    }
+
+    /// Run sync on both until the generated read each `statement()` makes
+    /// returns the same rows on both.
+    pub async fn converge_rows<Q>(&self, statement: impl Fn() -> Q)
+    where
+        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+        Q::Row: std::fmt::Debug + Send + 'static,
+    {
+        let (a, b) = ((&self.a.store, &self.a.cycles), (&self.b.store, &self.b.cycles));
+        converge_rows(a, b, statement).await;
     }
 
     /// Run sync on both until they answer `query` with the same rows.

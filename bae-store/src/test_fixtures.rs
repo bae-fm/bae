@@ -76,9 +76,11 @@ pub async fn exec_batch(db: &crate::Store, sql: &str) {
     db.call(move |conn| conn.execute_batch(&sql).map_err(crate::DbError::from)).await.unwrap();
 }
 
+pub mod bare_statements;
 pub mod kept_store;
 pub mod live_query;
 pub mod planted_damage;
+pub mod query_plan;
 pub mod schema_checks;
 pub mod trigger_order;
 pub mod window_cost;
