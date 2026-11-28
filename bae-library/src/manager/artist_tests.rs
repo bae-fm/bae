@@ -109,6 +109,13 @@ struct CreditedLibrary {
     plain: DbTrack,
 }
 
+/// The artist `artist_id`'s page, as its view first reads it.
+async fn artist_page(manager: &LibraryManager, artist_id: &str) -> bae_views::DbArtistDetail {
+    let mut detail = views(manager).subscribe_artist_detail(Some(artist_id.to_string()));
+    let shown = detail.next_inline().await.expect("the query stays open").result.unwrap();
+    shown.detail.expect("the artist's page")
+}
+
 async fn credited_library() -> CreditedLibrary {
     credited_library_holding(None).await
 }
@@ -269,11 +276,7 @@ async fn a_printed_name_shows_in_place_of_the_artists_while_the_link_names_the_a
 
     let credits =
         library.manager.library.manager().get_artists_for_album(&library.album.id).await.unwrap();
-    let detail = views(library.manager.library.manager())
-        .get_artist_detail(CREDIT_ARTIST_B)
-        .await
-        .unwrap()
-        .expect("Artist B's page");
+    let detail = artist_page(library.manager.library.manager(), CREDIT_ARTIST_B).await;
 
     assert_eq!(credits[1].artist.id, CREDIT_ARTIST_B);
     assert_eq!(credits[1].artist.name, "Artist B");
@@ -395,11 +398,7 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
 
     manager.library.records().remove_artist_credit_name(CREDIT_ARTIST_B, "b other").await.unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & Artist B");
-    let detail = views(manager.library.manager())
-        .get_artist_detail(CREDIT_ARTIST_B)
-        .await
-        .unwrap()
-        .expect("Artist B's page");
+    let detail = artist_page(manager.library.manager(), CREDIT_ARTIST_B).await;
     assert!(detail.credit_names.is_empty());
 }
 

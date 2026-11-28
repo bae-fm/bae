@@ -1,6 +1,7 @@
 //! The artist views: the artist list, its search and sorts, an artist's
 //! detail, and the list's live query.
 
+use crate::test_artists::{artist_count, artist_page, listed_artists};
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::live_query::*;
@@ -110,7 +111,7 @@ async fn artist_page_lists_album_artists_with_distinct_album_counts() {
 
     let sort =
         [ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Ascending }];
-    let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
+    let page = listed_artists(&db, &sort).await;
 
     let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
     assert_eq!(ids, vec![ARTIST_EXTRA, ARTIST_PRIMARY, ARTIST_VARIOUS]);
@@ -118,7 +119,7 @@ async fn artist_page_lists_album_artists_with_distinct_album_counts() {
     let counts: Vec<i64> = page.iter().map(|a| a.album_count).collect();
     assert_eq!(counts, vec![1, 2, 1]);
 
-    assert_eq!(LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 3);
+    assert_eq!(artist_count(&db).await, 3);
 }
 
 #[tokio::test]
@@ -129,7 +130,7 @@ async fn artist_page_sorts_by_album_count() {
         field: ArtistSortField::AlbumCount,
         direction: SortDirection::Descending,
     }];
-    let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
+    let page = listed_artists(&db, &sort).await;
 
     let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
     assert_eq!(ids, vec![ARTIST_PRIMARY, ARTIST_EXTRA, ARTIST_VARIOUS]);
@@ -173,12 +174,8 @@ async fn artist_page_uses_id_tiebreaker() {
         field: ArtistSortField::AlbumCount,
         direction: SortDirection::Descending,
     }];
-    let mut page_ids = Vec::new();
-    for offset in 0..3 {
-        let page = LibraryViews::new(db.clone()).get_artist_page(&sort, offset, 1).await.unwrap();
-        assert_eq!(page.len(), 1);
-        page_ids.push(page[0].artist.id.clone());
-    }
+    let page_ids: Vec<String> =
+        listed_artists(&db, &sort).await.into_iter().map(|row| row.artist.id).collect();
 
     // Equal album counts, so the id breaks the tie ascending. The ids are
     // UUIDs, so the expectation is those same three sorted — asserting the
@@ -243,7 +240,7 @@ async fn artist_page_applies_secondary_criterion() {
         },
         ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Descending },
     ];
-    let page = LibraryViews::new(db.clone()).get_artist_page(&sort, 0, 10).await.unwrap();
+    let page = listed_artists(&db, &sort).await;
     let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
 
     // artist-a and artist-b tie on album_count (2 each); the secondary
@@ -310,7 +307,7 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
         .await
         .unwrap();
 
-    let detail = LibraryViews::new(db.clone()).get_artist_detail(ARTIST_A).await.unwrap();
+    let detail = artist_page(&db, ARTIST_A).await;
     let detail = detail.expect("artist-a has album links and must resolve");
 
     assert_eq!(detail.artist.artist.id, ARTIST_A);
@@ -344,11 +341,7 @@ fn artist_detail_follows_the_primary_releases_audio_location() {
             .await;
         devices.converge("SELECT id FROM releases").await;
         let unplayable = |store: Store| async move {
-            let detail = LibraryViews::new(store)
-                .get_artist_detail(ARTIST_A)
-                .await
-                .unwrap()
-                .expect("the artist has an album");
+            let detail = artist_page(&store, ARTIST_A).await.expect("the artist has an album");
             detail.albums.iter().map(|album| album.primary_release_unplayable).collect::<Vec<_>>()
         };
         assert_eq!(unplayable(b.clone()).await, vec![false]);
@@ -393,16 +386,8 @@ async fn artist_detail_reads_its_albums_from_the_link_index() {
 async fn artist_detail_absent_or_album_less_artist_is_none() {
     let (db, _tmp) = seeded_db().await;
 
-    assert!(LibraryViews::new(db.clone())
-        .find_artist_detail(ARTIST_ABSENT)
-        .await
-        .unwrap()
-        .is_none());
-    assert!(LibraryViews::new(db.clone())
-        .find_artist_detail(ARTIST_WORK_ONLY)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(artist_page(&db, ARTIST_ABSENT).await.is_none());
+    assert!(artist_page(&db, ARTIST_WORK_ONLY).await.is_none());
 }
 
 /// The artist grid reads the artists its window holds, and follows the images

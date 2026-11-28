@@ -95,11 +95,11 @@ async fn texts(db: &bae_store::Store, query: &str) -> Vec<String> {
 /// The artists the artist browse lists.
 async fn listed_artists(db: &bae_store::Store) -> Vec<String> {
     bae_views::LibraryViews::new(db.clone())
-        .get_artist_page(&[], 0, 100)
+        .served_artists()
         .await
         .unwrap()
         .into_iter()
-        .map(|summary| summary.artist.id)
+        .map(|served| served.artist.artist.id)
         .collect()
 }
 

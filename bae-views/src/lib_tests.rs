@@ -294,7 +294,6 @@ async fn a_stacked_artist_sort_pages_windows_counts_and_jumps_in_one_order() {
         let ids = |rows: Vec<DbArtistSummary>| {
             rows.into_iter().map(|row| row.artist.id).collect::<Vec<_>>()
         };
-        assert_eq!(ids(views.get_artist_page(&sort, 0, 10).await.unwrap()), expected, "{sort:?}");
         for (position, _) in expected.iter().enumerate() {
             let key = views.artist_key_at(&sort, position as u64).await.unwrap().expect("a key");
             let window = ListWindow { from: Some(key.clone()), limit: 10 };

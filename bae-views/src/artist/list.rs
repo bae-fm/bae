@@ -209,72 +209,6 @@ sqlive_compose::read!(
 "#
 );
 
-// The artist list's rows at the places from `offset`, at most `limit` of
-// them, for each first term.
-#[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
-    writer ArtistRowsByName(field_2: Option<String>, offset: i64, limit: i64),
-    r#"
-    SELECT shown.*
-    FROM artist_listing AS listing
-    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
-    ORDER BY listing.name_sort_key,
-             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
-             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
-             listing.name_sort_key,
-             listing.artist_id
-    LIMIT :limit OFFSET :offset
-"#
-);
-
-#[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
-    writer ArtistRowsByNameDescending(field_2: Option<String>, offset: i64, limit: i64),
-    r#"
-    SELECT shown.*
-    FROM artist_listing AS listing
-    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
-    ORDER BY listing.sort_name_back,
-             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
-             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
-             listing.name_sort_key,
-             listing.artist_id
-    LIMIT :limit OFFSET :offset
-"#
-);
-
-#[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
-    writer ArtistRowsByAlbums(field_2: Option<String>, offset: i64, limit: i64),
-    r#"
-    SELECT shown.*
-    FROM artist_listing AS listing
-    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
-    ORDER BY listing.album_count,
-             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
-             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
-             listing.name_sort_key,
-             listing.artist_id
-    LIMIT :limit OFFSET :offset
-"#
-);
-
-#[cfg(any(test, feature = "test-utils"))]
-sqlive_compose::read!(
-    writer ArtistRowsByAlbumsDescending(field_2: Option<String>, offset: i64, limit: i64),
-    r#"
-    SELECT shown.*
-    FROM artist_listing AS listing
-    JOIN @crate::artist::ListedArtist AS shown ON shown.listed_id = listing.artist_id
-    ORDER BY listing.sort_albums_back,
-             CASE :field_2 WHEN 'name' THEN listing.name_sort_key WHEN 'albums' THEN listing.album_count WHEN 'albums_descending' THEN -listing.album_count ELSE 0 END,
-             CASE :field_2 WHEN 'name_descending' THEN hex(listing.name_sort_key) ELSE '' END COLLATE descending,
-             listing.name_sort_key,
-             listing.artist_id
-    LIMIT :limit OFFSET :offset
-"#
-);
-
 // How many artists come before the row at a key, for each first term.
 sqlive_compose::read!(
     writer ArtistBeforeByName(
@@ -519,35 +453,6 @@ pub(crate) fn artist_window_on(
         }
     };
     Ok(WindowRead { window: window.clone(), rows })
-}
-
-/// The artist list's rows at `page`'s places under `sort`.
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) fn artist_page_on(
-    sql: &SqlReadContext<'_>,
-    sort: &ListSort<ArtistSortField, 2>,
-    page: ListPage,
-) -> Result<Vec<DbArtistSummary>, DbError> {
-    let (offset, limit) = (sql_bound(page.offset), sql_bound(page.limit));
-    macro_rules! rows {
-        ($params:ident) => {{
-            let statement = $params { field_2: sort.later(1), offset, limit };
-            statement_rows(sql, &statement)?
-                .into_iter()
-                .map(|row| row.shown.into_summary())
-                .collect()
-        }};
-    }
-    match sort.first() {
-        (ArtistSortField::Name, SortDirection::Ascending) => rows!(ArtistRowsByNameParams),
-        (ArtistSortField::Name, SortDirection::Descending) => {
-            rows!(ArtistRowsByNameDescendingParams)
-        }
-        (ArtistSortField::AlbumCount, SortDirection::Ascending) => rows!(ArtistRowsByAlbumsParams),
-        (ArtistSortField::AlbumCount, SortDirection::Descending) => {
-            rows!(ArtistRowsByAlbumsDescendingParams)
-        }
-    }
 }
 
 /// How many artists come before the row at `at` under `sort`.

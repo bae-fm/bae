@@ -34,10 +34,8 @@ async fn album_ids(db: &Store, field: AlbumSortField, direction: SortDirection) 
 
 /// The artist list: each artist's id and album count, by name.
 async fn artists(db: &Store) -> Vec<(String, i64)> {
-    crate::LibraryViews::new(db.clone())
-        .get_artist_page(&[], 0, 50)
+    crate::test_artists::listed_artists(db, &[])
         .await
-        .unwrap()
         .into_iter()
         .map(|artist| (artist.artist.id, artist.album_count))
         .collect()
@@ -248,7 +246,7 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
         .await
         .contains(&ALBUM_ONE.to_string()));
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 1)]);
-    assert_eq!(crate::LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 2);
+    assert_eq!(crate::test_artists::artist_count(&db).await, 2);
 
     assert!(test_records(&db).find_album_by_id(ALBUM_ONE).await.unwrap().is_none());
 }
@@ -290,17 +288,9 @@ fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
             "the third album credits the survivor twice and lists once"
         );
         assert_eq!(artists(db).await, vec![(ALPHA.to_string(), 3)]);
-        let survivor = crate::LibraryViews::new(db.clone())
-            .find_artist_detail(ALPHA)
-            .await
-            .unwrap()
-            .expect("listed");
+        let survivor = crate::test_artists::artist_page(db, ALPHA).await.expect("listed");
         assert_eq!(survivor.albums.len(), 3);
-        assert!(crate::LibraryViews::new(db.clone())
-            .find_artist_detail(BRAVO)
-            .await
-            .unwrap()
-            .is_none());
+        assert!(crate::test_artists::artist_page(db, BRAVO).await.is_none());
     });
 }
 

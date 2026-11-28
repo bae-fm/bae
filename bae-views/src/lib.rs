@@ -127,4 +127,7 @@ fn list_count(count: i64) -> Result<u64, DbError> {
 mod tests;
 
 #[cfg(test)]
+mod test_artists;
+
+#[cfg(test)]
 mod test_pages;
