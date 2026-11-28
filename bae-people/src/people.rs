@@ -4,7 +4,6 @@
 use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
-use rusqlite::{params, OptionalExtension};
 use std::sync::Arc;
 use time::UtcDateTime;
 

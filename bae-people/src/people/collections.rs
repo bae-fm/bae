@@ -357,13 +357,11 @@ impl People {
             + 'static,
     ) -> Result<(), CollectionError> {
         self.write_as_self(move |sql, person| {
-            let owner: Option<String> = sql
-                .query_row(
-                    "SELECT person_id FROM playlists WHERE id = ?",
-                    [id.to_string()],
-                    |row| row.get(0),
-                )
-                .optional()?;
+            let owner = bae_store::statement_optional(
+                sql,
+                &PlaylistOwnerParams { playlist: id.to_string() },
+            )?
+            .map(|row| row.person_id);
             match owner {
                 None => Ok(Err(CollectionError::Missing)),
                 Some(owner) if owner != person.id.to_string() => Ok(Err(CollectionError::NotOwner)),
@@ -417,6 +415,66 @@ fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> Result<Vec<Playlis
 #[path = "collections_tests.rs"]
 mod tests;
 
+// The person whose playlist `playlist` is.
+coven::read!(
+    writer PlaylistOwner(playlist: String),
+    r#"
+    SELECT playlist.person_id
+    FROM playlists AS playlist
+    WHERE playlist.id = :playlist
+"#
+);
+
+// How many of the playlist's entries come before the entry `moved`; no row when
+// the playlist holds no such entry.
+coven::read!(
+    writer EntriesBeforeOwn(playlist: String, moved: String) { before: i64 },
+    r#"
+    SELECT (SELECT COUNT(*) FROM playlist_entries AS other
+            WHERE other.playlist_id = :playlist AND other.position < own.position) AS before
+    FROM playlist_entries AS own
+    WHERE own.playlist_id = :playlist AND own.position_id = :moved
+"#
+);
+
+// How many of the playlist's entries, other than `moved`, come before the
+// entry `beside`; no row when the playlist holds no entry `beside`, `beside` is
+// `moved`, or the playlist holds no `moved`.
+coven::read!(
+    writer EntriesBeforeBeside(playlist: String, moved: Option<String>, beside: String) {
+        before: i64,
+    },
+    r#"
+    SELECT (SELECT COUNT(*) FROM playlist_entries AS other
+            WHERE other.playlist_id = :playlist AND other.position_id IS NOT :moved
+              AND other.position < beside.position) AS before
+    FROM playlist_entries AS beside
+    WHERE beside.playlist_id = :playlist AND beside.position_id = :beside
+      AND beside.position_id IS NOT :moved
+      AND (:moved IS NULL OR EXISTS (SELECT 1 FROM playlist_entries AS held
+                                     WHERE held.playlist_id = :playlist
+                                       AND held.position_id = :moved))
+"#
+);
+
+// [`EntriesBeforeBeside`] counting `beside` too, for a place just after it.
+coven::read!(
+    writer EntriesThroughBeside(playlist: String, moved: Option<String>, beside: String) {
+        before: i64,
+    },
+    r#"
+    SELECT (SELECT COUNT(*) FROM playlist_entries AS other
+            WHERE other.playlist_id = :playlist AND other.position_id IS NOT :moved
+              AND other.position <= beside.position) AS before
+    FROM playlist_entries AS beside
+    WHERE beside.playlist_id = :playlist AND beside.position_id = :beside
+      AND beside.position_id IS NOT :moved
+      AND (:moved IS NULL OR EXISTS (SELECT 1 FROM playlist_entries AS held
+                                     WHERE held.playlist_id = :playlist
+                                       AND held.position_id = :moved))
+"#
+);
+
 /// The place, counted from 0 among the playlist's other entries, that a move
 /// of the entry `moved` to `place` puts it at; none when the playlist holds no
 /// such entry, or no entry `place` names.
@@ -429,16 +487,9 @@ fn place_among_others_on(
     match place {
         EntryPlace::Beside(beside) => entries_before_on(sql, playlist, beside, Some(moved)),
         EntryPlace::Up | EntryPlace::Down => {
-            let own: Option<i64> = sql
-                .query_row(
-                    "SELECT (SELECT COUNT(*) FROM playlist_entries AS other \
-                             WHERE other.playlist_id = ?1 AND other.position < own.position) \
-                     FROM playlist_entries AS own \
-                     WHERE own.playlist_id = ?1 AND own.position_id = ?2",
-                    params![playlist.to_string(), moved.to_string()],
-                    |row| row.get(0),
-                )
-                .optional()?;
+            let statement =
+                EntriesBeforeOwnParams { playlist: playlist.to_string(), moved: moved.to_string() };
+            let own = bae_store::statement_optional(sql, &statement)?.map(|row| row.before);
             Ok(own.map(|own| if place == EntryPlace::Up { (own - 1).max(0) } else { own + 1 }))
         }
     }
@@ -453,25 +504,19 @@ fn entries_before_on(
     beside: BesideEntry,
     moved: Option<uuid::Uuid>,
 ) -> Result<Option<i64>, DbError> {
+    let (playlist, moved) = (playlist.to_string(), moved.map(|moved| moved.to_string()));
     // An entry just after `beside` follows every entry up to `beside` itself.
-    let (entry, compare) = match beside {
-        BesideEntry::Before(entry) => (entry, "<"),
-        BesideEntry::After(entry) => (entry, "<="),
+    let before = match beside {
+        BesideEntry::Before(entry) => {
+            let beside = entry.to_string();
+            let statement = EntriesBeforeBesideParams { playlist, moved, beside };
+            bae_store::statement_optional(sql, &statement)?.map(|row| row.before)
+        }
+        BesideEntry::After(entry) => {
+            let beside = entry.to_string();
+            let statement = EntriesThroughBesideParams { playlist, moved, beside };
+            bae_store::statement_optional(sql, &statement)?.map(|row| row.before)
+        }
     };
-    Ok(sql
-        .query_row(
-            &format!(
-                "SELECT (SELECT COUNT(*) FROM playlist_entries AS other \
-                         WHERE other.playlist_id = ?1 AND other.position_id IS NOT ?2 \
-                           AND other.position {compare} beside.position) \
-                 FROM playlist_entries AS beside \
-                 WHERE beside.playlist_id = ?1 AND beside.position_id = ?3 \
-                   AND beside.position_id IS NOT ?2 \
-                   AND (?2 IS NULL OR EXISTS (SELECT 1 FROM playlist_entries \
-                                              WHERE playlist_id = ?1 AND position_id = ?2))"
-            ),
-            params![playlist.to_string(), moved.map(|moved| moved.to_string()), entry.to_string()],
-            |row| row.get(0),
-        )
-        .optional()?)
+    Ok(before)
 }

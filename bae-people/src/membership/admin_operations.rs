@@ -339,6 +339,16 @@ impl Membership {
     }
 }
 
+// Whether `coven_operations` lists the invite `operation`, which it does only
+// once a sharing refusal ended it.
+coven::read!(
+    writer RefusedInvite(operation: i64) { refused: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM coven_operations AS invite
+                   WHERE invite.operation = :operation AND invite.kind = 'Invite') AS refused
+"#
+);
+
 impl Membership {
     /// Dismiss an invite a sharing refusal ended: coven's operation outcome
     /// is acknowledged, so the notice leaves the list in that write.
@@ -352,12 +362,9 @@ impl Membership {
         let acknowledged = self
             .store
             .call(move |sql| {
-                let refused = sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM coven_operations \
-                     WHERE operation = ?1 AND kind = 'Invite')",
-                    [operation.0],
-                    |row| row.get::<_, bool>(0),
-                )?;
+                let refused =
+                    bae_store::statement_row(sql, &RefusedInviteParams { operation: operation.0 })?
+                        .refused;
                 if refused {
                     sql.acknowledge_operation(operation)?;
                 }
