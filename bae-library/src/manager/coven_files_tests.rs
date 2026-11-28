@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_records::test_fixtures::library_rows;
 
 /// A cover reaches another device together with its stored file. The cover's
 /// reference is bound, so the write naming it waits for its upload, and the
@@ -17,12 +18,12 @@ fn a_cover_reaches_another_device_with_its_stored_file() {
         let release = create_test_release(&album.id);
         manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
-        devices.converge_rows(|| crate::test_reads::EveryReleaseParams {}).await;
+        devices.converge_rows(library_rows::every_release).await;
 
         manager.store.set_uploads_paused(true).await.unwrap();
         store_test_cover(manager, &release.id, b"the cover").await;
         let cover = cover_file(manager, &release.id).await;
-        devices.converge_rows(|| super::CoverBrowseCopiesParams {}).await;
+        devices.converge_rows(library_rows::cover_browse_copies).await;
 
         let other = devices.b().manager();
         let arrived = cover_file(other, &release.id).await;
@@ -51,9 +52,9 @@ fn a_cover_asked_for_at_launch_waits_for_storage_and_then_reads() {
         let release = create_test_release(&album.id);
         manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
-        devices.converge_rows(|| crate::test_reads::EveryReleaseParams {}).await;
+        devices.converge_rows(library_rows::every_release).await;
         store_test_cover(manager, &release.id, b"the cover").await;
-        devices.converge_rows(|| super::CoverBrowseFilesParams {}).await;
+        devices.converge_rows(library_rows::cover_browse_files).await;
 
         // The second device opens again as at launch: its sync is not started
         // and its storage is out of reach, with the cover not on this device.
@@ -107,7 +108,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         let release = create_test_release(&album.id);
         manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
-        devices.converge_rows(|| crate::test_reads::EveryReleaseParams {}).await;
+        devices.converge_rows(library_rows::every_release).await;
 
         // While the first device's storage is out of reach the cover's
         // upload can't finish, so its write is held, and the update below

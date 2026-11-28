@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_records::test_fixtures::library_rows;
 use bae_records::LibraryImageType;
 use bae_records::{DbScrubPoints, ScrubPoint};
 use time::UtcDateTime;
@@ -383,7 +384,7 @@ async fn check_scrub_points_sync(devices: &mut crate::test_libraries::TwoDevices
         .await
         .unwrap();
 
-    devices.converge_rows(|| crate::test_reads::EveryScrubPointsParams {}).await;
+    devices.converge_rows(library_rows::every_scrub_points).await;
     let resolved =
         bae_records::ResolvedTrackAudio::resolve(devices.b().records(), &track.id).await.unwrap();
     assert_eq!(resolved.segments[0].scrub_points.as_slice(), points);

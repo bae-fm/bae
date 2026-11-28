@@ -187,17 +187,6 @@ coven::read!(
 "#
 );
 
-// Each artist merge, which other domains' tests compare across devices: the
-// absorbed artist and the artist it was merged into.
-#[cfg(any(test, feature = "test-utils"))]
-coven::fragment!(
-    ArtistMerges,
-    r#"
-    SELECT merge.id, merge.into_artist_id
-    FROM artist_merges AS merge
-"#
-);
-
 #[cfg(test)]
 #[path = "identity_merges_tests.rs"]
 mod tests;

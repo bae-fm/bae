@@ -153,5 +153,6 @@ pub mod chunked_tracks;
 pub mod composed_work;
 pub mod labels;
 pub mod library;
+pub mod library_rows;
 pub mod live_query;
 pub mod storage_listing;

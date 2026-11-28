@@ -8,6 +8,7 @@ pub(super) use crate::test_libraries::{download_queue_until, move_to_this_device
 use crate::LibraryError;
 use bae_diagnostics::UiErrorCategory;
 use bae_import::ImportError;
+use bae_records::test_fixtures::library_rows;
 use bae_records::{DbAlbum, DbFile, DbRelease, LibraryImageType, NewReleaseFile};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::content_type::ContentType;
@@ -430,7 +431,7 @@ pub(super) async fn release_on_the_first_device(
         &[("track1.flac", b"audio")],
     )
     .await;
-    devices.converge_rows(|| crate::test_reads::ReleaseFilesPlacedParams {}).await;
+    devices.converge_rows(library_rows::release_files_placed).await;
     release
 }
 

@@ -517,27 +517,6 @@ mod track_list_tests;
 #[path = "album/order_tests.rs"]
 mod stacked_sort_tests;
 
-// Every release's id, which the two-device tests wait for both devices to
-// hold.
-#[cfg(test)]
-coven::read!(
-    writer EveryRelease,
-    r#"
-    SELECT release.release_id
-    FROM @bae_records::records::fragments::ReleaseAlbum AS release
-"#
-);
-
-// Every release file with its release and the coven file it names.
-#[cfg(test)]
-coven::read!(
-    writer EveryReleaseFile,
-    r#"
-    SELECT file.file_id, file.release_id, file.stored_file
-    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
-"#
-);
-
 // Every coven file and where coven keeps it.
 #[cfg(test)]
 coven::read!(

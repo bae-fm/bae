@@ -148,7 +148,8 @@ async fn restore_cost(library: Library) {
         opened.manager().write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
         pass(&handle, &clock).await;
     }
-    let edited = bae_library::test_reads::first_album_release(opened.store()).await;
+    let edited =
+        bae_records::test_fixtures::library_rows::first_album_release(opened.store()).await;
     for edit in 0..library.edits {
         let title = format!("Renamed {edit}");
         opened
@@ -194,10 +195,9 @@ async fn restore_cost(library: Library) {
     .await
     .unwrap();
     let restored_in = restoring.elapsed();
-    let tracks = bae_library::test_reads::track_count(&bae_store::test_devices::store_under(
-        restored.clone(),
-        clock.clone() as coven::ClockRef,
-    ))
+    let tracks = bae_records::test_fixtures::library_rows::track_count(
+        &bae_store::test_devices::store_under(restored.clone(), clock.clone() as coven::ClockRef),
+    )
     .await;
     assert_eq!(tracks, (library.albums * TRACKS) as u64);
     eprintln!(

@@ -6,6 +6,7 @@ use super::*;
 use bae_records::test_fixtures::aggregate_ordering::*;
 use bae_records::test_fixtures::composed_work::*;
 use bae_records::test_fixtures::library::RecordsFixture;
+use bae_records::test_fixtures::library_rows;
 use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::*;
 use bae_records::{DbArtist, DbRelease};
@@ -81,14 +82,14 @@ fn album_window_follows_the_primary_releases_audio_location() {
         let (a, b) = (devices.a(), devices.b());
         let folder = bae_util::test_files::TestFolder::new();
         write_library(&test_records(a)).await;
-        devices.converge_rows(|| crate::album::EveryReleaseParams {}).await;
+        devices.converge_rows(library_rows::every_release).await;
 
         let mut remote = LibraryViews::new(b.clone()).subscribe_album_window(&[], false, top(10));
         let initial = remote.next_inline().await.unwrap().result.unwrap();
         assert!(initial.rows.iter().all(|(row, _)| !row.primary_release_unplayable));
 
         import_file(a, &folder, RELEASE_EARLY, "track.flac", Flac).await;
-        devices.converge_rows(|| crate::album::EveryReleaseFileParams {}).await;
+        devices.converge_rows(library_rows::every_release_file).await;
         devices.converge_rows(|| crate::album::EveryCovenFileParams {}).await;
 
         let updated = tokio::time::timeout(HANG_GUARD, remote.next_inline())

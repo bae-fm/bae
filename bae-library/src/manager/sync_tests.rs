@@ -4,6 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
+use bae_records::test_fixtures::library_rows;
 use bae_util::test_files::TestFolder;
 use coven::Storage;
 
@@ -362,7 +363,7 @@ fn a_blocked_slot_shows_as_syncs_failure() {
         let manager = devices.a().manager();
         let album = create_test_album();
         manager.records.insert_album(&album).await.unwrap();
-        devices.converge_rows(|| crate::test_reads::EveryAlbumParams {}).await;
+        devices.converge_rows(library_rows::every_album).await;
 
         let mut raised = crate::SCHEMA.migrations();
         raised.push(coven::Migration::breaking(

@@ -425,16 +425,6 @@ coven::read!(
 "#
 );
 
-// Every release's media rows.
-#[cfg(test)]
-coven::read!(
-    writer EveryReleaseMedia,
-    r#"
-    SELECT media.id, media.release_id, media.position, media.medium, media.count
-    FROM @bae_records::records::pressing_columns::MediaOfReleases AS media
-"#
-);
-
 #[cfg(test)]
 #[path = "storage_tests.rs"]
 mod tests;

@@ -5,6 +5,7 @@ use super::*;
 use crate::manager::tests::*;
 use bae_catalogs::catalog::Catalog;
 use bae_records::test_fixtures::library::LibraryRows;
+use bae_records::test_fixtures::library_rows;
 use bae_records::{DbRelease, DbTrackWork, DbWork, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use time::UtcDateTime;
@@ -278,7 +279,7 @@ async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevi
     for release in &releases {
         insert_release(manager, release).await;
     }
-    let orders = || crate::test_reads::AlbumReleaseOrdersParams { album: album.id.clone() };
+    let orders = || library_rows::album_release_orders(&album.id);
     devices.converge_rows(orders).await;
     assert_eq!(primary_of(devices.b().store(), &album.id).await, releases[0].id);
 

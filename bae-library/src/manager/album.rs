@@ -40,30 +40,6 @@ impl LibraryManager {
     }
 }
 
-// The coven files of the release `release`: its files and its cover's copies
-// and original.
-#[cfg(test)]
-coven::read!(
-    writer CovenFilesOfRelease(release: String) { file: String },
-    r#"
-    SELECT file.stored_file AS file
-    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
-    WHERE file.release_id = :release
-    UNION ALL
-    SELECT cover.browse_file AS file
-    FROM @bae_records::records::files::CoverFiles AS cover
-    WHERE cover.release_id = :release
-    UNION ALL
-    SELECT cover.large_file AS file
-    FROM @bae_records::records::files::CoverFiles AS cover
-    WHERE cover.release_id = :release
-    UNION ALL
-    SELECT cover.original_file AS file
-    FROM @bae_records::records::files::CoverFiles AS cover
-    WHERE cover.release_id = :release AND cover.original_file IS NOT NULL
-"#
-);
-
 #[cfg(test)]
 #[path = "album_tests.rs"]
 mod tests;

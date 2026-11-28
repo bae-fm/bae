@@ -120,7 +120,7 @@ async fn a_created_library_holds_its_creator_s_profile_from_its_first_read() {
     assert_eq!(profile.id, own.membership.id);
     assert_eq!(profile.name, "Robin");
     assert_eq!(profile.history_sharing, bae_people::people::HistorySharing::Private);
-    let circle = crate::test_reads::circle_names(&store, profile.private_circle).await;
+    let circle = bae_people::test_fixtures::circle_names(&store, profile.private_circle).await;
     assert_eq!(circle, [bae_people::people::private_circle_name(&profile.id)]);
     let members = handle.circles().members(profile.private_circle).await.unwrap();
     assert_eq!(members.iter().map(|member| member.member).collect::<Vec<_>>(), [profile.id]);

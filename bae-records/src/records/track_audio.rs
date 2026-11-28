@@ -391,17 +391,6 @@ impl TrackTags {
     }
 }
 
-// Each audio segment's scrub points, which other domains' tests compare
-// across devices.
-#[cfg(any(test, feature = "test-utils"))]
-coven::fragment!(
-    SegmentScrubPoints,
-    r#"
-    SELECT scrubbed.audio_format_segment_id, scrubbed.points
-    FROM audio_segment_scrub_points AS scrubbed
-"#
-);
-
 // A FLAC audio format of the track `:track_id`, at 44.1 kHz in two channels.
 #[cfg(test)]
 coven::write!(

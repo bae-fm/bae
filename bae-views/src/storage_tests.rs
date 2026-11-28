@@ -8,6 +8,7 @@ use bae_records::test_fixtures::aggregate_ordering::aggregate_db;
 use bae_records::test_fixtures::album_listing::listed_db;
 use bae_records::test_fixtures::bulk_library;
 use bae_records::test_fixtures::library::RecordsFixture;
+use bae_records::test_fixtures::library_rows;
 use bae_records::test_fixtures::storage_listing::*;
 use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 use bae_store::test_fixtures::trigger_order::{
@@ -743,7 +744,7 @@ fn a_media_edit_from_another_device_sorts_its_release() {
             .await
             .unwrap();
         assert!(changed, "the library holds the release");
-        devices.converge_rows(|| crate::storage::EveryReleaseMediaParams {}).await;
+        devices.converge_rows(library_rows::every_release_media).await;
 
         let (_, key) = listed_media(devices.b(), release).await;
         assert_eq!(key.as_deref(), Some("vinyl:00002,cd:00001"));

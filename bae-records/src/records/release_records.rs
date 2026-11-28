@@ -404,17 +404,6 @@ pub(super) struct StoredAlbumMatch {
 #[cfg(test)]
 coven::read!(writer ReleaseRecordIds, "SELECT record.id FROM release_records AS record");
 
-// Each release's catalog records, which other domains' tests compare across
-// devices.
-#[cfg(any(test, feature = "test-utils"))]
-coven::fragment!(
-    CatalogRecords,
-    r#"
-    SELECT record.id, record.release_id, record.catalog
-    FROM release_records AS record
-"#
-);
-
 #[cfg(test)]
 #[path = "release_records_tests.rs"]
 mod tests;

@@ -188,17 +188,6 @@ pub fn facts_without_media_of(
     Ok(PressingFacts { area, media: Vec::new(), status, packaging, discogs_details })
 }
 
-// Each release's media rows, which other domains' tests compare across
-// devices: their place, medium and count.
-#[cfg(any(test, feature = "test-utils"))]
-coven::fragment!(
-    MediaOfReleases,
-    r#"
-    SELECT media.id, media.release_id, media.position, media.medium, media.count
-    FROM release_media AS media
-"#
-);
-
 // The ids of the release `:release`'s media rows, in the order of their
 // places.
 #[cfg(test)]

@@ -8,6 +8,7 @@ use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_import::ArtistAssignment;
 use bae_library::test_libraries::{run_two_device_test, TestDevice, TwoDevices};
 use bae_records::test_fixtures::library::LibraryRows;
+use bae_records::test_fixtures::library_rows;
 use bae_records::ExistingArtist;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 
@@ -138,7 +139,7 @@ async fn releases_on_both(devices: &TwoDevices, release_ids: &[&str]) {
     let wanted = release_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
     devices
         .settle("every release on both devices", async |_, database| {
-            let present = bae_library::test_reads::release_ids(database).await;
+            let present = library_rows::release_ids(database).await;
             wanted.iter().all(|id| present.contains(id))
         })
         .await;
@@ -240,7 +241,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
         releases_on_both(devices, &[&releases[0], &releases[1]]).await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                bae_library::test_reads::work_ids(db).await.len(),
+                library_rows::work_ids(db).await.len(),
                 1,
                 "one MusicBrainz work is one library work on every device"
             );
@@ -322,7 +323,7 @@ fn the_same_record_set_on_two_devices_merges() {
         }
         devices.resume().await;
 
-        bae_library::test_reads::converge_catalog_records(devices).await;
+        devices.converge_rows(library_rows::every_catalog_record).await;
         assert_eq!(records_of(devices.a().store(), &release_id).await.len(), 2);
         assert_nothing_held(devices).await;
     });
@@ -426,7 +427,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         let credited = credited_artist(devices.a(), catalog_artist(Some(MB_ARTIST), None)).await;
         assert_eq!(credited, survivor, "the write keeps the artist with the smaller id");
 
-        bae_library::test_reads::converge_artist_merges(devices).await;
+        devices.converge_rows(library_rows::every_artist_merge).await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
                 album_artist_ids(&bae_records::test_fixtures::test_records(db), &album_id).await,
@@ -453,7 +454,7 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
 
         releases.push(new_release);
         releases_on_both(devices, &releases.iter().map(String::as_str).collect::<Vec<_>>()).await;
-        bae_library::test_reads::converge_artist_merges(devices).await;
+        devices.converge_rows(library_rows::every_artist_merge).await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
                 album_artist_ids(&bae_records::test_fixtures::test_records(db), &new_album).await,
@@ -482,8 +483,8 @@ fn a_release_added_to_an_album_deleted_apart_goes_with_the_album_on_both_devices
 
         devices
             .settle("no release or album on either device", async |_, database| {
-                bae_library::test_reads::release_ids(database).await.is_empty()
-                    && bae_library::test_reads::album_ids(database).await.is_empty()
+                library_rows::release_ids(database).await.is_empty()
+                    && library_rows::album_ids(database).await.is_empty()
             })
             .await;
         for db in [devices.a().store(), devices.b().store()] {

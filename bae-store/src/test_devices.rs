@@ -307,6 +307,22 @@ pub async fn settle<F, Fut>(
     }
 }
 
+/// A generated read whose rows two devices compare: it runs on the library's
+/// writer, and its rows print for the comparison. Every such read is one, so
+/// a domain's test fixtures hand out a read of the domain's rows as one, for
+/// another crate's tests to converge on.
+pub trait ComparedRead:
+    coven::Read<Handle = sqlive_reads::Writer, Row: std::fmt::Debug + Send + 'static> + Send + 'static
+{
+}
+
+impl<Q> ComparedRead for Q where
+    Q: coven::Read<Handle = sqlive_reads::Writer, Row: std::fmt::Debug + Send + 'static>
+        + Send
+        + 'static
+{
+}
+
 /// Run sync on both devices until the generated read each `statement()`
 /// makes returns the same rows on both, in any order, and neither holds
 /// anything back: each has pulled what the other wrote.
@@ -315,8 +331,7 @@ pub async fn converge_rows<Q>(
     b: (&Store, &SyncCycles),
     statement: impl Fn() -> Q,
 ) where
-    Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
-    Q::Row: std::fmt::Debug + Send + 'static,
+    Q: ComparedRead,
 {
     settle(a, b, &format!("the rows of {}", std::any::type_name::<Q>()), || async {
         row_texts(a.0, statement()).await == row_texts(b.0, statement()).await
@@ -327,8 +342,7 @@ pub async fn converge_rows<Q>(
 /// The rows `statement` returns on `store`, each as its debug text, sorted.
 async fn row_texts<Q>(store: &Store, statement: Q) -> Vec<String>
 where
-    Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
-    Q::Row: std::fmt::Debug + Send + 'static,
+    Q: ComparedRead,
 {
     let rows = store.read_rows(statement).await.expect("read the compared rows");
     let mut texts: Vec<String> = rows.iter().map(|row| format!("{row:?}")).collect();
@@ -481,8 +495,7 @@ impl TwoStores {
     /// returns the same rows on both.
     pub async fn converge_rows<Q>(&self, statement: impl Fn() -> Q)
     where
-        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
-        Q::Row: std::fmt::Debug + Send + 'static,
+        Q: ComparedRead,
     {
         let (a, b) = ((&self.a.store, &self.a.cycles), (&self.b.store, &self.b.cycles));
         converge_rows(a, b, statement).await;

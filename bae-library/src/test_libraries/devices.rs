@@ -263,8 +263,7 @@ impl TwoDevices {
     /// has pulled what the other wrote.
     pub async fn converge_rows<Q>(&self, statement: impl Fn() -> Q)
     where
-        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
-        Q::Row: std::fmt::Debug + Send + 'static,
+        Q: stores::ComparedRead,
     {
         stores::converge_rows(synced(self.a()), synced(&self.b), statement).await;
     }

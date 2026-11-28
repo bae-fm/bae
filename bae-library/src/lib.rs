@@ -24,8 +24,6 @@ pub mod storage;
 pub mod sync;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_libraries;
-#[cfg(any(test, feature = "test-utils"))]
-pub mod test_reads;
 mod track_decode;
 mod upload_progress;
 mod upload_throughput;

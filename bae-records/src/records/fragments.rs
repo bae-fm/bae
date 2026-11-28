@@ -537,14 +537,3 @@ impl ShownTrack {
         Ok((self.release_id, self.title, shown.credits))
     }
 }
-
-// Each release's album and its place among the album's releases, which other
-// domains' tests compare across devices.
-#[cfg(any(test, feature = "test-utils"))]
-coven::fragment!(
-    ReleaseAlbumOrder,
-    r#"
-    SELECT release.id AS release_id, release.album_id, release.album_order
-    FROM releases AS release
-"#
-);

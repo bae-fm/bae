@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_records::test_fixtures::library_rows;
 
 /// delete_album removes each release's cover too (same helper, second wiring
 /// site): the cover row is gone with its release.
@@ -96,14 +97,15 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         .add_manual(tracks.clone(), bae_playback::tables::ManualPlace::End)
         .await
         .unwrap();
-    let deleted_files = coven_files_of(manager, &[&kept, &local]).await;
+    let deleted_files =
+        library_rows::coven_files_of_releases(&manager.store, &[&kept, &local]).await;
     assert_eq!(deleted_files.len(), 8, "two files and two covers of three files each");
     let mut pinned = 0;
     for file in &deleted_files {
         pinned += manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap();
     }
     assert!(pinned > 0, "the pinned release's file is pinned here");
-    let kept_files = coven_files_of(manager, &[&other.id]).await;
+    let kept_files = library_rows::coven_files_of_releases(&manager.store, &[&other.id]).await;
 
     let mut browse =
         views(manager).subscribe_album_window(&[], false, bae_store::ListWindow::top(10));
@@ -191,21 +193,4 @@ async fn delete_album_refuses_an_album_the_library_does_not_hold() {
             "as a stale deletion plan's is: {album_id}"
         );
     }
-}
-
-/// The coven files of the releases `release_ids`: their files and their
-/// covers' copies and originals.
-async fn coven_files_of(manager: &LibraryManager, release_ids: &[&str]) -> Vec<String> {
-    let mut files = Vec::new();
-    for release in release_ids {
-        let rows = manager
-            .store
-            .read_rows(crate::manager::album::CovenFilesOfReleaseParams {
-                release: release.to_string(),
-            })
-            .await
-            .unwrap();
-        files.extend(rows.into_iter().map(|row| row.file));
-    }
-    files
 }

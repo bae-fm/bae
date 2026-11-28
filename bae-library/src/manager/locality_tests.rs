@@ -3,6 +3,7 @@
 //! release whose audio is on another device.
 
 use crate::manager::tests::*;
+use bae_records::test_fixtures::library_rows;
 use bae_records::OtherDevice;
 use bae_store::FormerDeviceState;
 use bae_types::release_storage::ReleaseStorageAction;
@@ -52,7 +53,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     if uploaded {
         manager.store.set_uploads_paused(false).await.unwrap();
         devices.resume().await;
-        devices.converge_rows(|| crate::test_reads::ReleaseFilesStoredParams {}).await;
+        devices.converge_rows(library_rows::release_files_stored).await;
         assert_eq!(moving_file_count(manager, &release.id).await, 0);
         // The second device has cached the audio; detachment must still prevent playback.
         for file in &files {
@@ -109,7 +110,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     assert_eq!(cover_file(manager, &release.id).await.id(), cover);
     manager.store.set_uploads_paused(false).await.unwrap();
     devices.resume().await;
-    devices.converge_rows(|| crate::test_reads::ReleaseFilesStoredParams {}).await;
+    devices.converge_rows(library_rows::release_files_stored).await;
     for file in &files {
         assert!(!devices.b().records().find_file_by_id(&file.id).await.unwrap().unwrap().stored);
         assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
@@ -185,7 +186,7 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
         );
 
         devices.a().manager().upload_release(&release.id).await.unwrap();
-        devices.converge_rows(|| crate::test_reads::ReleaseFilesPlacedParams {}).await;
+        devices.converge_rows(library_rows::release_files_placed).await;
         next_playability(&mut live, &release.id, |playability| {
             *playability == ReleasePlayability::Playable
         })
@@ -216,7 +217,7 @@ fn the_album_grid_follows_its_primary_releases_playability() {
         assert!(remote.rows[0].0.primary_release_unplayable);
 
         devices.a().manager().upload_release(&release.id).await.unwrap();
-        devices.converge_rows(|| crate::test_reads::ReleaseFilesPlacedParams {}).await;
+        devices.converge_rows(library_rows::release_files_placed).await;
         let uploaded =
             tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
                 .await
@@ -286,7 +287,7 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
             &[("track1.flac", b"audio")],
         )
         .await;
-        devices.converge_rows(|| crate::test_reads::ReleaseFilesPlacedParams {}).await;
+        devices.converge_rows(library_rows::release_files_placed).await;
         let manager = devices.a().manager();
         let playability = async || {
             bae_views::LibraryViews::new(manager.store.clone())

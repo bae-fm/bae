@@ -471,7 +471,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let circle_store =
             bae_store::test_devices::store_under(guest.clone(), household.sources.clock().clone());
         let circle_names =
-            bae_library::test_reads::circle_names(&circle_store, profile.private_circle).await;
+            bae_people::test_fixtures::circle_names(&circle_store, profile.private_circle).await;
         assert_eq!(circle_names, [format!("bae-person:{}", invite.member)]);
         assert_ne!(profile.id, owner_profile.id);
         assert_ne!(profile.private_circle, owner_profile.private_circle);

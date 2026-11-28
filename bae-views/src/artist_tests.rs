@@ -4,6 +4,7 @@
 use crate::test_artists::{artist_count, artist_page, listed_artists};
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
+use bae_records::test_fixtures::library_rows;
 use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::{test_records, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
 use bae_store::test_fixtures::live_query::*;
@@ -340,7 +341,7 @@ fn artist_detail_follows_the_primary_releases_audio_location() {
             .release(ALBUM_1999, RELEASE)
             .write(&test_records(a))
             .await;
-        devices.converge_rows(|| crate::album::EveryReleaseParams {}).await;
+        devices.converge_rows(library_rows::every_release).await;
         let unplayable = |store: Store| async move {
             let detail = artist_page(&store, ARTIST_A).await.expect("the artist has an album");
             detail.albums.iter().map(|album| album.primary_release_unplayable).collect::<Vec<_>>()
@@ -348,7 +349,7 @@ fn artist_detail_follows_the_primary_releases_audio_location() {
         assert_eq!(unplayable(b.clone()).await, vec![false]);
 
         import_file(a, &folder, RELEASE, "track.flac", Flac).await;
-        devices.converge_rows(|| crate::album::EveryReleaseFileParams {}).await;
+        devices.converge_rows(library_rows::every_release_file).await;
         devices.converge_rows(|| crate::album::EveryCovenFileParams {}).await;
 
         assert_eq!(unplayable(b.clone()).await, vec![true]);
