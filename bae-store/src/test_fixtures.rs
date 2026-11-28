@@ -47,19 +47,6 @@ pub async fn empty_db(schema: crate::Schema) -> (crate::Store, bae_util::test_fi
     (db, tmp)
 }
 
-/// Run one statement against the test database, panicking if it fails.
-pub async fn exec(db: &crate::Store, sql: &str, args: &[&str]) {
-    let sql = sql.to_string();
-    let args: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
-    db.call(move |conn| {
-        conn.execute(&sql, rusqlite::params_from_iter(args))
-            .map(|_| ())
-            .map_err(crate::DbError::from)
-    })
-    .await
-    .unwrap();
-}
-
 /// How many rows `table` holds.
 pub async fn row_count(db: &crate::Store, table: &str) -> usize {
     let query = format!("SELECT COUNT(*) FROM \"{table}\"");
