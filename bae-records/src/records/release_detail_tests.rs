@@ -40,11 +40,11 @@ fn the_other_device_follows_its_registration_and_its_person() {
 fn a_read_names_the_device_coven_registers_under_its_id() {
     use crate::test_fixtures::*;
     bae_store::test_devices::run_two_store_test(TEST_SCHEMA, async |devices| {
-        devices.converge_rows(|| crate::records::test_statements::RegisteredDevicesParams {}).await;
+        devices.converge_rows(|| crate::records::release_detail::RegisteredDevicesParams {}).await;
         let b = devices.b();
         let device = |is_self: bool| async move {
             let row = b
-                .read_row(crate::records::test_statements::DeviceWhereSelfParams { is_self })
+                .read_row(crate::records::release_detail::DeviceWhereSelfParams { is_self })
                 .await
                 .unwrap();
             (row.device, row.name)
@@ -138,9 +138,8 @@ async fn the_statements_place_tracks_by_one_rule() {
         .unwrap();
     let groups = rows.decoded().unwrap().detail.track_groups;
 
-    let statement = crate::records::test_statements::TrackNumbersOfReleaseParams {
-        release: release.to_string(),
-    };
+    let statement =
+        crate::records::track::TrackNumbersOfReleaseParams { release: release.to_string() };
     let numbers: Vec<(String, u32)> = db
         .read_rows(statement)
         .await
@@ -359,7 +358,7 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
             .release(ALBUM_A, TWO_ELSEWHERE)
             .write(&test_records(a))
             .await;
-        devices.converge_rows(|| crate::records::test_statements::ReleaseIdsParams {}).await;
+        devices.converge_rows(|| crate::records::release::ReleaseIdsParams {}).await;
 
         storage_listing::import_file(b, &dir, PLAYS_HERE, "here.flac", Flac).await;
         storage_listing::import_file(a, &dir, ONE_ELSEWHERE, "one.flac", Flac).await;
@@ -367,10 +366,10 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
         storage_listing::import_file(a, &dir, ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
         storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "b-second.flac", Flac).await;
         storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "a-first.flac", Flac).await;
-        devices.converge_rows(|| crate::records::test_statements::ReleaseFileRowsParams {}).await;
-        devices.converge_rows(|| crate::records::test_statements::CovenFileIdsParams {}).await;
+        devices.converge_rows(|| crate::records::files::ReleaseFileRowsParams {}).await;
+        devices.converge_rows(|| crate::records::files::CovenFileIdsParams {}).await;
 
-        let other = crate::records::test_statements::DeviceWhereSelfParams { is_self: false };
+        let other = crate::records::release_detail::DeviceWhereSelfParams { is_self: false };
         let name_of_a = b.read_row(other).await.unwrap().name;
         let a_active = Some(OtherDevice::Active { name: name_of_a });
         assert_eq!(

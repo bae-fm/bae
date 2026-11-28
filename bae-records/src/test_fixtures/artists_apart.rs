@@ -46,7 +46,7 @@ pub async fn merge_apart(devices: &TwoStores, (first, second): (&str, &str), dis
     devices.resume().await;
     devices
         .settle("both artists holding the id", async |_, db| {
-            let statement = crate::records::test_statements::ArtistsHoldingDiscogsIdParams {
+            let statement = crate::records::identity_merges::ArtistsHoldingDiscogsIdParams {
                 discogs: discogs.to_string(),
             };
             db.read_row(statement).await.unwrap().holding == 2
@@ -55,7 +55,7 @@ pub async fn merge_apart(devices: &TwoStores, (first, second): (&str, &str), dis
     test_records(devices.a()).find_or_create_artists(&[crediting(first)]).await.unwrap();
     devices
         .settle("the merge", async |_, db| {
-            db.read_row(crate::records::test_statements::ArtistMergeCountParams {})
+            db.read_row(crate::records::identity_merges::ArtistMergeCountParams {})
                 .await
                 .unwrap()
                 .merges

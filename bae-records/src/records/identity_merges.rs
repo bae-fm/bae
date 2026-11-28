@@ -124,6 +124,69 @@ pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> R
     Ok(())
 }
 
+// Each artist merge row: the absorbed artist and the artist it was merged
+// into, by absorbed id.
+#[cfg(test)]
+coven::read!(
+    writer ArtistMergeRows,
+    "SELECT merge.id, merge.into_artist_id FROM artist_merges AS merge ORDER BY merge.id"
+);
+
+// Each label merge row: the absorbed label and the label it was merged into,
+// by absorbed id.
+#[cfg(test)]
+coven::read!(
+    writer LabelMergeRows,
+    "SELECT merge.id, merge.into_label_id FROM label_merges AS merge ORDER BY merge.id"
+);
+
+// Each merged artist and the survivor of its merges, by merged id.
+#[cfg(test)]
+coven::read!(
+    writer MergedArtistSurvivors { artist_id: String, survivor_id: String },
+    r#"
+    SELECT survivor.artist_id, survivor.survivor_id
+    FROM merged_artist_survivors AS survivor ORDER BY survivor.artist_id
+"#
+);
+
+// Each merged label and the survivor of its merges, by merged id.
+#[cfg(test)]
+coven::read!(
+    writer MergedLabelSurvivors { label_id: String, survivor_id: String },
+    r#"
+    SELECT survivor.label_id, survivor.survivor_id
+    FROM merged_label_survivors AS survivor ORDER BY survivor.label_id
+"#
+);
+
+// Each label and the label it shows as, by label id.
+#[cfg(test)]
+coven::read!(
+    writer LabelsShownAs,
+    r#"
+    SELECT shown.label_id, shown.shown_label_id
+    FROM label_shown_as AS shown ORDER BY shown.label_id
+"#
+);
+
+// How many artist merge rows the library holds.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer ArtistMergeCount { merges: i64 },
+    "SELECT COUNT(*) AS merges FROM artist_merges AS merge"
+);
+
+// How many artists hold the Discogs id `:discogs`.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer ArtistsHoldingDiscogsId(discogs: String) { holding: i64 },
+    r#"
+    SELECT COUNT(*) AS holding FROM artists AS artist
+    WHERE artist.discogs_artist_id = :discogs
+"#
+);
+
 #[cfg(test)]
 #[path = "identity_merges_tests.rs"]
 mod tests;

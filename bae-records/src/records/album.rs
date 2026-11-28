@@ -179,3 +179,30 @@ impl Records {
         }
     }
 }
+
+// The artists the album `:album` credits, as written, in list order.
+#[cfg(test)]
+coven::read!(
+    writer AlbumCreditArtistIds(album: String),
+    r#"
+    SELECT credit.artist_id FROM album_artists AS credit
+    WHERE credit.album_id = :album ORDER BY credit.position
+"#
+);
+
+// Each album credit's album, artist and place.
+#[cfg(test)]
+coven::read!(
+    writer AlbumCreditPlaces,
+    "SELECT credit.album_id, credit.artist_id, credit.position FROM album_artists AS credit"
+);
+
+// An album row, as a bare library's test plants it.
+#[cfg(test)]
+coven::write!(
+    PlantAlbum(id: &'p str, title: &'p str, created_at: &'p str),
+    r#"
+    INSERT INTO albums (id, title, is_compilation, created_at)
+    VALUES (:id, :title, 0, :created_at)
+"#
+);

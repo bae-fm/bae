@@ -290,6 +290,24 @@ fn other_device(name: String, state: coven::DeviceState, member_removed: bool) -
     }
 }
 
+// Each device coven registers, with its name and state.
+#[cfg(test)]
+coven::read!(
+    writer RegisteredDevices { device: coven::DeviceId, state: coven::DeviceState },
+    "SELECT registered.device, registered.name, registered.state FROM coven_devices AS registered"
+);
+
+// The device coven registers as this one when `:is_self`, else the other,
+// with its name.
+#[cfg(test)]
+coven::read!(
+    writer DeviceWhereSelf(is_self: bool) { device: coven::DeviceId },
+    r#"
+    SELECT registered.device, registered.name FROM coven_devices AS registered
+    WHERE registered.is_self = :is_self
+"#
+);
+
 #[cfg(test)]
 #[path = "release_detail_tests.rs"]
 mod tests;

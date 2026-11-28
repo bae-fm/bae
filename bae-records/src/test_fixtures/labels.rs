@@ -50,7 +50,7 @@ pub async fn add_label(
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
         .await
         .unwrap();
-    let statement = crate::records::test_statements::LabelOfReleaseParams { release: release.id };
+    let statement = crate::records::label_resolution::LabelOfReleaseParams { release: release.id };
     let placed = db.read_row(statement).await.unwrap();
     placed.label_id.expect("the release's label row names a label")
 }
@@ -69,7 +69,7 @@ pub async fn write(store: &Store, labels: Vec<ReleaseLabel>) -> Result<(), Ident
 
 /// The label each of `RELEASE`'s label rows names, as stored, with its number.
 pub async fn placed(db: &Store) -> Vec<(Option<String>, Option<String>)> {
-    let statement = crate::records::test_statements::PlacedLabelsOfReleaseParams {
+    let statement = crate::records::label_resolution::PlacedLabelsOfReleaseParams {
         release: RELEASE.to_string(),
     };
     let rows = db.read_rows(statement).await.unwrap();

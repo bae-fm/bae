@@ -391,6 +391,76 @@ impl TrackTags {
     }
 }
 
+// A FLAC audio format of the track `:track_id`, at 44.1 kHz in two channels.
+#[cfg(test)]
+coven::write!(
+    PlantAudioFormat(id: &'p str, track_id: &'p str, created_at: &'p str),
+    r#"
+    INSERT INTO audio_formats (id, track_id, content_type, sample_rate, channels, created_at)
+    VALUES (:id, :track_id, 'audio/flac', 44100, 2, :created_at)
+"#
+);
+
+// A segment of the audio format `:audio_format_id` over the file `:file_id`,
+// in any role and with any positions, a second body or a negative position
+// among them.
+#[cfg(test)]
+coven::write!(
+    PlantSegment(
+        id: &'p str,
+        audio_format_id: &'p str,
+        segment_index: i64,
+        role: &'p str,
+        file_id: &'p str,
+        start_sample: i64,
+        end_sample: Option<i64>,
+        start_byte: Option<i64>,
+        end_byte: Option<i64>,
+        created_at: &'p str,
+    ),
+    r#"
+    INSERT INTO audio_format_segments (
+        id, audio_format_id, segment_index, role, file_id,
+        start_sample, end_sample, start_byte, end_byte, created_at
+    ) VALUES (
+        :id, :audio_format_id, :segment_index, :role, :file_id,
+        :start_sample, :end_sample, :start_byte, :end_byte, :created_at
+    )
+"#
+);
+
+// The segment `:id`'s position `:column` (its start or end sample or byte) as
+// `:value`, which may be a position no write stores.
+#[cfg(test)]
+coven::write!(
+    DamageSegmentPosition(id: &'p str, column: &'p str, value: i64),
+    r#"
+    UPDATE audio_format_segments SET
+        start_sample = CASE WHEN :column = 'start_sample' THEN :value ELSE start_sample END,
+        end_sample = CASE WHEN :column = 'end_sample' THEN :value ELSE end_sample END,
+        start_byte = CASE WHEN :column = 'start_byte' THEN :value ELSE start_byte END,
+        end_byte = CASE WHEN :column = 'end_byte' THEN :value ELSE end_byte END
+    WHERE id = :id
+"#
+);
+
+// The audio format `:id`'s value `:column` (a pregap length, its sample rate,
+// channels or bit depth) as `:value`, which may be a value no write stores.
+#[cfg(test)]
+coven::write!(
+    DamageAudioFormatValue(id: &'p str, column: &'p str, value: Option<i64>),
+    r#"
+    UPDATE audio_formats SET
+        pregap_samples = CASE WHEN :column = 'pregap_samples' THEN :value ELSE pregap_samples END,
+        generated_pregap_samples = CASE WHEN :column = 'generated_pregap_samples'
+            THEN :value ELSE generated_pregap_samples END,
+        sample_rate = CASE WHEN :column = 'sample_rate' THEN :value ELSE sample_rate END,
+        channels = CASE WHEN :column = 'channels' THEN :value ELSE channels END,
+        bits_per_sample = CASE WHEN :column = 'bits_per_sample' THEN :value ELSE bits_per_sample END
+    WHERE id = :id
+"#
+);
+
 #[cfg(test)]
 #[path = "track_audio_tests.rs"]
 mod tests;

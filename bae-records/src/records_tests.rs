@@ -168,10 +168,7 @@ async fn a_medium_id_belongs_to_one_release() {
 #[tokio::test]
 async fn coven_connection_orders_by_bae_natural_order() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let rows = db
-        .read_rows(crate::records::test_statements::NaturallyOrderedNamesParams {})
-        .await
-        .unwrap();
+    let rows = db.read_rows(crate::records::NaturallyOrderedNamesParams {}).await.unwrap();
     let ordered: Vec<String> = rows.into_iter().map(|row| row.name).collect();
     assert_eq!(ordered, ["Disc 1", "Disc 2", "disc 2", "Disc 10"]);
 }
@@ -232,7 +229,7 @@ async fn a_work_credit_reads_back_with_its_role_and_qualifiers() {
 
     let stored = records
         .store
-        .read_rows(crate::records::test_statements::WorkCreditRolesParams {})
+        .read_rows(crate::records::work_writes::WorkCreditRolesParams {})
         .await
         .unwrap();
 
@@ -250,7 +247,7 @@ async fn a_work_credit_reads_back_with_its_role_and_qualifiers() {
 #[tokio::test]
 async fn the_writing_roles_view_is_the_vocabularys_writing_roles() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let rows = db.read_rows(crate::records::test_statements::WritingRolesParams {}).await.unwrap();
+    let rows = db.read_rows(crate::records::work_writes::WritingRolesParams {}).await.unwrap();
     let stored: Vec<String> = rows.into_iter().map(|row| row.role).collect();
     let expected: Vec<&str> =
         bae_types::credit_role::CreditRoleKind::writing().map(|kind| kind.key()).collect();

@@ -301,6 +301,27 @@ impl Records {
     }
 }
 
+// How many printed names the artists hold.
+#[cfg(test)]
+coven::read!(
+    writer CreditNameCount { names: i64 },
+    "SELECT COUNT(*) AS names FROM artist_credits AS credit_name"
+);
+
+// The printed name each work, release role and track role credit names.
+#[cfg(test)]
+coven::read!(
+    writer RoleCreditKeys { place: i64, credit_key: Option<String> },
+    r#"
+    SELECT 1 AS place, credit.credit_key FROM work_artists AS credit
+    UNION ALL
+    SELECT 2 AS place, credit.credit_key FROM release_artist_roles AS credit
+    UNION ALL
+    SELECT 3 AS place, credit.credit_key FROM track_artist_roles AS credit
+    ORDER BY place
+"#
+);
+
 #[cfg(test)]
 #[path = "artist_credit_names_tests.rs"]
 mod tests;

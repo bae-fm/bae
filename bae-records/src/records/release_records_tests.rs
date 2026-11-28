@@ -510,14 +510,13 @@ fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
 /// The id of each release record.
 async fn release_record_ids(store: &Store) -> Vec<String> {
     let rows =
-        store.read_rows(crate::records::test_statements::ReleaseRecordIdsParams {}).await.unwrap();
+        store.read_rows(crate::records::release_records::ReleaseRecordIdsParams {}).await.unwrap();
     rows.into_iter().map(|row| row.id).collect()
 }
 
 /// Each album credit's album, artist and place.
 async fn album_credit_places(store: &Store) -> Vec<(String, String, i64)> {
-    let rows =
-        store.read_rows(crate::records::test_statements::AlbumCreditPlacesParams {}).await.unwrap();
+    let rows = store.read_rows(crate::records::album::AlbumCreditPlacesParams {}).await.unwrap();
     rows.into_iter().map(|row| (row.album_id, row.artist_id, row.position)).collect()
 }
 

@@ -242,6 +242,66 @@ impl Records {
     }
 }
 
+// Each track with its medium, and each medium.
+#[cfg(test)]
+coven::read!(
+    writer TracksAndMediums { id: Option<String>, medium_id: Option<String>, medium: Option<String> },
+    r#"
+    SELECT track.id, track.medium_id, NULL AS medium FROM tracks AS track
+    UNION ALL
+    SELECT NULL AS id, NULL AS medium_id, medium.id AS medium FROM release_mediums AS medium
+"#
+);
+
+// The tracks that sit on no medium row the library holds.
+#[cfg(test)]
+coven::read!(
+    writer TracksOnMissingMediums,
+    r#"
+    SELECT track.id FROM tracks AS track
+    LEFT JOIN release_mediums AS medium ON medium.id = track.medium_id
+    WHERE medium.id IS NULL
+"#
+);
+
+// Move every track on the medium `:from` to the medium `:to`, as a layout
+// edit that empties a medium does.
+#[cfg(test)]
+coven::write!(
+    MoveTracksBetweenMediums(from: &'p str, to: &'p str),
+    "UPDATE tracks SET medium_id = :to WHERE medium_id = :from"
+);
+
+// Each track of the release `:release` with its number, in play order.
+#[cfg(test)]
+coven::read!(
+    writer TrackNumbersOfRelease(release: String) { track_number: u32 },
+    r#"
+    SELECT track.id, track.track_number FROM tracks AS track
+    WHERE track.release_id = :release ORDER BY track.position
+"#
+);
+
+// A one-sided CD medium of the release `:release_id` at place 1.
+#[cfg(test)]
+coven::write!(
+    PlantMedium(id: &'p str, release_id: &'p str, created_at: &'p str),
+    r#"
+    INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at)
+    VALUES (:id, :release_id, 1, 'cd', 1, :created_at)
+"#
+);
+
+// A three-minute track, number 1 on side 1 of the medium `:medium_id`.
+#[cfg(test)]
+coven::write!(
+    PlantTrack(id: &'p str, release_id: &'p str, medium_id: &'p str, created_at: &'p str),
+    r#"
+    INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, duration_ms, created_at)
+    VALUES (:id, :release_id, 'Track Title', :medium_id, 1, 1, 180000, :created_at)
+"#
+);
+
 #[cfg(test)]
 #[path = "track_tests.rs"]
 mod tests;

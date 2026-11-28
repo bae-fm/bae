@@ -20,7 +20,7 @@ async fn a_name_for_an_artist_no_longer_held_is_refused() {
     );
     let held = records
         .store
-        .read_row(crate::records::test_statements::CreditNameCountParams {})
+        .read_row(crate::records::artist_credit_names::CreditNameCountParams {})
         .await
         .unwrap()
         .names;
@@ -75,7 +75,7 @@ async fn role_and_work_credits_link_the_names_they_print() {
     let linked = || async {
         let rows = records
             .store
-            .read_rows(crate::records::test_statements::RoleCreditKeysParams {})
+            .read_rows(crate::records::artist_credit_names::RoleCreditKeysParams {})
             .await
             .unwrap();
         rows.into_iter().map(|row| row.credit_key).collect::<Vec<_>>()

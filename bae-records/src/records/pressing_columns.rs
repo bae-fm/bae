@@ -187,3 +187,43 @@ pub fn facts_without_media_of(
         .transpose()?;
     Ok(PressingFacts { area, media: Vec::new(), status, packaging, discogs_details })
 }
+
+// The ids of the release `:release`'s media rows, in the order of their
+// places.
+#[cfg(test)]
+coven::read!(
+    writer MediaRowsOfRelease(release: String) { position: i64 },
+    r#"
+    SELECT media.id, media.position FROM release_media AS media
+    WHERE media.release_id = :release ORDER BY media.position
+"#
+);
+
+// Each media row: its place, medium and count.
+#[cfg(test)]
+coven::read!(
+    writer MediaRows,
+    "SELECT media.id, media.position, media.medium, media.count FROM release_media AS media"
+);
+
+// The ids of the rows of the release `:release`'s barcodes, in the order of
+// their places.
+#[cfg(test)]
+coven::read!(
+    writer BarcodeRowsOfRelease(release: String),
+    r#"
+    SELECT barcode.id FROM release_barcodes AS barcode
+    WHERE barcode.release_id = :release ORDER BY barcode.position
+"#
+);
+
+// The ids of the rows of the release `:release`'s Discogs details, in the
+// order of their places.
+#[cfg(test)]
+coven::read!(
+    writer DiscogsDetailRowsOfRelease(release: String),
+    r#"
+    SELECT detail.id FROM release_discogs_details AS detail
+    WHERE detail.release_id = :release ORDER BY detail.position
+"#
+);

@@ -222,3 +222,18 @@ pub fn insert_track_artist_role_row(
     })?;
     Ok(())
 }
+
+// The role, the catalog's words for it and the qualifiers of each work
+// credit, in list order.
+#[cfg(test)]
+coven::read!(
+    writer WorkCreditRoles,
+    r#"
+    SELECT credit.role, credit.role_words, credit.qualifiers
+    FROM work_artists AS credit ORDER BY credit.position
+"#
+);
+
+// The roles the writing roles view names.
+#[cfg(test)]
+coven::read!(writer WritingRoles { role: String }, "SELECT writing.role FROM writing_credit_roles AS writing");

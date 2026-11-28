@@ -103,14 +103,23 @@ mod seeded_albums;
 pub use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) mod test_capabilities;
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) mod test_statements;
 mod track;
 mod track_list;
 pub use track::UnknownTrackSource;
 pub use track_list::{TrackList, TrackReading};
 pub mod track_audio;
 pub use track_audio::{DbTrackTags, TrackForSave, TrackSaveRead};
+
+// Four disc names, in the natural order bae's schema names.
+#[cfg(test)]
+coven::read!(
+    writer NaturallyOrderedNames { name: String },
+    r#"
+    SELECT listed.column1 AS name
+    FROM (VALUES ('Disc 10'), ('disc 2'), ('Disc 2'), ('Disc 1')) AS listed
+    ORDER BY listed.column1 COLLATE natural_order
+"#
+);
 
 #[cfg(test)]
 #[path = "records_tests.rs"]

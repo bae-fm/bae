@@ -549,6 +549,45 @@ fn name_instead(rows: &mut [(Option<String>, Option<&str>)], from: &str, to: &st
     }
 }
 
+// The id of each label, with its Discogs id.
+#[cfg(test)]
+coven::read!(
+    writer LabelIds,
+    "SELECT label.id, label.discogs_label_id FROM labels AS label"
+);
+
+// The label each release label row places, if any.
+#[cfg(test)]
+coven::read!(
+    writer PlacedLabels,
+    "SELECT placed.id, placed.label_id FROM release_labels AS placed"
+);
+
+// The label the release `:release`'s label row names.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer LabelOfRelease(release: String),
+    r#"
+    SELECT placed.label_id FROM release_labels AS placed
+    WHERE placed.release_id = :release
+"#
+);
+
+// The label each of the release `:release`'s label rows names, as stored,
+// with its number, in list order.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer PlacedLabelsOfRelease(release: String),
+    r#"
+    SELECT placed.label_id, placed.catalog_number FROM release_labels AS placed
+    WHERE placed.release_id = :release ORDER BY placed.position
+"#
+);
+
+// How many labels the library holds.
+#[cfg(test)]
+coven::read!(writer LabelCount { labels: i64 }, "SELECT COUNT(*) AS labels FROM labels AS label");
+
 #[cfg(test)]
 #[path = "label_resolution_tests.rs"]
 mod tests;

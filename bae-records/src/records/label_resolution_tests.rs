@@ -2,7 +2,7 @@ use super::*;
 use crate::test_fixtures::labels::*;
 
 async fn label_count(store: &Store) -> i64 {
-    store.read_row(crate::records::test_statements::LabelCountParams {}).await.unwrap().labels
+    store.read_row(crate::records::label_resolution::LabelCountParams {}).await.unwrap().labels
 }
 
 /// A catalog id decides: the library label holding it is the label, whatever
@@ -334,8 +334,8 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
     let first = add_label(devices.a(), "Label Name A", None, None).await;
     let second = add_label(devices.a(), "Label Name B", None, None).await;
     let converge = || async {
-        devices.converge_rows(|| crate::records::test_statements::LabelIdsParams {}).await;
-        devices.converge_rows(|| crate::records::test_statements::ReleaseIdsParams {}).await;
+        devices.converge_rows(|| crate::records::label_resolution::LabelIdsParams {}).await;
+        devices.converge_rows(|| crate::records::release::ReleaseIdsParams {}).await;
     };
     converge().await;
 
@@ -359,8 +359,8 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
     )
     .await
     .unwrap();
-    devices.converge_rows(|| crate::records::test_statements::LabelMergeRowsParams {}).await;
-    devices.converge_rows(|| crate::records::test_statements::PlacedLabelsParams {}).await;
+    devices.converge_rows(|| crate::records::identity_merges::LabelMergeRowsParams {}).await;
+    devices.converge_rows(|| crate::records::label_resolution::PlacedLabelsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         let placed = placed(device).await;

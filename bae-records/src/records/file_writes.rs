@@ -205,3 +205,54 @@ pub fn insert_carved_track_row(
 fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, DbError> {
     value.map(|value| to_i64(value, what)).transpose()
 }
+
+// coven's record of the file `:id`, one byte long, that only device 1 holds,
+// as coven writes it.
+#[cfg(test)]
+coven::write!(
+    PlantCovenFile(id: &'p str),
+    r#"
+    INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace)
+    VALUES (:id, '', 1, 'device 1', 'release_files')
+"#
+);
+
+// Every stored file's recorded length as `:size`, which may be a length no
+// write stores.
+#[cfg(test)]
+coven::write!(DamageCovenFileSizes(size: i64), "UPDATE coven_files SET size = :size");
+
+// A release file row with any role, kind and source-audio facts, a
+// combination a CHECK refuses among them.
+#[cfg(test)]
+coven::write!(
+    PlantReleaseFile(
+        id: &'p str,
+        release_id: &'p str,
+        content_type: &'p str,
+        file: &'p str,
+        role: &'p str,
+        document_kind: Option<&'p str>,
+        source_audio_layout: Option<&'p str>,
+        source_audio_content_type: Option<&'p str>,
+        source_audio_container: Option<&'p str>,
+        source_audio_duration_ms: Option<i64>,
+        source_audio_sample_rate_hz: Option<i64>,
+        source_audio_bits_per_sample: Option<i64>,
+        source_audio_channels: Option<i64>,
+        created_at: &'p str,
+    ),
+    r#"
+    INSERT INTO release_files (
+        id, release_id, original_filename, content_type, file, role, document_kind,
+        source_audio_layout, source_audio_content_type, source_audio_container,
+        source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample,
+        source_audio_channels, created_at
+    ) VALUES (
+        :id, :release_id, :id, :content_type, :file, :role, :document_kind,
+        :source_audio_layout, :source_audio_content_type, :source_audio_container,
+        :source_audio_duration_ms, :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
+        :source_audio_channels, :created_at
+    )
+"#
+);

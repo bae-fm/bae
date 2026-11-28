@@ -59,8 +59,10 @@ fn the_table_refuses_a_blob_that_ends_inside_a_varint() {
     crate::test_fixtures::TEST_SCHEMA.open_bare_library(&conn);
     conn.pragma_update(None, "foreign_keys", false).unwrap();
     let insert = |points: &[u8]| {
-        let plant =
-            crate::records::test_statements::PlantScrubPointsParams { segment: "segment", points };
+        let plant = crate::records::scrub_points_column::PlantScrubPointsParams {
+            segment: "segment",
+            points,
+        };
         bae_store::test_fixtures::bare_statements::run(&conn, &plant)
     };
     for refused in [&[][..], &[0, 0], &[0, 0, 0x80]] {

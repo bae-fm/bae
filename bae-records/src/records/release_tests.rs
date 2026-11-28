@@ -5,7 +5,13 @@
 //! A release's media, barcodes and labels are rows, one per place in their
 //! list: a save replaces the whole list, and reaches every other device.
 
-use crate::records::test_statements::*;
+use crate::records::pressing_columns::{
+    BarcodeRowsOfReleaseParams, DiscogsDetailRowsOfReleaseParams, MediaRowsOfReleaseParams,
+    MediaRowsParams,
+};
+use crate::records::track::{
+    MoveTracksBetweenMediumsParams, TracksAndMediumsParams, TracksOnMissingMediumsParams,
+};
 use crate::test_fixtures::*;
 use bae_store::test_fixtures::*;
 use bae_store::WriteStatements as _;

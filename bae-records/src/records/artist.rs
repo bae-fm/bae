@@ -82,3 +82,7 @@ impl Records {
         row.map(|row| row.artist.into_artist()).transpose()
     }
 }
+
+// The id of each artist.
+#[cfg(test)]
+coven::read!(writer ArtistIds, "SELECT artist.id FROM artists AS artist");

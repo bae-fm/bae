@@ -115,6 +115,17 @@ impl Varints<'_> {
     }
 }
 
+// The scrub points of the segment `:segment` as the blob `:points`, which may
+// be one no write stores.
+#[cfg(test)]
+coven::write!(
+    PlantScrubPoints(segment: &'p str, points: &'p [u8]),
+    r#"
+    INSERT OR REPLACE INTO audio_segment_scrub_points (audio_format_segment_id, points)
+    VALUES (:segment, :points)
+"#
+);
+
 #[cfg(test)]
 #[path = "scrub_points_column_tests.rs"]
 mod tests;

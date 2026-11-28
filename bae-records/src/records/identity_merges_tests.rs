@@ -42,14 +42,14 @@ async fn merge_artist(
 /// The artist each artist merge row was absorbed into, by absorbed id.
 async fn artist_merges(store: &Store) -> Vec<(String, String)> {
     let rows =
-        store.read_rows(crate::records::test_statements::ArtistMergeRowsParams {}).await.unwrap();
+        store.read_rows(crate::records::identity_merges::ArtistMergeRowsParams {}).await.unwrap();
     rows.into_iter().map(|row| (row.id, row.into_artist_id)).collect()
 }
 
 /// The label each label merge row was absorbed into, by absorbed id.
 async fn label_merges(store: &Store) -> Vec<(String, String)> {
     let rows =
-        store.read_rows(crate::records::test_statements::LabelMergeRowsParams {}).await.unwrap();
+        store.read_rows(crate::records::identity_merges::LabelMergeRowsParams {}).await.unwrap();
     rows.into_iter().map(|row| (row.id, row.into_label_id)).collect()
 }
 
@@ -104,8 +104,7 @@ async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the
     assert_eq!(merged.sort_name.as_deref(), Some("Artist Name, The"));
     assert!(records.find_artist_by_id(&absorbed.id).await.unwrap().is_some());
     assert_eq!(artist_merges(&db).await, [(absorbed.id.clone(), survivor.id.clone())]);
-    let statement =
-        crate::records::test_statements::AlbumCreditArtistIdsParams { album: album.id.clone() };
+    let statement = crate::records::album::AlbumCreditArtistIdsParams { album: album.id.clone() };
     let written: Vec<String> =
         db.read_rows(statement).await.unwrap().into_iter().map(|row| row.artist_id).collect();
     assert_eq!(written, [survivor.id.clone(), absorbed.id.clone()], "credits stay as written");
@@ -239,7 +238,7 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
 /// Each merged artist and the artist it shows as, by merged id.
 async fn artist_survivors(store: &Store) -> Vec<(String, String)> {
     let rows = store
-        .read_rows(crate::records::test_statements::MergedArtistSurvivorsParams {})
+        .read_rows(crate::records::identity_merges::MergedArtistSurvivorsParams {})
         .await
         .unwrap();
     rows.into_iter().map(|row| (row.artist_id, row.survivor_id)).collect()
@@ -248,7 +247,7 @@ async fn artist_survivors(store: &Store) -> Vec<(String, String)> {
 /// Each merged label and the label it shows as, by merged id.
 async fn label_survivors(store: &Store) -> Vec<(String, String)> {
     let rows = store
-        .read_rows(crate::records::test_statements::MergedLabelSurvivorsParams {})
+        .read_rows(crate::records::identity_merges::MergedLabelSurvivorsParams {})
         .await
         .unwrap();
     rows.into_iter().map(|row| (row.label_id, row.survivor_id)).collect()
@@ -257,7 +256,7 @@ async fn label_survivors(store: &Store) -> Vec<(String, String)> {
 /// Each label and the label it shows as, by label id.
 async fn labels_shown_as(store: &Store) -> Vec<(String, String)> {
     let rows =
-        store.read_rows(crate::records::test_statements::LabelsShownAsParams {}).await.unwrap();
+        store.read_rows(crate::records::identity_merges::LabelsShownAsParams {}).await.unwrap();
     rows.into_iter().map(|row| (row.label_id, row.shown_label_id)).collect()
 }
 
@@ -285,13 +284,13 @@ async fn check_synced_artist_merge_chain(devices: &bae_store::test_devices::TwoS
         crate::test_fixtures::test_records(devices.a()).insert_artist(artist).await.unwrap();
     }
     let [smallest, middle, largest] = ordered(artists.map(|artist| artist.id));
-    devices.converge_rows(|| crate::records::test_statements::ArtistIdsParams {}).await;
+    devices.converge_rows(|| crate::records::artist::ArtistIdsParams {}).await;
 
     devices.pause().await;
     merge_artist(devices.a(), &smallest, &middle, None).await.unwrap();
     merge_artist(devices.b(), &middle, &largest, None).await.unwrap();
     devices.resume().await;
-    devices.converge_rows(|| crate::records::test_statements::ArtistMergeRowsParams {}).await;
+    devices.converge_rows(|| crate::records::identity_merges::ArtistMergeRowsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(
@@ -317,13 +316,13 @@ async fn check_synced_label_merge_chain(devices: &bae_store::test_devices::TwoSt
         added.push(add_label(devices.a(), name, None, None).await);
     }
     let [smallest, middle, largest] = ordered(added.try_into().unwrap());
-    devices.converge_rows(|| crate::records::test_statements::LabelIdsParams {}).await;
+    devices.converge_rows(|| crate::records::label_resolution::LabelIdsParams {}).await;
 
     devices.pause().await;
     merge_label(devices.a(), &smallest, &middle).await.unwrap();
     merge_label(devices.b(), &middle, &largest).await.unwrap();
     devices.resume().await;
-    devices.converge_rows(|| crate::records::test_statements::LabelMergeRowsParams {}).await;
+    devices.converge_rows(|| crate::records::identity_merges::LabelMergeRowsParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(

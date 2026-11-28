@@ -556,6 +556,35 @@ pub fn edited_release_of(head: EditedHead) -> Result<EditedRelease, DbError> {
 #[cfg(any(test, feature = "test-utils"))]
 coven::read!(writer TotalChanges { changes: i64 }, "SELECT total_changes() AS changes");
 
+// The id of each release.
+#[cfg(test)]
+coven::read!(writer ReleaseIds, "SELECT release.id FROM releases AS release");
+
+// A release row of the album `:album_id`, first in its album.
+#[cfg(test)]
+coven::write!(
+    PlantRelease(id: &'p str, album_id: &'p str, created_at: &'p str),
+    r#"
+    INSERT INTO releases (id, album_id, created_at, album_order)
+    VALUES (:id, :album_id, :created_at, 0)
+"#
+);
+
+// A release's creation time as `:created_at` holds it, which may be no
+// timestamp at all.
+#[cfg(test)]
+coven::write!(
+    DamageReleaseCreatedAt(id: &'p str, created_at: &'p str),
+    "UPDATE releases SET created_at = :created_at WHERE id = :id"
+);
+
+// The name of the folder the release `:id` was imported from.
+#[cfg(test)]
+coven::write!(
+    SetSourceFolderName(id: &'p str, name: &'p str),
+    "UPDATE releases SET source_folder_name = :name WHERE id = :id"
+);
+
 #[cfg(test)]
 #[path = "release_tests.rs"]
 mod tests;

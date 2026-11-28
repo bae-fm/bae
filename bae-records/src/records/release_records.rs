@@ -400,6 +400,10 @@ pub(super) struct StoredAlbumMatch {
     holds_release: i64,
 }
 
+// The id of each release record.
+#[cfg(test)]
+coven::read!(writer ReleaseRecordIds, "SELECT record.id FROM release_records AS record");
+
 #[cfg(test)]
 #[path = "release_records_tests.rs"]
 mod tests;
