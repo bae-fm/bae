@@ -1363,8 +1363,11 @@ holds or the release this device imported from it. bae makes the pane's value
 from the rows of both, and a write to what either statement reads runs both
 again. Each statement binds only the selected key and finds the
 candidate's scan row, and the content hash the scan stored, by that key, never
-by a value another statement returned. Each domain writes the fragment that
-reads its own rows, and no read names a table another domain owns.
+by a value another statement returned. Each statement is a fragment over a
+relation of candidate keys: the pane reads it at its one key, and automation's
+candidate answers read it over every candidate they answer. Each domain writes
+the fragment that reads its own rows, and no read names a table another domain
+owns.
 Every other read of a candidate's current state, its verdict's cards and its
 matches spreads the same fragments, each handed the owners whose rows it reads,
 a candidate's content hash or an identify run: the candidate's runtime reads its

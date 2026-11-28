@@ -421,6 +421,17 @@ async fn a_verdict_from_another_revision_does_not_resume() {
     assert_eq!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Idle);
 }
 
+/// One read of the pane runs its two statements, the head and the draft.
+#[tokio::test]
+async fn a_read_of_the_pane_runs_two_statements() {
+    let lib = Library::new().await;
+    lib.run(lib.scan("release")).await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    let counter = lib.db.track_work_for_test().await.unwrap();
+    tables.load_import_candidate(&lib.key("release")).await.unwrap().expect("a pane");
+    assert_eq!(counter.take().app_read_statements, 2);
+}
+
 /// The pane of a candidate its import put in the library is placed Done, which
 /// carries nothing of the candidate's draft: its folder check and its draft's
 /// catalogs belong to a candidate still in the queue. Its import status names

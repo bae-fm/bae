@@ -18,9 +18,10 @@ use crate::triage::{import_status_of, stated_folder_check, CandidateLiveState, T
 use crate::MetadataProvenance;
 use crate::{ImportedRelease, TriageTab};
 use bae_identify::IdentifyStateView;
-use bae_store::statement_rows;
 
-use super::pane_read::{PaneDraftParams, PaneDraftRow, PaneHeadParams, PaneHeadRow};
+use super::pane_read::{
+    PaneDraftParams, PaneDraftRow, PaneDraftRows, PaneHeadParams, PaneHeadRow, PaneHeadRows,
+};
 
 /// The candidate the pane is set to, as the scan, the list and the candidate's
 /// state hold it: everything the pane shows of it but what it files under.
@@ -63,7 +64,7 @@ struct DraftRows {
 }
 
 /// One candidate, whole, with its standing and where the list places it.
-struct CandidateDetailRows {
+pub(super) struct CandidateDetailRows {
     head: HeadRows,
     stage: StageRows,
 }
@@ -76,9 +77,9 @@ enum StageRows {
 }
 
 impl HeadRows {
-    /// The candidate the pane's head read returned.
-    fn of(row: PaneHeadRow) -> Result<Self, DbError> {
-        let PaneHeadRow {
+    /// The candidate the pane's head returned.
+    fn of(row: PaneHeadRows) -> Result<Self, DbError> {
+        let PaneHeadRows {
             listed,
             scan,
             grouping,
@@ -134,8 +135,8 @@ impl HeadRows {
 }
 
 impl DraftRows {
-    /// The draft the pane's draft read returned.
-    fn of(row: PaneDraftRow) -> Result<Self, DbError> {
+    /// The draft the pane's draft returned.
+    fn of(row: PaneDraftRows) -> Result<Self, DbError> {
         let key = row
             .pane_key
             .ok_or_else(|| DbError::unreadable("the pane's draft read", None::<String>))?;
@@ -214,14 +215,23 @@ impl From<&Option<crate::CandidateKey>> for PaneDraftParams {
     }
 }
 
-/// What the two reads answered, as one candidate's rows; `None` when the key
-/// names no release the list lists.
-fn detail_rows(
+/// What the pane's two reads answered at its one key, as that candidate's
+/// rows; `None` when the key names no release the list lists.
+fn pane_rows(
     (head, draft): (Vec<PaneHeadRow>, Vec<PaneDraftRow>),
 ) -> Result<Option<CandidateDetailRows>, crate::ImportError> {
     let Some(head) = head.into_iter().next() else {
         return Ok(None);
     };
+    detail_rows(head.head, draft.into_iter().next().map(|row| row.draft)).map(Some)
+}
+
+/// One candidate's rows, from its head and its draft, which a candidate not
+/// imported here holds.
+pub(super) fn detail_rows(
+    head: PaneHeadRows,
+    draft: Option<PaneDraftRows>,
+) -> Result<CandidateDetailRows, crate::ImportError> {
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let imported = head.imported.clone();
@@ -231,16 +241,11 @@ fn detail_rows(
             let (release_id, album_id) = imported.release.into_ids();
             StageRows::Imported(ImportedRelease { release_id, album_id })
         }
-        None => StageRows::Drafting(Box::new(DraftRows::of(
-            draft.into_iter().next().ok_or_else(|| {
-                DbError::unreadable(
-                    "the draft rows of a candidate not imported here",
-                    None::<String>,
-                )
-            })?,
-        )?)),
+        None => StageRows::Drafting(Box::new(DraftRows::of(draft.ok_or_else(|| {
+            DbError::unreadable("the draft rows of a candidate not imported here", None::<String>)
+        })?)?)),
     };
-    Ok(Some(CandidateDetailRows { head, stage }))
+    Ok(CandidateDetailRows { head, stage })
 }
 
 impl CandidateDetailRows {
@@ -429,7 +434,7 @@ impl ImportTables {
             .subscribe_reconfigurable(initial, |key| {
                 Ok(coven::Both(PaneHeadParams::from(key), PaneDraftParams::from(key)))
             })
-            .process(|_, rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
+            .process(|_, rows| pane_rows(rows)?.map(CandidateDetailRows::process).transpose())
     }
 
     /// The mapping rows and album artists of the pane's draft read, once.
@@ -440,7 +445,7 @@ impl ImportTables {
     {
         let request = PaneDraftParams::from(&Some(key.clone()));
         let row = self.store.read_row(request).await?;
-        let draft = DraftRows::of(row)?;
+        let draft = DraftRows::of(row.draft)?;
         Ok((draft.mapping, draft.album_artists))
     }
 
@@ -476,11 +481,11 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 Ok((
-                    statement_rows(&sql, &PaneHeadParams::from(&key))?,
-                    statement_rows(&sql, &PaneDraftParams::from(&key))?,
+                    bae_store::statement_rows(&sql, &PaneHeadParams::from(&key))?,
+                    bae_store::statement_rows(&sql, &PaneDraftParams::from(&key))?,
                 ))
             })
-            .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
+            .process(|rows| pane_rows(rows)?.map(CandidateDetailRows::process).transpose())
             .await
     }
 }

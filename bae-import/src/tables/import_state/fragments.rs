@@ -120,6 +120,7 @@ coven::fragment!(
 
 coven::fragment!(
     DraftRows with candidate(content_hash TEXT) {
+        draft_hash: String,
         album_title: String,
         album_year: String,
         year: String,
@@ -139,8 +140,8 @@ coven::fragment!(
         draft_parts: String
     },
     r#"
-    WITH statement(album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts) AS (
-            SELECT album_title, album_year, year, country, region, media, status,
+    WITH statement(draft_hash, album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts) AS (
+            SELECT edit.content_hash, album_title, album_year, year, country, region, media, status,
                 packaging, discogs_details,(
             SELECT json_group_array(json_object('name', label.name, 'catalog_number',
                 label.catalog_number, 'musicbrainz_label_id', label.musicbrainz_label_id,
@@ -218,7 +219,7 @@ coven::fragment!(
             FROM candidate
         )
     )
-    SELECT album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts
+    SELECT draft_hash, album_title, album_year, year, country, region, media, status, packaging, discogs_details, labels, barcodes, album_assignments, mediums, tracks, release_roles, works, draft_parts
     FROM statement
 "#);
 
