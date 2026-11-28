@@ -15,13 +15,13 @@ coven::read!(
     JOIN @crate::tables::import_list::fragments::Listed(key: :key) AS listed ON 1
     LEFT JOIN @crate::tables::folder_scans::fragments::ScanItems(
         keys: (SELECT :key AS candidate_key)) AS scan ON 1
-    LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(key: :key)
+    LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(keys: (SELECT :key AS candidate_key))
         AS grouping ON 1
     LEFT JOIN @crate::tables::folder_scans::fragments::PaneFiles(
         keys: (SELECT :key AS candidate_key)) AS files ON 1
     LEFT JOIN @crate::tables::import_state::fragments::Standing(
         keys: (SELECT :key AS candidate_key)) AS standing ON 1
-    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
+    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(keys: (SELECT :key AS candidate_key))
         AS imported ON 1
     LEFT JOIN @crate::tables::import_state::state_fragments::CurrentState(
         owner: @crate::tables::import_state::current_owner::CurrentOwner(key: :key))
@@ -39,7 +39,7 @@ coven::read!(
     SELECT pane.key AS pane_key, draft.*, flags.*, failure.*, pane_failure.*, mapping.*,
            artist_field.*, claimed.*, status.*, album.*, cover.*, previewed.*
     FROM (SELECT :key AS key) AS pane
-    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
+    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(keys: (SELECT :key AS candidate_key))
         AS imported ON 1
     LEFT JOIN @crate::tables::import_state::fragments::DraftRows(
         candidate: (SELECT scan.content_hash

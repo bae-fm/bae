@@ -3,24 +3,27 @@
 //! skipped; and a candidate's entry with where it stands, which composes that
 //! with the scan's rows, the standing and the release imported from it.
 
+// Each scanned candidate of `keys`: whether a grouping took it in, why it
+// cannot be worked on, and whether it is skipped.
 coven::fragment!(
-    GroupingOfCandidate(key: crate::CandidateKey) {
+    GroupingOfCandidate with keys(candidate_key BLOB) {
         grouping_of_key: crate::CandidateKey,
         taken_in: bool,
         skipped: Option<bool>
     },
     r#"
-    SELECT :key AS grouping_of_key,
-           EXISTS (SELECT 1 FROM release_grouping_member WHERE member_key = :key) AS taken_in,
+    SELECT scan.candidate_key AS grouping_of_key,
+           EXISTS (SELECT 1 FROM release_grouping_member
+                   WHERE member_key = scan.candidate_key) AS taken_in,
            CASE WHEN scan.grouping_key IS NOT NULL THEN grouping.skipped
                 ELSE EXISTS (
                     SELECT 1
                     FROM @crate::tables::skipped_candidates::row_fragments::SkippedFolder AS aside
-                    WHERE aside.candidate_path = :key) END AS skipped,
+                    WHERE aside.candidate_path = scan.candidate_key) END AS skipped,
            grouping.blocked, grouping.blocked_subject, grouping.blocked_holder
     FROM @crate::tables::folder_scans::row_fragments::ScanGrouping AS scan
     LEFT JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key
-    WHERE scan.candidate_key = :key
+    WHERE scan.candidate_key IN (SELECT candidate_key FROM keys)
 "#);
 
 coven::fragment!(
@@ -29,11 +32,11 @@ coven::fragment!(
     SELECT scan.*, grouping.*, standing.*, imported.*
     FROM @crate::tables::folder_scans::fragments::ScanItems(
         keys: (SELECT :key AS candidate_key)) AS scan
-    LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(key: :key)
+    LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(keys: (SELECT :key AS candidate_key))
         AS grouping ON 1
     LEFT JOIN @crate::tables::import_state::fragments::Standing(
         keys: (SELECT :key AS candidate_key)) AS standing ON 1
-    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
+    LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(keys: (SELECT :key AS candidate_key))
         AS imported ON 1
 "#
 );
