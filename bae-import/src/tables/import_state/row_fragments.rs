@@ -48,7 +48,7 @@ coven::fragment!(
     FROM import_candidate_album_artist_assignment AS a
     WHERE a.content_hash = (
         SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
     )
     UNION ALL SELECT 1, t.track_id, a.position, a.assignment_kind,
         a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id,
@@ -58,7 +58,7 @@ coven::fragment!(
         a.track_id
     WHERE a.content_hash = (
         SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
     ) AND t.artist_assignment_kind = 'explicit'
 "#);
 
@@ -121,7 +121,7 @@ coven::fragment!(
     FROM import_candidate_track AS track
     WHERE track.content_hash = (
         SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
         LIMIT 1
     )
 "#
@@ -134,7 +134,7 @@ coven::fragment!(
     FROM import_candidate_medium AS medium
     WHERE medium.content_hash = (
         SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
         LIMIT 1
     )
 "#

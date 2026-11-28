@@ -55,8 +55,8 @@ coven::read!(
         SELECT file.relative_path AS id, file.file_name, file.absolute_path, file.size,
                file.modified_at_ns,
                ROW_NUMBER() OVER (ORDER BY file.position) - 1 AS n, COUNT(*) OVER () AS total
-        FROM @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key) AS file
-        WHERE file.role = 'artwork'
+        FROM @crate::tables::folder_scans::row_fragments::CandidateFiles AS file WHERE file.candidate_key = :key
+        AND file.role = 'artwork'
     ),
     focused AS (SELECT n FROM images ORDER BY id IS :focus DESC, n LIMIT 1)
     SELECT json_group_array(json_object('id', i.id, 'name', i.file_name,

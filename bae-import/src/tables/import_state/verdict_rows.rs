@@ -756,7 +756,7 @@ coven::read!(
     LEFT JOIN @crate::tables::import_state::verdict_rows::AnsweredFiles(files: (
         SELECT scanned.content_hash AS content_hash,
                scanned.file_edit_revision AS edit_revision
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scanned))
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scanned WHERE scanned.candidate_key = :key))
         AS answered ON 1
 "#
 );

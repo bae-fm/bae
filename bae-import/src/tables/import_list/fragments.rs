@@ -18,7 +18,7 @@ coven::fragment!(
            p.needs_you_reason, p.reason_pressings, p.error_detail,
            @crate::tables::import_list::row_fragments::ListedActions(parent: p) AS actions,
            (SELECT COUNT(*)
-            FROM @crate::tables::folder_scans::row_fragments::CandidatePartRows(key: :key) AS part)
+            FROM @crate::tables::folder_scans::row_fragments::CandidatePartRows AS part WHERE part.candidate_key = :key)
                AS part_count
     FROM import_list_placement AS p
     WHERE p.key = :key AND p.item = 'candidate'
@@ -36,12 +36,12 @@ coven::fragment!(
     WITH matched(draft_track_id, draft_unit_position) AS (
     SELECT t.track_id, u.position
     FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS t
-    LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS u ON
+    LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits AS u ON u.candidate_key = :key AND
         u.file_kind IS t.file_kind AND u.file_id IS t.file_id AND u.sheet_id IS t.sheet_id
         AND u.slice_index IS t.slice_index
     WHERE t.content_hash =(
         SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
         LIMIT 1
     )
     )
@@ -62,14 +62,14 @@ coven::fragment!(
     r#"
     WITH unit_reads(position, file_id) AS (
     SELECT whole.position, whole.file_id
-    FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS whole
+    FROM @crate::tables::folder_scans::row_fragments::CandidateUnits AS whole WHERE whole.candidate_key = :key
     UNION ALL
     SELECT gap.position, gap.pregap_file_id
-    FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS gap
-    WHERE gap.pregap_file_id IS NOT NULL
+    FROM @crate::tables::folder_scans::row_fragments::CandidateUnits AS gap WHERE gap.candidate_key = :key
+    AND gap.pregap_file_id IS NOT NULL
     ), folder_files(relative_path, position) AS (
     SELECT file.relative_path, file.position
-    FROM @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key) AS file
+    FROM @crate::tables::folder_scans::row_fragments::CandidateFiles AS file WHERE file.candidate_key = :key
     )
     SELECT relative_path, position
     FROM folder_files
@@ -100,11 +100,11 @@ coven::fragment!(
                 ) AS standing
             ), candidate AS (
             SELECT scan.content_hash
-            FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+            FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
             LIMIT 1
             ), f AS (
             SELECT listed.*
-            FROM @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key) AS listed
+            FROM @crate::tables::folder_scans::row_fragments::CandidateFiles AS listed WHERE listed.candidate_key = :key
             ), audio_json(relative_path, json) AS (
             SELECT relative_path, json_object('file_id', relative_path, 'name', file_name,
                 'path', hex(absolute_path))
@@ -139,10 +139,10 @@ coven::fragment!(
             JOIN place AS p ON p.track_id = t.track_id AND p.release_id = t.content_hash
                 LEFT JOIN @crate::tables::import_list::fragments::DraftUnits(key: :key) AS matched
                 ON matched.draft_track_id = t.track_id
-                LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits(key: :key) AS u ON
+                LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits AS u ON u.candidate_key = :key AND
                 u.position = matched.draft_unit_position
             LEFT JOIN audio_json AS a ON a.relative_path = u.file_id
-                LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateCueTracks(key: :key) AS ct ON
+                LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateCueTracks AS ct ON ct.candidate_key = :key AND
                 ct.sheet_relative_path = u.sheet_id AND ct.position = u.cue_track_position
                 WHERE t.content_hash =(
                 SELECT content_hash
@@ -159,8 +159,9 @@ coven::fragment!(
                 (ORDER BY position) AS run_no
             FROM marked
             ), refs(sheet, file_reference, seq) AS (
-            SELECT referenced.*
-            FROM @crate::tables::folder_scans::row_fragments::CandidateSheetReferences(key: :key) AS referenced
+            SELECT referenced.sheet, referenced.file_reference, referenced.seq
+            FROM @crate::tables::folder_scans::row_fragments::CandidateSheetReferences(
+                keys: (SELECT :key AS candidate_key)) AS referenced
             ), side_choice_rows AS (
             SELECT choice.*
             FROM @bae_records::records::place_fragments::SheetSideChoices(
@@ -176,18 +177,18 @@ coven::fragment!(
                     sa.audio_relative_path, 'options', json((
                 SELECT json_group_array(json_object('file_id', o.audio_relative_path, 'offer',
                     o.offer, 'codec', o.codec) ORDER BY fo.position)
-                FROM @crate::tables::folder_scans::row_fragments::CandidateSheetOffers(key: :key) AS o
+                FROM @crate::tables::folder_scans::row_fragments::CandidateSheetOffers AS o
                 JOIN f AS fo ON fo.relative_path = o.audio_relative_path
-                    WHERE o.sheet_relative_path = r.sheet AND
+                    WHERE o.candidate_key = :key AND o.sheet_relative_path = r.sheet AND
                     o.file_reference = r.file_reference
             )))
             FROM refs AS r
-                LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateSheetAudio(key: :key) AS sa ON
+                LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateSheetAudio AS sa ON sa.candidate_key = :key AND
                     sa.sheet_relative_path = r.sheet AND
                 sa.file_reference = r.file_reference
             ), sheet_audio_counts(sheet, count) AS (
             SELECT sheet_relative_path, COUNT(*)
-            FROM @crate::tables::folder_scans::row_fragments::CandidateSheetAudio(key: :key) AS counted
+            FROM @crate::tables::folder_scans::row_fragments::CandidateSheetAudio AS counted WHERE counted.candidate_key = :key
             GROUP BY sheet_relative_path
             ), sheets(relative_path, json) AS (
                 SELECT s.relative_path, json_object('sheet_id', s.relative_path, 'name',
@@ -195,9 +196,9 @@ coven::fragment!(
                     COALESCE(n.count, 0) WHEN 0 THEN json_object('binding', 'resolved_to_none')
                     WHEN 1 THEN json_object('binding', 'describes', 'audio', json((
                 SELECT a.json
-                FROM @crate::tables::folder_scans::row_fragments::CandidateSheetAudio(key: :key) AS sa
+                FROM @crate::tables::folder_scans::row_fragments::CandidateSheetAudio AS sa
                 JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
-                    WHERE sa.sheet_relative_path = s.relative_path
+                    WHERE sa.candidate_key = :key AND sa.sheet_relative_path = s.relative_path
                 ))) ELSE json_object('binding', 'describes_files', 'audio_count', n.count) END
                     WHEN 'unresolved' THEN json_object('binding', 'unresolved', 'requested',
                     json((
@@ -205,8 +206,8 @@ coven::fragment!(
                 FROM refs AS r
                     WHERE r.sheet = s.relative_path AND NOT EXISTS (
                     SELECT 1
-                    FROM @crate::tables::folder_scans::row_fragments::CandidateSheetAudio(key: :key) AS sa
-                        WHERE sa.sheet_relative_path = s.relative_path AND sa.file_reference = r.file_reference
+                    FROM @crate::tables::folder_scans::row_fragments::CandidateSheetAudio AS sa WHERE sa.candidate_key = :key
+                        AND sa.sheet_relative_path = s.relative_path AND sa.file_reference = r.file_reference
                 )
                 ))) WHEN 'refused_codec' THEN json_object('binding', 'refused_codec', 'codec',
                     s.sheet_binding_codec) ELSE json_object('binding', s.sheet_binding) END,
@@ -249,7 +250,11 @@ coven::fragment!(
                     side_ordinal, json_object('sheet', json((
                 SELECT json
                 FROM sheets
-                WHERE relative_path = n.sheet_id
+                -- IS, which matches the rows = does since no sheet's path
+                -- is NULL: coven reads an = from a row that a window
+                -- function computes as an edge it can't follow, and then
+                -- watches every folder's files rather than this one's.
+                WHERE relative_path IS n.sheet_id
                 )), 'rows', json_group_array(json_object('track', json(track_json), 'artists', json((
                 SELECT field
                 FROM artist_field
@@ -277,15 +282,13 @@ coven::fragment!(
                 listed: (SELECT f.relative_path,
                              f.relative_path IN (
                                  SELECT shown.relative_path
-                                 FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork(
-                                     key: :key) AS shown)
+                                 FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork AS shown WHERE shown.candidate_key = :key)
                          FROM f),
                 track_reads: (SELECT NULL, rows.sheet_id
                               FROM rows
                               UNION ALL
                               SELECT offered.file_id, NULL
-                              FROM @crate::tables::folder_scans::row_fragments::CandidateUnits(
-                                  key: :key) AS offered)) AS free
+                              FROM @crate::tables::folder_scans::row_fragments::CandidateUnits AS offered WHERE offered.candidate_key = :key)) AS free
             ), left_out(relative_path, position) AS (
             SELECT unread.relative_path, unread.position
             FROM @crate::tables::import_list::fragments::LeftOutAudio(key: :key) AS unread

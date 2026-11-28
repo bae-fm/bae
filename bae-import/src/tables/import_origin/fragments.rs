@@ -13,11 +13,12 @@ coven::fragment!(
     ImportedRelease(key: crate::CandidateKey) { imported_key: crate::CandidateKey },
     r#"
     SELECT :key AS imported_key, release.*
-    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan
     JOIN @crate::tables::import_origin::fragments::ReleaseOrigin AS origin
       ON origin.origin_hash = scan.content_hash
     JOIN @bae_records::records::fragments::ReleaseAlbum AS release
       ON release.release_id = origin.origin_release_id
+    WHERE scan.candidate_key = :key
 "#);
 
 impl ImportedRelease {

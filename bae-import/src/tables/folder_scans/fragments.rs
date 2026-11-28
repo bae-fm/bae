@@ -136,16 +136,20 @@ coven::fragment!(
         candidate.watched_folder_path AND invalid_tags.candidate_path = candidate.path
 "#);
 
+// Each candidate of `keys` with what the pane lists of its files, as one
+// document: its files and the ones a cover can be made from, its images, its
+// track count and a summary of its audio.
 coven::fragment!(
-    PaneFiles(key: crate::CandidateKey) {
+    PaneFiles with keys(candidate_key BLOB) {
         pane_files_key: crate::CandidateKey,
-        pane_files: String
+        pane_files: Option<String>
     },
     r#"
-    WITH candidate AS (
+    SELECT keys.candidate_key AS pane_files_key, (
+            WITH candidate AS (
             SELECT watched_folder_path, path
             FROM scan_candidate
-            WHERE path = :key
+            WHERE path = keys.candidate_key
             LIMIT 1
             ), f AS (
             SELECT file.*
@@ -170,8 +174,8 @@ coven::fragment!(
             ), entries AS (
             SELECT f.position, f.role, f.relative_path IN (
                 SELECT shown.relative_path
-                FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork(key: :key)
-                    AS shown) AS cover, json_object('name',
+                FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork AS shown
+                WHERE shown.candidate_key = keys.candidate_key) AS cover, json_object('name',
                 f.relative_path, 'size', f.size, 'file_name', f.file_name, 'path',
                 hex(f.absolute_path), 'modified_at_ns', f.modified_at_ns, 'role', f.role,
                 'content_type', f.audio_content_type, 'sample_rate_hz', f.audio_sample_rate_hz,
@@ -180,7 +184,7 @@ coven::fragment!(
                 f.role = 'track_sheet' THEN COALESCE(sheet_tracks.count, 0) END) AS json
             FROM f
             LEFT JOIN sheet_tracks ON sheet_tracks.relative_path = f.relative_path
-            ) SELECT :key AS pane_files_key, json_object('files', json((
+            ) SELECT json_object('files', json((
             SELECT json_group_array(json(json) ORDER BY position)
             FROM entries
             )), 'cover_files', json((
@@ -208,7 +212,8 @@ coven::fragment!(
                               FROM f
                               LEFT JOIN carved ON carved.relative_path = f.relative_path
                               WHERE f.role = 'audio')) AS summed
-            ))) AS pane_files
+            )))) AS pane_files
+    FROM keys
 "#);
 
 // What was read from the tags of each file of a stored file-tag snapshot, in

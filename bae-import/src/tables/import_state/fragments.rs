@@ -46,7 +46,7 @@ coven::fragment!(
                   AND listed.list IN ('disc_id', 'barcode')
                   AND listed.origin_path IS NOT NULL),
                '[]') AS file_evidence
-    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
 "#);
 
 coven::fragment!(
@@ -65,8 +65,7 @@ coven::fragment!(
             FROM import_candidate_release_link AS link
             WHERE link.content_hash = (
                       SELECT scan.content_hash
-                      FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
-                          AS scan)
+                      FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
               AND link.kind = 'pressing')) AS found)
     SELECT :key AS picked_status_key, release_id AS picked_status_release_id,
            albums AS picked_status_albums
@@ -88,8 +87,7 @@ coven::fragment!(
         LEFT JOIN @crate::tables::import_state::album_pick_rows::AlbumPickRow AS pick
                ON pick.pick_hash = (
                    SELECT scan.content_hash
-                   FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
-                       AS scan)),
+                   FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)),
     choice(kind, album_id) AS (
         SELECT pick.pick, pick.album_id FROM pick WHERE pick.pick <> 'records'
         UNION ALL
@@ -105,8 +103,7 @@ coven::fragment!(
                 FROM import_candidate_claimed_record AS claimed
                 WHERE claimed.content_hash = (
                     SELECT scan.content_hash
-                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key)
-                        AS scan))) AS given),
+                    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key))) AS given),
             excluding: (SELECT NULL WHERE 0)) AS named
         JOIN pick ON pick.pick = 'records')
     SELECT :key AS candidate_album_key, COALESCE(choice.kind, 'none') AS candidate_album_kind,
@@ -233,7 +230,7 @@ coven::fragment!(
         FROM import_candidate_edit
             WHERE content_hash =(
                 SELECT scan.content_hash
-                FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
+                FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
     )
     SELECT :key AS draft_flags_key, draft_blank, draft_valid
     FROM statement
@@ -251,7 +248,7 @@ coven::fragment!(
         FROM import_candidate_failure failure
             WHERE failure.content_hash =(
                 SELECT scan.content_hash
-                FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
+                FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
     )
     SELECT :key AS failure_key, failure_error, failed_at
     FROM statement
@@ -270,7 +267,7 @@ coven::fragment!(
         FROM import_candidate_pane_failure
             WHERE content_hash =(
                 SELECT scan.content_hash
-                FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
+                FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
     )
     SELECT :key AS pane_failure_key, pane_failure_command, pane_failure_category, pane_failure_detail
     FROM statement
@@ -293,7 +290,7 @@ coven::fragment!(
             FROM import_candidate_claimed_record AS claimed
                 WHERE claimed.content_hash =(
                     SELECT scan.content_hash
-                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan)
+                    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
         ) ELSE '[]' END
     ) AS claimed_records
 "#);
@@ -328,18 +325,15 @@ coven::fragment!(
             cover_snapshot.embedded_cover_source_relative_path AS cover_embedded_source,
             cover_tags.file_size AS cover_embedded_size, cover_tags.modified_at_ns AS
             cover_embedded_modified, cover_source.absolute_path AS cover_embedded_path
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS c
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS c
         JOIN import_candidate_cover AS cover ON cover.content_hash = c.content_hash
-        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key)
-            AS cover_local ON cover.kind = 'local' AND cover_local.relative_path = cover.file_id
-        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateTagSnapshot(key: :key)
-            AS cover_snapshot ON cover.kind = 'embedded'
-        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFileTags(key: :key)
-            AS cover_tags ON cover_snapshot.candidate_path IS NOT NULL AND
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFiles AS cover_local ON cover_local.candidate_key = :key AND cover.kind = 'local' AND cover_local.relative_path = cover.file_id
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateTagSnapshot AS cover_snapshot ON cover_snapshot.candidate_key = :key AND cover.kind = 'embedded'
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFileTags AS cover_tags ON cover_tags.candidate_key = :key AND cover_snapshot.candidate_key IS NOT NULL AND
             cover_tags.relative_path = cover.file_id
-        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFiles(key: :key)
-            AS cover_source ON cover_snapshot.candidate_path IS NOT NULL AND
+        LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateFiles AS cover_source ON cover_source.candidate_key = :key AND cover_snapshot.candidate_key IS NOT NULL AND
             cover_source.relative_path = cover.file_id
+        WHERE c.candidate_key = :key
         LIMIT 1
     )
     SELECT :key AS cover_choice_key, cover_row, cover_kind, cover_file_id, cover_url, cover_source, cover_copies, cover_local_path, cover_local_size, cover_local_modified, cover_embedded_source, cover_embedded_size, cover_embedded_modified, cover_embedded_path

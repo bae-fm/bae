@@ -52,7 +52,7 @@ coven::read!(
     r#"
     WITH scanned AS (
         SELECT scan.*
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan
+        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
         LIMIT 1
     ),
     linked AS (
@@ -101,8 +101,8 @@ coven::read!(
                json_object('kind', 'folder_file', 'id', file.relative_path,
                            'path', hex(file.absolute_path), 'size', file.size,
                            'modified_at_ns', file.modified_at_ns)
-        FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork(key: :key) AS file
-        WHERE :filter IN ('all', 'release_files')
+        FROM @crate::tables::folder_scans::row_fragments::ShowableArtwork AS file WHERE file.candidate_key = :key
+        AND :filter IN ('all', 'release_files')
     )
     SELECT (SELECT fetched_covers.linked FROM fetched_covers) AS fetched, walk.*
     FROM @crate::tables::cover_gallery::walk::PickerWalk(

@@ -18,8 +18,9 @@ coven::fragment!(
                     FROM @crate::tables::skipped_candidates::row_fragments::SkippedFolder AS aside
                     WHERE aside.candidate_path = :key) END AS skipped,
            grouping.blocked, grouping.blocked_subject, grouping.blocked_holder
-    FROM @crate::tables::folder_scans::row_fragments::ScanGrouping(key: :key) AS scan
+    FROM @crate::tables::folder_scans::row_fragments::ScanGrouping AS scan
     LEFT JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key
+    WHERE scan.candidate_key = :key
 "#);
 
 coven::fragment!(

@@ -105,11 +105,12 @@ impl HeadRows {
         .ok_or_else(unlisted)?;
         let actionable = entry.actionable();
         let files = files
+            .and_then(|files| files.pane_files)
             .ok_or_else(|| DbError::unreadable(format!("the files of {key}"), None::<String>))?;
         let (current, cards) = import_state::current_state_and_cards_of(state, cards)?;
         Ok(Self {
             candidate: entry.candidate,
-            files: pane_files::pane_files_of_json(&files.pane_files)?,
+            files: pane_files::pane_files_of_json(&files)?,
             part_count,
             source_error: entry.block,
             actionable,

@@ -17,7 +17,8 @@ coven::read!(
         keys: (SELECT :key AS candidate_key)) AS scan ON 1
     LEFT JOIN @crate::tables::release_groupings::fragments::GroupingOfCandidate(key: :key)
         AS grouping ON 1
-    LEFT JOIN @crate::tables::folder_scans::fragments::PaneFiles(key: :key) AS files ON 1
+    LEFT JOIN @crate::tables::folder_scans::fragments::PaneFiles(
+        keys: (SELECT :key AS candidate_key)) AS files ON 1
     LEFT JOIN @crate::tables::import_state::fragments::Standing(
         keys: (SELECT :key AS candidate_key)) AS standing ON 1
     LEFT JOIN @crate::tables::import_origin::fragments::ImportedRelease(key: :key)
@@ -42,7 +43,7 @@ coven::read!(
         AS imported ON 1
     LEFT JOIN @crate::tables::import_state::fragments::DraftRows(
         candidate: (SELECT scan.content_hash
-                    FROM @crate::tables::folder_scans::row_fragments::ScanContent(key: :key) AS scan))
+                    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key))
         AS draft ON imported.imported_key IS NULL
     LEFT JOIN @crate::tables::import_state::fragments::DraftFlags(key: :key) AS flags
         ON imported.imported_key IS NULL
