@@ -331,8 +331,21 @@ coven::fragment!(
         position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
     ), excluding(release_id TEXT) { album_id: String },
     r#"
+    SELECT named.album_id
+    FROM @crate::records::fragments::AlbumRecordsNames(
+        records: (SELECT NULL, position, catalog, kind, key, album_key FROM records),
+        excluding: (SELECT release_id FROM excluding)) AS named
+"#);
+
+// [`AlbumRecordsName`] for each owner of `records`: the album that owner's
+// records name, one row for each owner whose records name one.
+coven::fragment!(
+    AlbumRecordsNames with records(
+        owner BLOB, position INTEGER, catalog TEXT, kind TEXT, key TEXT, album_key TEXT
+    ), excluding(release_id TEXT) { owner: Option<Vec<u8>>, album_id: String },
+    r#"
     WITH refs AS (
-        SELECT position,
+        SELECT owner, position,
                CASE WHEN kind = 'pressing' THEN catalog END AS pressing_catalog,
                CASE WHEN kind = 'pressing' THEN key END AS pressing_key,
                CASE WHEN kind = 'album' OR album_key IS NOT NULL THEN catalog END
@@ -343,26 +356,30 @@ coven::fragment!(
         SELECT *,
                CASE WHEN album_catalog IN ('musicbrainz', 'discogs')
                     THEN bae_album_id(album_catalog, album_key) END AS own
-        FROM refs)
-    SELECT a.id AS album_id
-    FROM (
-        SELECT o.position, o.own, r.album_id, 0 AS match_rank FROM owned AS o
-        JOIN release_records AS rr
-          ON rr.catalog = o.pressing_catalog AND rr.kind = 'pressing'
-         AND rr.key = o.pressing_key
-        JOIN releases AS r ON r.id = rr.release_id
-        WHERE rr.release_id NOT IN (SELECT excluding.release_id FROM excluding)
-        UNION ALL
-        SELECT o.position, o.own, r.album_id, 1 AS match_rank FROM owned AS o
-        JOIN release_records AS rr
-          ON rr.catalog = o.album_catalog
-         AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = o.album_key
-        JOIN releases AS r ON r.id = rr.release_id
-        WHERE rr.release_id NOT IN (SELECT excluding.release_id FROM excluding)
-    ) AS named
-    JOIN albums AS a ON a.id = named.album_id
-    ORDER BY named.position, named.match_rank, a.id IS named.own DESC, a.created_at, a.id
-    LIMIT 1
+        FROM refs),
+    ranked AS (
+        SELECT named.owner, a.id AS album_id,
+               row_number() OVER (
+                   PARTITION BY named.owner
+                   ORDER BY named.position, named.match_rank, a.id IS named.own DESC,
+                            a.created_at, a.id) AS rank
+        FROM (
+            SELECT o.owner, o.position, o.own, r.album_id, 0 AS match_rank FROM owned AS o
+            JOIN release_records AS rr
+              ON rr.catalog = o.pressing_catalog AND rr.kind = 'pressing'
+             AND rr.key = o.pressing_key
+            JOIN releases AS r ON r.id = rr.release_id
+            WHERE rr.release_id NOT IN (SELECT excluding.release_id FROM excluding)
+            UNION ALL
+            SELECT o.owner, o.position, o.own, r.album_id, 1 AS match_rank FROM owned AS o
+            JOIN release_records AS rr
+              ON rr.catalog = o.album_catalog
+             AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = o.album_key
+            JOIN releases AS r ON r.id = rr.release_id
+            WHERE rr.release_id NOT IN (SELECT excluding.release_id FROM excluding)
+        ) AS named
+        JOIN albums AS a ON a.id = named.album_id)
+    SELECT ranked.owner, ranked.album_id FROM ranked WHERE ranked.rank = 1
 "#);
 
 // The album's primary release: its lowest-ordered release, ties broken by
