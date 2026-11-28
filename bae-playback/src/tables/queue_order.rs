@@ -360,8 +360,17 @@ fn move_entry_on(
             (to - 1, Some((from + 1, to - 1, -1)))
         }
     };
-    let cursors = queue_row_on(sql)?.cursors;
-    if let Some(cursor) = cursors.as_ref().and_then(|cursors| order.cursor(cursors)) {
+    // A context lane that holds the moved entry has a playing row.
+    let cursor = match order {
+        LaneOrder::UpNext => None,
+        LaneOrder::Ordered | LaneOrder::Shuffled => {
+            let cursors = queue_row_on(sql)?.cursors.ok_or_else(|| {
+                DbError::unreadable("the cursors of a context lane holding an entry", "NULL")
+            })?;
+            order.cursor(&cursors)
+        }
+    };
+    if let Some(cursor) = cursor {
         let moved_cursor = if cursor == from {
             landing
         } else {
