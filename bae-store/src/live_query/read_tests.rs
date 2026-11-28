@@ -11,6 +11,9 @@ struct Held {
     release: mpsc::Sender<()>,
 }
 
+/// Reads of nothing, for a query whose answer is its request.
+type NoReads = coven::Maybe<coven::CovenRead<(), ()>>;
+
 /// A query answering each request with the request itself, whose read for
 /// `held` waits until [`Held::release`] lets it finish.
 fn holding<Request: LiveRequest>(
@@ -21,13 +24,15 @@ fn holding<Request: LiveRequest>(
     let (started_tx, started) = tokio::sync::mpsc::unbounded_channel();
     let (release, released) = mpsc::channel();
     let released = Mutex::new(released);
-    let query = store.subscribe_reconfigurable(initial, move |request: &Request, _read| {
-        if *request == held {
-            started_tx.send(()).expect("the test waits for the held read");
-            released.lock().unwrap().recv().expect("the test lets the held read go");
-        }
-        Ok(request.clone())
-    });
+    let query = store
+        .subscribe_reconfigurable(initial, move |request: &Request| {
+            if *request == held {
+                started_tx.send(()).expect("the test waits for the held read");
+                released.lock().unwrap().recv().expect("the test lets the held read go");
+            }
+            Ok::<NoReads, crate::DbError>(coven::Maybe(None))
+        })
+        .process(|request, _| Ok(request.clone()));
     (
         CancellableLiveQuery::new(
             query,
@@ -84,9 +89,10 @@ async fn a_read_for_a_replaced_id_is_passed_over() {
 async fn a_read_whose_query_ended_takes_a_new_request_and_reads_nothing() {
     let (store, _tmp) = crate::test_fixtures::temp_db(Schema::new(&[])).await;
     let query = store
-        .subscribe_reconfigurable(None::<String>, |request: &Option<String>, _read| {
-            Ok::<_, crate::DbError>(request.clone())
-        });
+        .subscribe_reconfigurable(None::<String>, |_: &Option<String>| {
+            Ok::<NoReads, crate::DbError>(coven::Maybe(None))
+        })
+        .process(|request, _| Ok(request.clone()));
     let read = LiveRead::new(
         CancellableLiveQuery::new(
             query,

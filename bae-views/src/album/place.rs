@@ -4,7 +4,7 @@
 //! and to scroll a revealed album's card into view. A shift-click reads the
 //! albums of the cards between two cards.
 
-use super::listing::{album_ids_between_on, album_place_on};
+use super::listing::{album_ids_between_on, album_place_read};
 use super::order::AlbumOrder;
 use super::*;
 
@@ -22,8 +22,9 @@ impl LibraryViews {
         section: Option<&str>,
     ) -> coven::LiveQuery<Option<AlbumPlace>, DbError> {
         let order = AlbumOrder::new(sort, group_by_artist);
-        let (album_id, section) = (album_id.to_string(), section.map(str::to_string));
-        self.store.subscribe(move |sql| album_place_on(&sql, &order, &album_id, section.as_deref()))
+        self.store
+            .subscribe(album_place_read(&order, album_id, section))
+            .process(bae_store::at_most_one::<coven::ReadAs<AlbumPlace>, _>)
     }
 
     /// The albums of the grid's cards from the card `from` to the card `to`,

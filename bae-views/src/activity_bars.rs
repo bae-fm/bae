@@ -110,20 +110,33 @@ sqlive_compose::read!(
 "#
 );
 
-/// Every transfer line's bar as the tables give it.
-pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRows, DbError> {
-    let TransferBarsRow { uploads, pins, moves } = bae_store::statement_row(
-        sql,
-        &TransferBarsParams {
-            pins: DownloadKind::Pin.key().to_string(),
-            moving_to_this_device: DownloadKind::MoveToThisDevice.key().to_string(),
-        },
-    )?;
-    Ok(ActivityBarRows {
+/// The read of every transfer line's bar.
+fn activity_bars_read() -> TransferBarsParams {
+    TransferBarsParams {
+        pins: DownloadKind::Pin.key().to_string(),
+        moving_to_this_device: DownloadKind::MoveToThisDevice.key().to_string(),
+    }
+}
+
+/// Every transfer line's bar from the row of [`activity_bars_read`].
+fn activity_bars_of(TransferBarsRow { uploads, pins, moves }: TransferBarsRow) -> ActivityBarRows {
+    ActivityBarRows {
         uploads: BatchBar { done: uploads.upload_done, moving: uploads.upload_moving },
         pins: pins.into_bar(),
         moving_to_this_device: moves.into_bar(),
-    })
+    }
+}
+
+/// Every transfer line's bar as the tables give it.
+pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRows, DbError> {
+    Ok(activity_bars_of(bae_store::statement_row(sql, &activity_bars_read())?))
+}
+
+/// Follow every transfer line's bar.
+pub fn subscribe_activity_bars(
+    store: &bae_store::Store,
+) -> coven::LiveQuery<ActivityBarRows, DbError> {
+    store.subscribe_row(activity_bars_read()).process(|row| Ok(activity_bars_of(row)))
 }
 
 impl DownloadBar {

@@ -2643,6 +2643,12 @@ and why the form can't be saved, when it can't. *Save* writes the form;
 is open: how each credit stands to the library, the album's title and credits,
 and the cover show what the library holds after any write that changes them,
 including a write that merges an artist or renames the album, with no edit.
+One live query reads the draft with two composed statements in one snapshot,
+because SQLite refuses to prepare it as one statement. One statement reads the
+release as the editor shows it, the album's artist field, whether a track the
+save deletes has kept data, the files a save reads first and the release's
+files. The other reads the album a save files the release under, beside the
+form's tracks.
 Applying a catalog release to the form reads it once, against the release's
 stored track lengths and its files, and replaces every value the release holds:
 the album fields, the pressing, each track's title, artists, medium, side and

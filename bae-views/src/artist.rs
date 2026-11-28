@@ -3,15 +3,17 @@
 //! Its tables and the triggers keeping them are `artist.sql`.
 
 use super::*;
-use crate::album::{artist_albums_on, AlbumAppearanceRow};
+use crate::album::AlbumAppearanceRow;
 use crate::album_detail::{AlbumAppearance, ArtistDetail};
 use bae_records::records::files::ArtistImageVersion;
-use bae_store::statement_optional;
 
 mod list;
 pub(crate) use list::{
-    artist_key_at_on, artist_list_length_on, artist_sort, artist_window_on, artists_before_on,
+    artist_key_at_on, artist_sort, artist_window_of, artist_window_read, artists_before_read,
+    ArtistListLengthParams,
 };
+#[cfg(test)]
+pub(crate) use list::{artist_window_on, artists_before_on};
 
 impl LibraryViews {
     /// Follow one window of the artist list under `sort`: the rows from a key
@@ -23,16 +25,16 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbArtistSummary>, bae_store::DbError>
     {
         let sort = artist_sort(sort);
-        self.store.subscribe_reconfigurable(initial, move |window, sql| {
-            artist_window_on(&sql, &sort, window)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |window| artist_window_read(&sort, window))
+            .process(artist_window_of)
     }
 
     /// Follow how many artists the list has. The count runs as a separate
     /// query from the windows, because every artist added or removed changes
     /// it.
     pub fn subscribe_artist_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
-        self.store.subscribe(|sql| artist_list_length_on(&sql))
+        self.store.subscribe_row(ArtistListLengthParams {}).process(|row| list_count(row.entries))
     }
 
     /// Follow how many artists come before the row at a key; the caller
@@ -44,7 +46,8 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let sort = artist_sort(sort);
         self.store
-            .subscribe_reconfigurable(initial, move |key, sql| artists_before_on(&sql, &sort, key))
+            .subscribe_reconfigurable(initial, move |key| artists_before_read(&sort, key))
+            .process(|_, entries| list_count(exactly_one::<coven::ReadAs<i64>, _>(entries)?))
     }
 
     /// The key of the artist at `position`, or of the last one when the list
@@ -66,13 +69,11 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |artist_id, sql| {
-                artist_id
-                    .as_deref()
-                    .map(|artist_id| find_artist_detail_on(&sql, artist_id))
-                    .transpose()
+            .subscribe_reconfigurable(initial, |artist_id| {
+                Ok(coven::Maybe(artist_id.as_deref().map(artist_detail_read)))
             })
-            .process(|rows| {
+            .process(|_, reads| {
+                let rows = reads.map(artist_detail_rows_of).transpose()?;
                 let detail = rows.map(ArtistDetailRows::process).transpose()?.flatten();
                 Ok(ArtistDetailProjection { detail })
             })
@@ -101,16 +102,24 @@ fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
     }
 }
 
-/// What [`ArtistPageHead`] and the artist's albums read of the artist
-/// `artist_id`, in one snapshot.
-fn find_artist_detail_on(
-    sql: &SqlReadContext<'_>,
+/// The reads of [`ArtistPageHead`] and the artist's albums of the artist
+/// `artist_id`, which run on one snapshot.
+fn artist_detail_read(
     artist_id: &str,
+) -> coven::Both<ArtistPageHeadParams, crate::album::ArtistAlbumsParams> {
+    coven::Both(
+        ArtistPageHeadParams { artist: artist_id.to_string() },
+        crate::album::ArtistAlbumsParams { artist: artist_id.to_string() },
+    )
+}
+
+/// The artist's rows as [`artist_detail_read`] returned them.
+fn artist_detail_rows_of(
+    (head, albums): (Vec<ArtistPageHeadRow>, Vec<crate::album::ArtistAlbumsRow>),
 ) -> Result<ArtistDetailRows, DbError> {
-    let statement = ArtistPageHeadParams { artist: artist_id.to_string() };
     Ok(ArtistDetailRows {
-        head: statement_optional(sql, &statement)?,
-        albums: artist_albums_on(sql, artist_id)?,
+        head: at_most_one::<ArtistPageHeadParams, _>(head)?,
+        albums: crate::album::artist_albums_of(albums)?,
     })
 }
 

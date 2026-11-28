@@ -21,7 +21,8 @@ pub(crate) async fn listed_artists(
 
 /// How many artists the artist list holds.
 pub(crate) async fn artist_count(db: &Store) -> u64 {
-    db.read(|sql| crate::artist::artist_list_length_on(&sql)).await.unwrap()
+    let length = db.read_row(crate::artist::ArtistListLengthParams {}).await.unwrap();
+    crate::list_count(length.entries).unwrap()
 }
 
 /// The artist `artist_id`'s page, as its view first reads it; `None` when

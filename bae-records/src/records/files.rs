@@ -471,13 +471,11 @@ sqlive_compose::read!(
 "#
 );
 
-/// [`ReleaseFilesKeptRead`] of `release_id`, by release file id.
-fn release_files_kept_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
-    let params = ReleaseFilesKeptReadParams { release: release_id.to_string() };
-    Ok(bae_store::statement_rows(sql, &params)?.into_iter().map(|row| (row.id, row.kept)).collect())
+/// The rows of [`ReleaseFilesKeptRead`], by release file id.
+fn release_files_kept_of(
+    rows: Vec<ReleaseFilesKeptReadRow>,
+) -> std::collections::BTreeMap<String, bool> {
+    rows.into_iter().map(|row| (row.id, row.kept)).collect()
 }
 
 impl Records {
@@ -487,8 +485,8 @@ impl Records {
         &self,
         release_id: &str,
     ) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
-        let release_id = release_id.to_string();
-        self.store.read(move |sql| release_files_kept_on(&sql, &release_id)).await
+        let statement = ReleaseFilesKeptReadParams { release: release_id.to_string() };
+        Ok(release_files_kept_of(self.store.read_rows(statement).await?))
     }
 
     /// Whether this device keeps each of the release's files whole, live: it
@@ -497,7 +495,7 @@ impl Records {
         &self,
         release_id: &str,
     ) -> coven::LiveQuery<std::collections::BTreeMap<String, bool>, DbError> {
-        let release_id = release_id.to_string();
-        self.store.subscribe(move |sql| release_files_kept_on(&sql, &release_id))
+        let statement = ReleaseFilesKeptReadParams { release: release_id.to_string() };
+        self.store.subscribe(statement).process(|rows| Ok(release_files_kept_of(rows)))
     }
 }

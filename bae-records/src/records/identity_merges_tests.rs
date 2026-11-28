@@ -447,13 +447,18 @@ async fn a_releases_labels_do_not_rerun_for_a_write_to_another_label() {
     use bae_store::test_fixtures::live_query::next_run_is_only_the_request;
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     crate::test_fixtures::labels::write(&db, vec![label(Some("Label Name"), None)]).await.unwrap();
-    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> =
-        db.subscribe_reconfigurable(0_u8, |_, sql| {
-            Ok(sql.query_row(
-                &format!("SELECT {}", crate::records::pressing_columns::release_labels_sql("?1")),
-                [crate::test_fixtures::labels::RELEASE],
-                |row| row.get::<_, String>(0),
-            )?)
+    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> = db
+        .subscribe_reconfigurable(0_u8, |_| {
+            Ok(crate::records::test_capabilities::ShownLabelsParams {
+                release: crate::test_fixtures::labels::RELEASE.to_string(),
+            })
+        })
+        .process(|_, rows| {
+            Ok(bae_store::exactly_one::<crate::records::test_capabilities::ShownLabelsParams, _>(
+                rows,
+            )?
+            .labels
+            .labels)
         });
     let shown = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert!(shown.contains("Label Name"), "{shown}");

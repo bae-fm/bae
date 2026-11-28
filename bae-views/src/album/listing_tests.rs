@@ -815,7 +815,10 @@ async fn every_grid_sorts_window_from_the_top_holds_its_first_rows() {
                 crate::tests::assert_top_is_first_rows(
                     &format!("{criteria:?}, grouped {group_by_artist}"),
                     || crate::album::album_key_at_on(&sql, &order, 0),
-                    |window| crate::album::album_window_on(&sql, &order, window),
+                    |window| {
+                        let rows = sql.reads(&crate::album::album_window_read(&order, window)?)?;
+                        crate::album::album_window_of(window, rows, group_by_artist)
+                    },
                 )?;
             }
         }

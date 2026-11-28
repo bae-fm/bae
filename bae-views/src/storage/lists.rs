@@ -13,7 +13,7 @@ use super::top_reads::*;
 use super::window_reads::*;
 use super::*;
 use bae_store::list_windows::sql_bound;
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::statement_optional;
 
 /// The key a row of a read with the columns `key_0` on says it is at.
 macro_rules! key_of {
@@ -22,28 +22,25 @@ macro_rules! key_of {
     };
 }
 
-/// A window's rows from the rows its read returns, each with its key.
+/// The read of a window's rows, each with its key.
 macro_rules! keyed_rows {
-    ($sql:ident, $statement:expr, $($column:ident),+) => {
-        statement_rows($sql, &$statement)?
-            .into_iter()
-            .map(|row| {
-                let key = key_of!(row, $($column),+);
-                Ok((row.shown.into_parts()?, key))
-            })
-            .collect::<Result<Vec<_>, DbError>>()?
+    ($statement:expr, $($column:ident),+) => {
+        coven::ReadAs::new($statement, |row| (key_of!(row, $($column),+), row.shown))
     };
 }
 
-/// The list's rows in `window`, each with its key. A window from the top
-/// reads from the order's first row, and one from a key from the key's row.
-pub(crate) fn storage_window_on(
-    sql: &SqlReadContext<'_>,
+/// A row of the list's window: its key and the row as read.
+pub(crate) type StorageWindowRow = (OrderKey, super::row::StorageListRow);
+
+/// The read of the list's rows in `window`, each with its key. A window from
+/// the top reads from the order's first row, and one from a key from the
+/// key's row.
+pub(crate) fn storage_window_read(
     list: &StorageList,
     window: &ListWindow,
-) -> Result<WindowRead<StorageRowParts>, DbError> {
+) -> Result<coven::ReadAs<StorageWindowRow>, DbError> {
     let limit = sql_bound(window.limit);
-    let rows = match (&list.scope, &window.from) {
+    Ok(match (&list.scope, &window.from) {
         (StorageScope::Found { pattern, stored }, None) => {
             let statement = FoundTopParams {
                 sort: list.lead.code().to_string(),
@@ -51,7 +48,7 @@ pub(crate) fn storage_window_on(
                 stored: *stored,
                 limit,
             };
-            keyed_rows!(sql, statement, key_0, key_1, key_2, key_3, key_4)
+            keyed_rows!(statement, key_0, key_1, key_2, key_3, key_4)
         }
         (StorageScope::Found { pattern, stored }, Some(from)) => {
             let [key_0, key_1, key_2, key_3, key_4] = StorageList::values_of(from)?;
@@ -66,12 +63,12 @@ pub(crate) fn storage_window_on(
                 key_3,
                 key_4,
             };
-            keyed_rows!(sql, statement, key_0, key_1, key_2, key_3, key_4)
+            keyed_rows!(statement, key_0, key_1, key_2, key_3, key_4)
         }
         (StorageScope::All, None) => {
             macro_rules! top {
                 ($params:ident) => {
-                    keyed_rows!(sql, $params { limit }, key_0, key_1, key_2, key_3)
+                    keyed_rows!($params { limit }, key_0, key_1, key_2, key_3)
                 };
             }
             match list.lead {
@@ -95,7 +92,7 @@ pub(crate) fn storage_window_on(
             let stored = *stored;
             macro_rules! top {
                 ($params:ident) => {
-                    keyed_rows!(sql, $params { stored, limit }, key_0, key_1, key_2, key_3)
+                    keyed_rows!($params { stored, limit }, key_0, key_1, key_2, key_3)
                 };
             }
             match list.lead {
@@ -120,7 +117,6 @@ pub(crate) fn storage_window_on(
             macro_rules! from_key {
                 ($params:ident) => {
                     keyed_rows!(
-                        sql,
                         $params { limit, key_0, key_1, key_2, key_3 },
                         key_0,
                         key_1,
@@ -152,7 +148,6 @@ pub(crate) fn storage_window_on(
             macro_rules! from_key {
                 ($params:ident) => {
                     keyed_rows!(
-                        sql,
                         $params { stored, limit, key_0, key_1, key_2, key_3 },
                         key_0,
                         key_1,
@@ -178,21 +173,41 @@ pub(crate) fn storage_window_on(
                 StorageLead::AddedBack => from_key!(KeptWindowAddedBackParams),
             }
         }
-    };
+    })
+}
+
+/// The window `window` of the list from the rows its read returned.
+pub(crate) fn storage_window_of(
+    window: &ListWindow,
+    rows: Vec<StorageWindowRow>,
+) -> Result<WindowRead<StorageRowParts>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(key, shown)| Ok((shown.into_parts()?, key)))
+        .collect::<Result<Vec<_>, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 
-/// How many rows of the list come before the row at `key`.
-pub(crate) fn storage_rows_before_on(
+/// The list's rows in `window`, each with its key.
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) fn storage_window_on(
     sql: &SqlReadContext<'_>,
     list: &StorageList,
+    window: &ListWindow,
+) -> Result<WindowRead<StorageRowParts>, DbError> {
+    storage_window_of(window, sql.reads(&storage_window_read(list, window)?)?)
+}
+
+/// The read of how many rows of the list come before the row at `key`.
+pub(crate) fn storage_rows_before_read(
+    list: &StorageList,
     key: &OrderKey,
-) -> Result<u64, DbError> {
+) -> Result<coven::ReadAs<u64>, DbError> {
     macro_rules! before {
         ($params:ident { $($field:ident: $value:expr)? }) => {{
             let [key_0, key_1, key_2, key_3] = StorageList::values_of(key)?;
-            statement_row(sql, &$params { $($field: $value,)? key_0, key_1, key_2, key_3 })?
-                .rows_before
+            let statement = $params { $($field: $value,)? key_0, key_1, key_2, key_3 };
+            coven::ReadAs::new(statement, |row| row.rows_before)
         }};
     }
     Ok(match &list.scope {
@@ -208,7 +223,7 @@ pub(crate) fn storage_rows_before_on(
                 key_3,
                 key_4,
             };
-            statement_row(sql, &statement)?.rows_before
+            coven::ReadAs::new(statement, |row| row.rows_before)
         }
         StorageScope::All => match list.lead {
             StorageLead::Title => before!(AllBeforeTitleParams {}),
@@ -243,6 +258,18 @@ pub(crate) fn storage_rows_before_on(
             StorageLead::AddedBack => before!(KeptBeforeAddedBackParams { stored: *stored }),
         },
     })
+}
+
+/// How many rows of the list come before the row at `key`.
+#[cfg(test)]
+pub(crate) fn storage_rows_before_on(
+    sql: &SqlReadContext<'_>,
+    list: &StorageList,
+    key: &OrderKey,
+) -> Result<u64, DbError> {
+    bae_store::exactly_one::<coven::ReadAs<u64>, _>(
+        sql.reads(&storage_rows_before_read(list, key)?)?,
+    )
 }
 
 /// The key of the row at `position` of the list, or of its last row when it

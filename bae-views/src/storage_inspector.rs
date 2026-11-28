@@ -4,7 +4,8 @@
 
 use super::*;
 use crate::album_detail::{FileDetail, ReleaseUpload};
-use bae_store::{statement_optional, statement_rows};
+use bae_records::records::release_with_files::ReleaseFileByIdParams;
+use bae_store::at_most_one;
 pub use bae_sync_status::FileProblem;
 use bae_sync_status::PendingWait;
 use bae_transfers::{DownloadKind, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
@@ -332,30 +333,28 @@ sqlive_compose::read!(
 
 /// What [`InspectedRelease`] and [`InspectedFiles`] read of the release
 /// `release_id`, in one snapshot.
-#[derive(Clone, PartialEq)]
 struct InspectorRows {
     release_id: String,
-    release: Option<InspectedReleaseRow>,
+    release: Vec<InspectedReleaseRow>,
     files: Vec<InspectedFilesRow>,
 }
 
-fn storage_inspector_on(
-    sql: &SqlReadContext<'_>,
+/// The reads of the release `release_id` as the inspector shows it.
+fn storage_inspector_read(
     release_id: &str,
-) -> Result<InspectorRows, DbError> {
+) -> coven::Both<InspectedReleaseParams, InspectedFilesParams> {
     let release = release_id.to_string();
-    Ok(InspectorRows {
-        release_id: release.clone(),
-        release: statement_optional(sql, &InspectedReleaseParams { release: release.clone() })?,
-        files: statement_rows(sql, &InspectedFilesParams { release })?,
-    })
+    coven::Both(
+        InspectedReleaseParams { release: release.clone() },
+        InspectedFilesParams { release },
+    )
 }
 
 impl InspectorRows {
     /// The release as the inspector's rows hold it; `None` when the library
     /// holds no such release.
     fn process(self) -> Result<Option<crate::DbStorageInspector>, DbError> {
-        let Some(row) = self.release else {
+        let Some(row) = at_most_one::<InspectedReleaseParams, _>(self.release)? else {
             return Ok(None);
         };
         let file_count = row.storage.file_count();
@@ -423,15 +422,15 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<StorageInspector>, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |release_id, sql| {
-                release_id
-                    .as_deref()
-                    .map(|release_id| storage_inspector_on(&sql, release_id))
-                    .transpose()
+            .subscribe_reconfigurable(initial, |release_id| {
+                Ok(coven::Maybe(release_id.as_deref().map(storage_inspector_read)))
             })
-            .process(|rows| {
-                let rows = rows.map(InspectorRows::process).transpose()?.flatten();
-                Ok(rows.map(StorageInspector::read))
+            .process(|release_id, rows| {
+                let (Some(release_id), Some((release, files))) = (release_id, rows) else {
+                    return Ok(None);
+                };
+                let rows = InspectorRows { release_id: release_id.clone(), release, files };
+                Ok(rows.process()?.map(StorageInspector::read))
             })
     }
 
@@ -445,12 +444,16 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<FileDetail>, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |file_id, sql| match file_id {
-                Some(file_id) => {
-                    bae_records::records::release_with_files::release_file_on(&sql, file_id)
-                }
-                None => Ok(None),
+            .subscribe_reconfigurable(initial, |file_id| {
+                Ok(coven::Maybe(file_id.clone().map(|file| ReleaseFileByIdParams { file })))
             })
-            .process(|file| Ok(file.map(FileDetail::from_raw)))
+            .process(|_, rows| {
+                let Some(row) =
+                    rows.map(at_most_one::<ReleaseFileByIdParams, _>).transpose()?.flatten()
+                else {
+                    return Ok(None);
+                };
+                Ok(Some(FileDetail::from_raw(row.record.into_file()?)))
+            })
     }
 }

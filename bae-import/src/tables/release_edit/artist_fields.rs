@@ -5,9 +5,6 @@
 //! artists each credit could be, and spreads the standing fragment that the
 //! import pane spreads for a draft's credits.
 
-use super::*;
-use crate::tables::import_list::artist_field_of_json;
-
 // The artist fields of a form whose album artists and explicit tracks'
 // artists are the JSON arrays `album_artists` (`part` 0) and `track_artists`
 // (`part` 1, each field with its track's id), each field with how it stands to
@@ -93,30 +90,3 @@ sqlive_compose::fragment!(
     LEFT JOIN own ON standing.part = 1 AND own.track_id = standing.track_id
 "#
 );
-
-// The album's artist field: no row when the album has no artist.
-sqlive_compose::read!(
-    writer FormAlbumArtistField(album_artists: String, track_artists: String),
-    r#"
-    SELECT album.*
-    FROM @crate::tables::release_edit::artist_fields::FormArtistFields(
-        album_artists: :album_artists, track_artists: :track_artists) AS album
-    WHERE album.part = 0
-"#
-);
-
-/// The album's artist field of the form whose album artists and explicit
-/// tracks' artists are the JSON arrays `album_artists` and `track_artists`,
-/// with how it stands to the library; `None` when the album has none.
-pub(super) fn album_artist_field_on(
-    sql: &impl bae_store::WriterRead,
-    album_artists: &str,
-    track_artists: &str,
-) -> Result<Option<crate::ArtistField>, DbError> {
-    let request = FormAlbumArtistFieldParams {
-        album_artists: album_artists.to_string(),
-        track_artists: track_artists.to_string(),
-    };
-    // The album has at most one artist field.
-    statement_optional(sql, &request)?.map(|row| artist_field_of_json(&row.album.field)).transpose()
-}

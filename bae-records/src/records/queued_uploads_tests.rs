@@ -2,9 +2,10 @@
 //! files by index, one release's files at a time, not by reading the queue.
 
 use crate::records::queued_uploads::{
-    RELEASE_FILE_QUEUED, RELEASE_HAS_QUEUED_FILE, RELEASE_QUEUED_FILE_COUNT,
+    ReleaseHasQueuedFileParams, RELEASE_FILE_QUEUED, RELEASE_QUEUED_FILE_COUNT,
 };
 use bae_store::Store;
+use sqlive_compose::Read;
 
 async fn plan(store: &Store, statement: &'static str) -> Vec<String> {
     store
@@ -21,7 +22,8 @@ async fn plan(store: &Store, statement: &'static str) -> Vec<String> {
 #[tokio::test]
 async fn a_releases_queued_files_are_found_by_its_files() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    for statement in [RELEASE_QUEUED_FILE_COUNT, RELEASE_HAS_QUEUED_FILE, RELEASE_FILE_QUEUED] {
+    let has_queued = ReleaseHasQueuedFileParams::compiled().sql;
+    for statement in [RELEASE_QUEUED_FILE_COUNT, has_queued, RELEASE_FILE_QUEUED] {
         let plan = plan(&db, statement).await;
         assert!(
             plan.iter().any(|step| step.starts_with("SEARCH") && step.contains("(file=?)")),

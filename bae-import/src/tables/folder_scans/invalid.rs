@@ -193,7 +193,15 @@ pub(crate) fn load_invalid_row(
     key: &CandidateKey,
 ) -> Result<Option<InvalidRow>, DbError> {
     let request = InvalidScanParams { key: key.clone() };
-    let Some(row) = bae_store::statement_optional(sql, &request)? else {
+    invalid_row_of(key, bae_store::statement_optional(sql, &request)?)
+}
+
+/// The folder that failed validation stored at `key`, from its scan row.
+fn invalid_row_of(
+    key: &CandidateKey,
+    row: Option<InvalidScanRow>,
+) -> Result<Option<InvalidRow>, DbError> {
+    let Some(row) = row else {
         return Ok(None);
     };
     let scan = row.listed;
@@ -218,14 +226,15 @@ pub(crate) fn load_invalid_row(
     columns.row(key.clone(), scan.listed_name, path_column::decode(scan.listed_root)?).map(Some)
 }
 
-// The files but the images of the folder that failed validation stored at
-// `key`, each with whether the preview player holds the whole of it, which is
+// The files of the folder that failed validation stored at `key`, in name
+// order, each with whether the preview player holds the whole of it, which is
 // the stretch an audio file of this pane plays.
 sqlive_compose::read!(
     writer SkippedPaneFiles(key: CandidateKey) {
         relative_path: String,
         absolute_path: Vec<u8>,
         size: i64,
+        modified_at_ns: i64,
         role: String,
         audio_damage: Option<String>,
         audio_bits: Option<i64>,
@@ -233,8 +242,8 @@ sqlive_compose::read!(
         previewing: bool
     },
     r#"
-    SELECT f.relative_path, f.absolute_path, f.size, f.role, f.audio_damage, f.audio_bits,
-           f.document_kind,
+    SELECT f.relative_path, f.absolute_path, f.size, f.modified_at_ns, f.role, f.audio_damage,
+           f.audio_bits, f.document_kind,
            previewed.previewed_state IS NOT NULL AS previewing
     FROM scan_candidate AS c
     JOIN scan_skipped_file AS f
@@ -243,85 +252,66 @@ sqlive_compose::read!(
         ON previewed.previewed_path = f.absolute_path
        AND previewed.previewed_start_sample = 0
        AND previewed.previewed_end_sample IS NULL
-    WHERE c.path = :key AND c.kind = 'invalid' AND f.role <> 'artwork'
+    WHERE c.path = :key AND c.kind = 'invalid'
     ORDER BY f.position
 "#
 );
 
-/// The files of the folder that failed validation stored at the key bound
-/// as `?1`, joined as `f`, for a statement that adds which roles it keeps.
-const INVALID_FILES: &str = "FROM scan_candidate AS c \
-     JOIN scan_skipped_file AS f \
-       ON f.watched_folder_path = c.watched_folder_path AND f.candidate_path = c.path \
-     WHERE c.path = ?1 AND c.kind = 'invalid'";
-
-/// The folder that failed validation stored at `key`, as the pane looking
-/// into it reads it: its row, the images that decode, and every other file,
-/// each in name order. Each statement reads by the key the request names, and
-/// SQL keeps each part's files by their role; `None` when no folder that
-/// failed validation is stored there.
-pub(crate) fn load_invalid_detail(
-    sql: &impl bae_store::WriterRead,
+/// The reads of the folder that failed validation stored at `key`, as the
+/// pane looking into it reads it: its scan row and its files. Each statement
+/// reads by the key the request names; `None` when no folder that failed
+/// validation is stored there.
+pub(crate) fn invalid_detail_read(
     key: &CandidateKey,
+) -> coven::Both<InvalidScanParams, SkippedPaneFilesParams> {
+    coven::Both(InvalidScanParams { key: key.clone() }, SkippedPaneFilesParams { key: key.clone() })
+}
+
+/// The folder that failed validation stored at `key` as its reads return
+/// it: its row, the images that decode, and every other file, each in name
+/// order.
+pub(crate) fn invalid_detail_of(
+    key: &CandidateKey,
+    (scan, files): (Vec<InvalidScanRow>, Vec<SkippedPaneFilesRow>),
 ) -> Result<Option<InvalidCandidateDetail>, DbError> {
-    let row = load_invalid_row(sql, key)?;
-    let images = sql.query(
-        &format!(
-            "SELECT f.relative_path, f.absolute_path, f.size, f.modified_at_ns {INVALID_FILES} \
-               AND f.role = 'artwork' \
-             ORDER BY f.position"
-        ),
-        [key],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                path_column::get(row, 1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, i64>(3)?,
-            ))
-        },
-    )?;
-    let files = bae_store::statement_rows(sql, &SkippedPaneFilesParams { key: key.clone() })?;
-    let Some(candidate) = row else {
+    let row = bae_store::at_most_one::<InvalidScanParams, _>(scan)?;
+    let Some(candidate) = invalid_row_of(key, row)? else {
         return Ok(None);
     };
-    let images = images
-        .into_iter()
-        .map(|(relative_path, path, size, modified_at_ns)| {
-            Ok(MappingImage {
-                name: file_name(&relative_path).to_string(),
-                file_id: relative_path,
+    let mut images = Vec::new();
+    let mut listed = Vec::new();
+    for file in files {
+        let path = path_column::decode(file.absolute_path)?;
+        if file.role == "artwork" {
+            images.push(MappingImage {
+                name: file_name(&file.relative_path).to_string(),
+                file_id: file.relative_path,
                 file: FileVersion {
                     path,
-                    size: to_u64(size, "a skipped image's size")?,
-                    modified_at_ns,
+                    size: to_u64(file.size, "a skipped image's size")?,
+                    modified_at_ns: file.modified_at_ns,
                 },
-            })
-        })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    let files = files
-        .into_iter()
-        .map(|file| {
-            let role = mapping_role(proposed_role_of(
-                &file.role,
-                file.audio_damage.as_deref(),
-                file.audio_bits,
-                file.document_kind.as_deref(),
-            )?);
-            let path = path_column::decode(file.absolute_path)?;
-            Ok(MappingFile {
-                file_id: file.relative_path.clone(),
-                name: file.relative_path,
-                size: to_u64(file.size, "a skipped file's size")?,
-                audition: (role == MappingRole::Audio).then(|| crate::FileAudition {
-                    target: bae_track_audio::PreviewTarget::whole_file(path),
-                    previewing: file.previewing,
-                }),
-                role,
-            })
-        })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(Some(InvalidCandidateDetail { candidate, images, files }))
+            });
+            continue;
+        }
+        let role = mapping_role(proposed_role_of(
+            &file.role,
+            file.audio_damage.as_deref(),
+            file.audio_bits,
+            file.document_kind.as_deref(),
+        )?);
+        listed.push(MappingFile {
+            file_id: file.relative_path.clone(),
+            name: file.relative_path,
+            size: to_u64(file.size, "a skipped file's size")?,
+            audition: (role == MappingRole::Audio).then(|| crate::FileAudition {
+                target: bae_track_audio::PreviewTarget::whole_file(path),
+                previewing: file.previewing,
+            }),
+            role,
+        });
+    }
+    Ok(Some(InvalidCandidateDetail { candidate, images, files: listed }))
 }
 
 /// What the pane lists a skipped file as. bae never imports a skipped folder,

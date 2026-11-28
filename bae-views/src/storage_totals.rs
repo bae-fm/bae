@@ -3,7 +3,6 @@
 //! storage rows, and its reads.
 
 use super::*;
-use bae_store::statement_row;
 
 // How many releases the library holds and their files' total size, from the
 // stored totals' two rows.
@@ -26,23 +25,29 @@ sqlive_compose::read!(
 "#
 );
 
-/// How many releases hold the `stored` value `stored` (every release with
-/// `None`) and their files' total size, as the stored totals hold them.
-pub(crate) fn storage_totals_on(
-    sql: &SqlReadContext<'_>,
-    stored: Option<i64>,
-) -> Result<(u64, u64), DbError> {
+/// The count and total size a stored totals read returns, each `None` where
+/// the stored totals hold no row to sum.
+pub(crate) type StoredTotals = (Option<u64>, Option<u64>);
+
+/// The read of how many releases hold the `stored` value `stored` (every
+/// release with `None`) and their files' total size, as the stored totals
+/// hold them.
+pub(crate) fn storage_totals_read(stored: Option<i64>) -> coven::ReadAs<StoredTotals> {
     match stored {
-        Some(stored) => {
-            let row = statement_row(sql, &KeptStorageTotalsParams { stored })?;
-            Ok((row.release_count, row.total_size))
-        }
+        Some(stored) => coven::ReadAs::new(KeptStorageTotalsParams { stored }, |row| {
+            (Some(row.release_count), Some(row.total_size))
+        }),
         None => {
-            let row = statement_row(sql, &AllStorageTotalsParams {})?;
-            let missing = || DbError::unreadable("the stored totals", None::<String>);
-            Ok((row.release_count.ok_or_else(missing)?, row.total_size.ok_or_else(missing)?))
+            coven::ReadAs::new(AllStorageTotalsParams {}, |row| (row.release_count, row.total_size))
         }
     }
+}
+
+/// The count and total size from the one row a stored totals read returned.
+pub(crate) fn storage_totals_of(rows: Vec<StoredTotals>) -> Result<(u64, u64), DbError> {
+    let (count, size) = bae_store::exactly_one::<coven::ReadAs<StoredTotals>, _>(rows)?;
+    let missing = || DbError::unreadable("the stored totals", None::<String>);
+    Ok((count.ok_or_else(missing)?, size.ok_or_else(missing)?))
 }
 
 #[cfg(test)]

@@ -7,7 +7,7 @@ use std::pin::Pin;
 /// carried bug reported as [`crate::Store`] reports every call's.
 #[must_use = "reads do not execute until awaited"]
 pub struct StoreRead<'a, F> {
-    read: coven::Read<'a, F>,
+    read: coven::PendingRead<'a, F>,
     /// The store's bug sink, which hears a bug the read carries back.
     bugs: &'a dyn coven::task::BugSink,
 }
@@ -17,7 +17,7 @@ where
     F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, DbError> + Send + 'static,
     R: Send + 'static,
 {
-    pub(crate) fn new(read: coven::Read<'a, F>, bugs: &'a dyn coven::task::BugSink) -> Self {
+    pub(crate) fn new(read: coven::PendingRead<'a, F>, bugs: &'a dyn coven::task::BugSink) -> Self {
         Self { read, bugs }
     }
 

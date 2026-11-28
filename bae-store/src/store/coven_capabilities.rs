@@ -79,7 +79,7 @@ impl Store {
     pub fn subscribe_coven_sync_status(
         &self,
     ) -> coven::LiveQuery<coven::SyncStatus, coven::CovenError> {
-        self.inner.handle.subscribe(|sql| Ok(coven::SyncStatus::read(sql)?))
+        self.inner.handle.subscribe(coven::SyncStatus::live())
     }
 
     /// One read of the store, failing with the closure's own error.

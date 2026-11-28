@@ -3,7 +3,6 @@
 
 use super::*;
 use crate::UploadProgress;
-use bae_store::statement_row;
 
 /// How many of the release `?1`'s files wait in this device's upload queue.
 #[cfg(any(test, feature = "test-utils"))]
@@ -11,12 +10,17 @@ pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release
      JOIN coven_uploads AS upload ON upload.file = f.file \
      WHERE f.release_id = ?1";
 
-/// Whether any of the release `?1`'s files waits in this device's upload
-/// queue.
+// Whether any of the release `:release`'s files waits in this device's upload
+// queue.
 #[cfg(any(test, feature = "test-utils"))]
-pub(super) const RELEASE_HAS_QUEUED_FILE: &str = "SELECT EXISTS (SELECT 1 FROM release_files AS f \
-     JOIN coven_uploads AS upload ON upload.file = f.file \
-     WHERE f.release_id = ?1)";
+sqlive_compose::read!(
+    writer ReleaseHasQueuedFile(release: String) { queued: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM release_files AS f
+                   JOIN coven_uploads AS upload ON upload.file = f.file
+                   WHERE f.release_id = :release) AS queued
+"#
+);
 
 /// Whether the release file `?1` waits in this device's upload queue.
 #[cfg(any(test, feature = "test-utils"))]
@@ -153,8 +157,7 @@ sqlive_compose::read!(
 );
 
 /// What this process is sending now, as [`SendingUploads`] reads it.
-fn sending_uploads_on(sql: &impl bae_store::WriterRead) -> Result<DbSendingUploads, DbError> {
-    let row = statement_row(sql, &SendingUploadsParams {})?;
+fn sending_uploads_of(row: SendingUploadsRow) -> Result<DbSendingUploads, DbError> {
     Ok(DbSendingUploads { files: row.files, releases: row.releases, paused: row.paused })
 }
 
@@ -178,13 +181,8 @@ impl Records {
     /// device.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(RELEASE_HAS_QUEUED_FILE, [release_id], |row| row.get(0))
-                    .map_err(DbError::from)
-            })
-            .await
+        let statement = ReleaseHasQueuedFileParams { release: release_id.to_string() };
+        Ok(self.store.read_row(statement).await?.queued)
     }
 
     /// [`Self::has_pending_uploads_for_release`], live: it reruns as the
@@ -194,10 +192,8 @@ impl Records {
         &self,
         release_id: &str,
     ) -> coven::LiveQuery<bool, DbError> {
-        let release_id = release_id.to_string();
-        self.store.subscribe(move |sql| {
-            Ok(sql.query_row(RELEASE_HAS_QUEUED_FILE, [&release_id], |row| row.get(0))?)
-        })
+        let statement = ReleaseHasQueuedFileParams { release: release_id.to_string() };
+        self.store.subscribe_row(statement).process(|row| Ok(row.queued))
     }
 
     /// The files this process is sending now and the releases they belong
@@ -205,7 +201,7 @@ impl Records {
     /// stop being sent or the person pauses uploads. How far each file has
     /// got is coven's upload watch.
     pub fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads, DbError> {
-        self.store.subscribe(|sql| sending_uploads_on(&sql))
+        self.store.subscribe_row(SendingUploadsParams {}).process(sending_uploads_of)
     }
 
     /// Whether a release file's coven file still waits to upload from this

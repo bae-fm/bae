@@ -13,7 +13,7 @@ use super::{
     ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
 };
-use bae_store::{statement_row, DbError, Store, WriteStatements};
+use bae_store::{exactly_one, statement_row, DbError, Store, WriteStatements};
 use coven::CovenWrite;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use std::path::PathBuf;
@@ -277,7 +277,11 @@ pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
 /// screens read them.
 pub async fn config(store: &Store, library_path: PathBuf) -> Result<Config, DbError> {
     let store_id = store.store_id();
-    store.read(move |sql| config_on(&sql, store_id, library_path)).await
+    store
+        .read(move |sql| {
+            config_of(statement_row(&sql, &SettingsReadParams {})?, store_id, library_path)
+        })
+        .await
 }
 
 /// Follow [`config`]: the first value at once, then one after each write
@@ -287,16 +291,18 @@ pub fn subscribe_config(
     library_path: PathBuf,
 ) -> coven::LiveQuery<Config, bae_store::DbError> {
     let store_id = store.store_id();
-    store.subscribe(move |sql| config_on(&sql, store_id, library_path.clone()))
+    store
+        .subscribe_row(SettingsReadParams {})
+        .process(move |row| config_of(row, store_id, library_path.clone()))
 }
 
-fn config_on(
-    sql: &impl bae_store::WriterRead,
+/// The library's config as its settings row holds it.
+fn config_of(
+    row: SettingsReadRow,
     store_id: coven::StoreId,
     library_path: PathBuf,
 ) -> Result<Config, DbError> {
-    let SettingsReadRow { preferences, last_saved, recorded } =
-        statement_row(sql, &SettingsReadParams {})?;
+    let SettingsReadRow { preferences, last_saved, recorded } = row;
     let storage_access =
         coven::MemberAccess::from_columns(recorded.account, recorded.access_key_id)
             .map_err(|error| DbError::unreadable("this person's access to storage", error))?;
@@ -316,7 +322,7 @@ fn config_on(
 /// Follow this device's preferences: the first value at once, then one
 /// after each write that changes them.
 pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, bae_store::DbError> {
-    store.subscribe(|sql| preferences_on(&sql))
+    store.subscribe_row(PreferencesReadParams {}).process(|row| preferences_of(row.preferences))
 }
 
 /// Follow the save preset `id`: the first value at once, then one after each
@@ -325,10 +331,7 @@ pub fn subscribe_save_preset(
     store: &Store,
     id: String,
 ) -> coven::LiveQuery<Option<SavePreset>, bae_store::DbError> {
-    store.subscribe(move |sql| {
-        let request = SavePresetReadParams { id: id.clone() };
-        one_save_preset(statement_row(&sql, &request)?.presets)
-    })
+    store.subscribe_row(SavePresetReadParams { id }).process(|row| one_save_preset(row.presets))
 }
 
 /// One save format as a save panel's menu lists it, with whether the panel
@@ -349,20 +352,23 @@ pub fn subscribe_save_choice(
     store: &Store,
     selected: String,
 ) -> coven::ReconfigurableLiveQuery<String, Vec<SaveChoiceRow>, bae_store::DbError> {
-    store.subscribe_reconfigurable(selected, |selected, sql| {
-        let request = SaveChoiceReadParams { selected: selected.clone() };
-        let row = statement_row(&sql, &request)?;
-        row.presets
-            .every
-            .save_presets
-            .into_iter()
-            .map(|columns| {
-                let preset = save_preset_of(columns)?;
-                let chosen = row.chosen_id.as_deref() == Some(preset.id.as_str());
-                Ok(SaveChoiceRow { preset, chosen })
-            })
-            .collect()
-    })
+    store
+        .subscribe_reconfigurable(selected, |selected| {
+            Ok(SaveChoiceReadParams { selected: selected.clone() })
+        })
+        .process(|_, rows| {
+            let row = exactly_one::<SaveChoiceReadParams, _>(rows)?;
+            row.presets
+                .every
+                .save_presets
+                .into_iter()
+                .map(|columns| {
+                    let preset = save_preset_of(columns)?;
+                    let chosen = row.chosen_id.as_deref() == Some(preset.id.as_str());
+                    Ok(SaveChoiceRow { preset, chosen })
+                })
+                .collect()
+        })
 }
 
 /// The owner of the `preferences` row: the one place it is written, one

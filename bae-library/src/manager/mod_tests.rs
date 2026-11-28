@@ -255,9 +255,10 @@ pub(super) async fn listed_queues(manager: &LibraryManager) -> bae_views::Storag
         .unwrap()
 }
 
-/// Wait for the current file's upload to leave coven's durable queue.
-pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
-    let mut queued = manager.records.subscribe_row_file_queued_for_test(table, row_id);
+/// Wait for the upload of the release `release_id`'s cover to leave coven's
+/// durable queue.
+pub(super) async fn wait_for_published_cover(manager: &LibraryManager, release_id: &str) {
+    let mut queued = manager.records.subscribe_cover_queued_for_test(release_id);
     manager.store.sync_now();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while queued.next_inline().await.expect("the query stays open").unwrap() {}
@@ -641,13 +642,12 @@ pub(super) async fn pending_records_until(
     manager: &LibraryManager,
     matches: impl Fn(&[coven::PendingRecord]) -> bool,
 ) -> Vec<coven::PendingRecord> {
-    let mut records = manager.store.results(manager.store.subscribe(|sql| {
-        Ok(sql.query("SELECT record, cause FROM coven_pending ORDER BY position", [], |row| {
-            let mut record: coven::PendingRecord = row.get(0)?;
-            record.cause = row.get(1)?;
-            Ok(record)
-        })?)
-    }));
+    let pending = coven::ReadAs::new(super::PendingRecordsInOrderParams {}, |row| {
+        let mut record = row.record;
+        record.cause = row.cause;
+        record
+    });
+    let mut records = manager.store.results(manager.store.subscribe(pending));
     crate::followed::value_matching(&mut records, |listed| matches(listed)).await
 }
 

@@ -99,7 +99,7 @@ pub struct Finished(());
 /// the read saw the network in between. A failed read answers too: the
 /// worker's own read reports it. Never once the store has closed.
 async fn network_changed_from(store: &Store, seen: Option<bool>) {
-    let mut usable = store.results(store.subscribe(|sql| rows::network_usable_on(&sql)));
+    let mut usable = store.results(rows::subscribe_network_usable(store));
     match usable.next().await {
         Some(Ok(now)) if now == seen => {}
         Some(_) => return,
@@ -342,7 +342,7 @@ where
     pub fn subscribe(
         &self,
     ) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>, bae_store::DbError> {
-        self.store.subscribe(|sql| tables::release_queue_on::<Extra>(&sql))
+        Extra::subscribe_queue(&self.store)
     }
 
     fn register(&self, release_id: &str, abort: tokio::task::AbortHandle, progress: Progress) {
@@ -581,15 +581,17 @@ where
         bae_store::WindowRead<crate::DownloadRow>,
         bae_store::DbError,
     > {
-        self.store.subscribe_reconfigurable(initial, |window, sql| {
-            download_list::download_window_on(&sql, window)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, download_list::download_window_read)
+            .process(download_list::download_window_of)
     }
 
     /// Follow how many entries the downloads list has, apart from its
     /// windows' rows.
     pub fn subscribe_row_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
-        self.store.subscribe(|sql| download_list::download_list_length_on(&sql))
+        self.store
+            .subscribe_row(download_list::DownloadListLengthParams {})
+            .process(|row| Ok(row.entries))
     }
 
     /// Follow how many entries come before the entry at `initial`; the
@@ -599,9 +601,11 @@ where
         initial: bae_store::list_windows::OrderKey,
     ) -> coven::ReconfigurableLiveQuery<bae_store::list_windows::OrderKey, u64, bae_store::DbError>
     {
-        self.store.subscribe_reconfigurable(initial, |key, sql| {
-            download_list::downloads_before_on(&sql, key)
-        })
+        self.store.subscribe_reconfigurable(initial, download_list::downloads_before_read).process(
+            |_, rows| {
+                Ok(bae_store::exactly_one::<download_list::DownloadsBeforeParams, _>(rows)?.entries)
+            },
+        )
     }
 
     /// The key of the entry at `position`, or of the last one when the list
@@ -616,7 +620,7 @@ where
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused.
     pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, bae_store::DbError> {
-        self.store.subscribe(|sql| rows::download_counts_on(&sql))
+        rows::subscribe_download_counts(&self.store)
     }
 
     /// Queue to pin, in the order given, each of `release_ids` not wholly

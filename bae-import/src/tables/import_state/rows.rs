@@ -61,15 +61,17 @@ sqlive_compose::read!(
 "#
 );
 
-/// Every stored candidate row, or the one `only` names, assembled with the
-/// verdict, signals, provenance, and file-decision rows that share its
-/// content hash.
+/// Every candidate as a read of every state returned it, by content hash.
 #[cfg(test)]
-pub(crate) fn load_states_on(
-    sql: &impl bae_store::WriterRead,
-    only: CandidateRows<'_>,
+pub(crate) fn every_state_of(
+    rows: Vec<EveryStateRow>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-    load_states_rows_on(sql, only)?()
+    rows.into_iter()
+        .map(|row| {
+            let state = full_state_of(row.state, row.lines)?;
+            Ok((state.content_hash.clone(), state))
+        })
+        .collect()
 }
 
 /// The candidates `only` names in one read: each state row with the

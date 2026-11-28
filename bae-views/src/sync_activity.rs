@@ -175,23 +175,24 @@ sqlive_compose::fragment!(
 );
 
 // The transfer lines' batches, beside what holds the upload queue back and
-// the download queue's counts: one row.
+// the download queue's counts and the sync status: one row.
 sqlive_compose::read!(
     writer TransferLines,
     r#"
-    SELECT uploads.*, downloads.*, held.*, queue.*
+    SELECT uploads.*, downloads.*, held.*, queue.*, current.*
     FROM @crate::sync_activity::UploadBatchCounts AS uploads
     JOIN @crate::sync_activity::DownloadBatchCounts AS downloads ON 1
     JOIN @bae_records::records::queued_uploads::UploadQueueHeld AS held ON 1
     JOIN @bae_transfers::queue_counts::StoredDownloadCounts AS queue ON 1
+    JOIN @bae_sync_status::sync_status::fragments::CurrentSyncStatus AS current ON 1
 "#
 );
 
 /// The activity as one read sees it: the transfer lines' batches and queues,
 /// and the sync status the activity takes its failure and state from.
-fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae_store::DbError> {
-    let TransferLinesRow { uploads, downloads, held, queue } =
-        bae_store::statement_row(sql, &TransferLinesParams {})?;
+fn sync_activity_of(
+    TransferLinesRow { uploads, downloads, held, queue, current }: TransferLinesRow,
+) -> Result<SyncActivity, bae_store::DbError> {
     let upload_counts = UploadQueueCounts {
         batch: TransferBatch { done: uploads.upload_done, total: uploads.upload_total },
         sending: uploads.uploads_sending,
@@ -205,7 +206,7 @@ fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae
         },
         queue: queue.into_counts(),
     };
-    let status = bae_sync_status::sync_status_on(sql)?;
+    let status = current.into_snapshot()?;
     Ok(SyncActivity::new(&status, &upload_counts, &download_counts))
 }
 
@@ -218,6 +219,7 @@ impl LibraryViews {
     ) -> bae_store::live_results::LiveResults<
         coven::LiveQuery<crate::SyncActivity, bae_store::DbError>,
     > {
-        self.store.results(self.store.subscribe(|sql| sync_activity_on(&sql)))
+        self.store
+            .results(self.store.subscribe_row(TransferLinesParams {}).process(sync_activity_of))
     }
 }

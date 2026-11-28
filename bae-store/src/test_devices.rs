@@ -161,12 +161,17 @@ pub fn store_under(handle: coven::CovenHandle, clock: coven::ClockRef) -> Store 
 fn pass_ends(
     store: &Store,
 ) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>), crate::DbError> {
-    store.subscribe(|sql| {
-        Ok(sql.query_row("SELECT last_pass, last_synced FROM coven_sync_status", [], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })?)
-    })
+    store.subscribe_row(PassEndParams {}).process(|end| Ok((end.last_pass, end.last_synced)))
 }
+
+// How the device's last sync pass ended, and when sync last finished.
+sqlive_compose::read!(
+    writer PassEnd { last_pass: Option<coven::LastPass> },
+    r#"
+    SELECT status.last_pass AS last_pass, status.last_synced AS last_synced
+    FROM coven_sync_status AS status
+"#
+);
 
 /// Stop the device's sync loop: the pass running ends first, and once this
 /// returns no pass or upload runs until sync starts again.

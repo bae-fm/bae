@@ -4,11 +4,11 @@ use crate::candidate_runtime::{
     IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::folder_scanner::CandidateFileEdits;
-use crate::tables::import_state::standing_rows::{StandingColumns, COLUMNS};
+use crate::tables::import_state::standing_rows::StandingColumns;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
-use crate::tables::{HashMap, ImportTables, SqlReadContext};
+use crate::tables::{HashMap, ImportTables};
 use crate::triage::TriageRuntimeFacts;
 use crate::CandidateKey;
 use crate::IdentifyRunId;
@@ -716,20 +716,16 @@ async fn removing_a_watched_folder_ends_its_candidates_identification_and_keeps_
 
 /// Where every candidate something is running for stands, by key. A key with
 /// no entry has nothing running.
-pub(crate) fn load_standings_on(
-    sql: &SqlReadContext<'_>,
+fn standings_of(
+    rows: Vec<super::EveryStandingRow>,
 ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
-    sql.query(
-        &format!("SELECT candidate_key, {COLUMNS} FROM import_candidate_standing"),
-        [],
-        |row| Ok((row.get::<_, CandidateKey>(0)?, StandingColumns::read(row, 1)?)),
-    )?
-    .into_iter()
-    .map(|(key, columns)| {
-        let standing = columns.standing(&key)?;
-        Ok((key, standing))
-    })
-    .collect()
+    rows.into_iter()
+        .map(|row| {
+            let key = row.standing.standing_key.clone();
+            let standing = StandingColumns::of(row.standing).standing(&key)?;
+            Ok((key, standing))
+        })
+        .collect()
 }
 
 impl ImportTables {
@@ -738,7 +734,7 @@ impl ImportTables {
     pub(crate) async fn load_candidate_standings(
         &self,
     ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
-        self.store.read(|sql| load_standings_on(&sql)).await
+        standings_of(self.store.read_rows(super::EveryStandingParams {}).await?)
     }
 
     /// Follows every candidate's standing, so a test waits for the write that
@@ -747,10 +743,9 @@ impl ImportTables {
     pub(crate) fn subscribe_candidate_facts(
         &self,
     ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>, bae_store::DbError> {
-        self.store.subscribe(|sql| {
-            load_standings_on(&sql).map(|standings| {
-                standings.into_iter().map(|(key, standing)| (key, standing.facts())).collect()
-            })
+        self.store.subscribe(super::EveryStandingParams {}).process(|rows| {
+            let standings = standings_of(rows)?;
+            Ok(standings.into_iter().map(|(key, standing)| (key, standing.facts())).collect())
         })
     }
 }

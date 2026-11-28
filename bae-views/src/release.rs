@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::album_detail::{ReleaseDetail, ReleaseResolveCtx};
-use bae_store::{statement_optional, statement_rows};
+use bae_store::statement_optional;
 
 impl LibraryViews {
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
@@ -54,14 +54,16 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |release_id, sql| match release_id {
-                Some(release_id) => find_release_detail_context_on(&sql, release_id),
-                None => Ok(None),
+            .subscribe_reconfigurable(initial, |release_id| {
+                Ok(coven::Maybe(
+                    release_id.clone().map(|release| ViewedReleaseDetailParams { release }),
+                ))
             })
-            .process(|rows| {
-                Ok(ReleaseDetailProjection {
-                    context: rows.map(ReleaseDetailRows::process_context).transpose()?,
-                })
+            .process(|_, rows| {
+                let rows =
+                    rows.map(at_most_one::<ViewedReleaseDetailParams, _>).transpose()?.flatten();
+                let context = rows.map(|row| ReleaseDetailRows(row.viewed).process_context());
+                Ok(ReleaseDetailProjection { context: context.transpose()? })
             })
     }
 }
@@ -153,17 +155,15 @@ pub(crate) fn find_release_detail_context_on(
     Ok(statement_optional(sql, &statement)?.map(|row| ReleaseDetailRows(row.viewed)))
 }
 
-/// The detail rows of each release of the album `album_id`, in the album's
-/// order, in one statement.
-pub(crate) fn build_album_release_details_on(
-    sql: &SqlReadContext<'_>,
-    album_id: &str,
-) -> Result<Vec<ReleaseDetailRows>, DbError> {
-    let statement = ViewedAlbumReleasesParams { album: album_id.to_owned() };
-    Ok(statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| ReleaseDetailRows(row.viewed))
-        .collect())
+/// The read of the detail rows of each release of the album `album_id`, in
+/// the album's order, in one statement.
+pub(crate) fn album_releases_read(album_id: &str) -> ViewedAlbumReleasesParams {
+    ViewedAlbumReleasesParams { album: album_id.to_owned() }
+}
+
+/// The detail rows of the releases [`album_releases_read`] returned.
+pub(crate) fn album_releases_of(rows: Vec<ViewedAlbumReleasesRow>) -> Vec<ReleaseDetailRows> {
+    rows.into_iter().map(|row| ReleaseDetailRows(row.viewed)).collect()
 }
 
 /// One release's [`ViewedRelease`] row.

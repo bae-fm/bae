@@ -890,6 +890,18 @@ impl std::fmt::Debug for LibraryManager {
     }
 }
 
+// coven's pending records in the order they arose, each with the error
+// behind it while this process holds one, for the tests that wait on them.
+#[cfg(test)]
+sqlive_compose::read!(
+    writer PendingRecordsInOrder { record: coven::PendingRecord, cause: Option<String> },
+    r#"
+    SELECT kept.record, kept.cause
+    FROM coven_pending AS kept
+    ORDER BY kept.position
+"#
+);
+
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;

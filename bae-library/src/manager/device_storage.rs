@@ -87,10 +87,9 @@ sqlive_compose::read!(
 "#
 );
 
-/// What this device keeps for the library, as the page shows it.
-fn device_storage_on(sql: coven::SqlReadContext<'_>) -> Result<DeviceStorage, DbError> {
-    let params = DeviceStorageSumsParams { audio: bae_records::synced::RELEASE_FILES_NAMESPACE };
-    DeviceStorage::from_sums(&bae_store::statement_row(&sql, &params)?)
+/// The read of what this device keeps for the library.
+fn device_storage_read() -> DeviceStorageSumsParams {
+    DeviceStorageSumsParams { audio: bae_records::synced::RELEASE_FILES_NAMESPACE }
 }
 
 impl DeviceStorage {
@@ -127,7 +126,9 @@ impl LibraryManager {
     /// The open library's storage on this device: the first value at once,
     /// then one after each change.
     pub fn subscribe_device_storage(&self) -> coven::LiveQuery<DeviceStorage, DbError> {
-        self.store.subscribe(device_storage_on)
+        self.store
+            .subscribe_row(device_storage_read())
+            .process(|sums| DeviceStorage::from_sums(&sums))
     }
 
     /// Remove everything this device caches for the library: every

@@ -13,10 +13,17 @@ pub(crate) fn subscribe_playback_track_infos(
 ) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::PlaybackTrackInfo>, bae_store::DbError>
 {
     store
-        .subscribe_reconfigurable(initial, |track_ids, sql| {
-            bae_records::records::track_places_on(&sql, track_ids)
+        .subscribe_reconfigurable(initial, |track_ids| {
+            Ok(bae_records::records::track_places_read(track_ids))
         })
-        .process(|places| Ok(places.into_iter().map(crate::PlaybackTrackInfo::of).collect()))
+        .process(|_, places| {
+            places
+                .into_iter()
+                .map(|place| {
+                    Ok(crate::PlaybackTrackInfo::of(bae_records::records::track_place_of(place)?))
+                })
+                .collect()
+        })
 }
 
 // The display of one track; no row for a track the library does not hold.

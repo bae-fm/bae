@@ -8,9 +8,10 @@
 
 use super::order::{AlbumLead, AlbumOrder, SortCode};
 use super::*;
+use crate::album::card::AlbumCardRow;
 use bae_records::records::query::AlbumSummaryRow;
 use bae_store::list_windows::sql_bound;
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::{statement_optional, statement_rows};
 
 use super::key_reads::*;
 use super::numbered_reads::*;
@@ -46,26 +47,50 @@ sqlive_compose::read!(
 
 /// How many rows the album grid has, flat or grouped by artist, and whether
 /// the library has a track to shuffle.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn album_counts_on(
     sql: &SqlReadContext<'_>,
     group_by_artist: bool,
 ) -> Result<AlbumCounts, DbError> {
-    if group_by_artist {
-        let row = statement_row(sql, &GroupedAlbumCountsParams {})?;
-        return Ok(AlbumCounts {
-            albums: row.albums,
-            rows: row.appearances,
-            can_shuffle: row.can_shuffle,
-            grouped: true,
-        });
+    Ok(match group_by_artist {
+        true => grouped_counts_of(bae_store::statement_row(sql, &GroupedAlbumCountsParams {})?),
+        false => flat_counts_of(bae_store::statement_row(sql, &FlatAlbumCountsParams {})?),
+    })
+}
+
+/// [`album_counts_on`], live.
+pub(crate) fn subscribe_album_counts(
+    store: &bae_store::Store,
+    group_by_artist: bool,
+) -> coven::LiveQuery<AlbumCounts, DbError> {
+    match group_by_artist {
+        true => store
+            .subscribe_row(GroupedAlbumCountsParams {})
+            .process(|row| Ok(grouped_counts_of(row))),
+        false => {
+            store.subscribe_row(FlatAlbumCountsParams {}).process(|row| Ok(flat_counts_of(row)))
+        }
     }
-    let row = statement_row(sql, &FlatAlbumCountsParams {})?;
-    Ok(AlbumCounts {
+}
+
+/// The counts of the grid grouped by artist, as their row holds them.
+fn grouped_counts_of(row: GroupedAlbumCountsRow) -> AlbumCounts {
+    AlbumCounts {
+        albums: row.albums,
+        rows: row.appearances,
+        can_shuffle: row.can_shuffle,
+        grouped: true,
+    }
+}
+
+/// The counts of the flat grid, as their row holds them.
+fn flat_counts_of(row: FlatAlbumCountsRow) -> AlbumCounts {
+    AlbumCounts {
         albums: row.albums,
         rows: row.albums,
         can_shuffle: row.can_shuffle,
         grouped: false,
-    })
+    }
 }
 
 // The sections of the grid grouped by artist with the artists ascending: each
@@ -105,25 +130,27 @@ sqlive_compose::read!(
 "#
 );
 
-/// The sections of the grid grouped by artist, the artists in `direction`.
-pub(crate) fn album_sections_on(
-    sql: &SqlReadContext<'_>,
+/// The sections of the grid grouped by artist, the artists in `direction`,
+/// live.
+pub(crate) fn subscribe_album_sections(
+    store: &bae_store::Store,
     direction: SortDirection,
-) -> Result<Vec<crate::LibraryBrowseSection>, DbError> {
+) -> coven::LiveQuery<Vec<crate::LibraryBrowseSection>, DbError> {
     macro_rules! sections {
         ($params:expr) => {
-            statement_rows(sql, &$params)?
-                .into_iter()
-                .map(|row| {
-                    section(
-                        row.artist_id,
-                        row.name,
-                        row.first_position,
-                        row.album_count,
-                        row.image_version,
-                    )
-                })
-                .collect()
+            store.subscribe($params).process(|rows| {
+                rows.into_iter()
+                    .map(|row| {
+                        section(
+                            row.artist_id,
+                            row.name,
+                            row.first_position,
+                            row.album_count,
+                            row.image_version,
+                        )
+                    })
+                    .collect()
+            })
         };
     }
     match direction {
@@ -164,16 +191,12 @@ sqlive_compose::read!(
 "#
 );
 
-/// The albums of `requested` that the grid does not show, by id.
-pub(crate) fn unshown_albums_on(
-    sql: &SqlReadContext<'_>,
+/// The read of the albums of `requested` that the grid does not show, by id.
+pub(crate) fn unshown_albums_read(
     requested: &std::collections::BTreeSet<String>,
-) -> Result<Vec<String>, DbError> {
+) -> UnshownAlbumsParams {
     let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
-    Ok(statement_rows(sql, &UnshownAlbumsParams { requested })?
-        .into_iter()
-        .map(|row| row.album_id)
-        .collect())
+    UnshownAlbumsParams { requested }
 }
 
 /// The key a row of a read with the columns `key_0` on says it is at.
@@ -186,25 +209,23 @@ macro_rules! key_of {
     };
 }
 
-/// The grid's rows in `window` under `order`, each with its key. A window from
-/// the top reads from the order's first row, and one from a key from the
-/// key's row.
-pub(crate) fn album_window_on(
-    sql: &SqlReadContext<'_>,
+/// A row of the grid's window as its read returns it: the row's key, its
+/// album's card and, grouped by artist, the album's other credits.
+pub(crate) type WindowRow =
+    (OrderKey, AlbumCardRow, Option<bae_records::records::fragments::AlbumCreditsBeside>);
+
+/// The read of the grid's rows in `window` under `order`, each with its key. A
+/// window from the top reads from the order's first row, and one from a key
+/// from the key's row.
+pub(crate) fn album_window_read(
     order: &AlbumOrder,
     window: &ListWindow,
-) -> Result<WindowRead<AlbumAppearanceRow>, DbError> {
+) -> Result<coven::ReadAs<WindowRow>, DbError> {
     let [first, second, third, fourth] = order.codes();
     let limit = sql_bound(window.limit);
     macro_rules! rows {
         ($statement:expr, |$row:ident| $beside:expr) => {
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|$row| {
-                    let key = key_of!($row);
-                    Ok((AlbumAppearanceRow::of($row.card, $beside)?, key))
-                })
-                .collect::<Result<Vec<_>, DbError>>()?
+            coven::ReadAs::new($statement, |$row| (key_of!($row), $row.card, $beside))
         };
     }
     let Some(from) = &window.from else {
@@ -213,7 +234,7 @@ pub(crate) fn album_window_on(
                 rows!($params { first, second, third, fourth, limit }, |$row| $beside)
             };
         }
-        let rows = match order.lead {
+        return Ok(match order.lead {
             AlbumLead::Flat(SortCode::Title) => top!(FlatTopTitleParams, |row| None),
             AlbumLead::Flat(SortCode::TitleBack) => top!(FlatTopTitleBackParams, |row| None),
             AlbumLead::Flat(SortCode::Artist) => top!(FlatTopArtistParams, |row| None),
@@ -223,13 +244,12 @@ pub(crate) fn album_window_on(
             AlbumLead::Flat(SortCode::Added) => top!(FlatTopAddedParams, |row| None),
             AlbumLead::Flat(SortCode::AddedBack) => top!(FlatTopAddedBackParams, |row| None),
             AlbumLead::Grouped(SortDirection::Ascending) => {
-                top!(GroupedTopArtistParams, |row| row.beside.into_line()?)
+                top!(GroupedTopArtistParams, |row| Some(row.beside))
             }
             AlbumLead::Grouped(SortDirection::Descending) => {
-                top!(GroupedTopArtistBackParams, |row| row.beside.into_line()?)
+                top!(GroupedTopArtistBackParams, |row| Some(row.beside))
             }
-        };
-        return Ok(WindowRead { window: window.clone(), rows });
+        });
     };
     let [key_0, key_1, key_2, key_3, key_4, key_5, key_6, key_7] = AlbumOrder::values_of(from)?;
     macro_rules! from_key {
@@ -254,7 +274,7 @@ pub(crate) fn album_window_on(
             )
         };
     }
-    let rows = match order.lead {
+    Ok(match order.lead {
         AlbumLead::Flat(SortCode::Title) => from_key!(FlatWindowTitleParams, |row| None),
         AlbumLead::Flat(SortCode::TitleBack) => from_key!(FlatWindowTitleBackParams, |row| None),
         AlbumLead::Flat(SortCode::Artist) => from_key!(FlatWindowArtistParams, |row| None),
@@ -266,40 +286,53 @@ pub(crate) fn album_window_on(
         AlbumLead::Flat(SortCode::Added) => from_key!(FlatWindowAddedParams, |row| None),
         AlbumLead::Flat(SortCode::AddedBack) => from_key!(FlatWindowAddedBackParams, |row| None),
         AlbumLead::Grouped(SortDirection::Ascending) => {
-            from_key!(GroupedWindowArtistParams, |row| row.beside.into_line()?)
+            from_key!(GroupedWindowArtistParams, |row| Some(row.beside))
         }
         AlbumLead::Grouped(SortDirection::Descending) => {
-            from_key!(GroupedWindowArtistBackParams, |row| row.beside.into_line()?)
+            from_key!(GroupedWindowArtistBackParams, |row| Some(row.beside))
         }
-    };
+    })
+}
+
+/// The rows of `window` as the grid's read returned them, as the grid shows
+/// them.
+pub(crate) fn album_window_of(
+    window: &ListWindow,
+    rows: Vec<WindowRow>,
+    group_by_artist: bool,
+) -> Result<WindowRead<DbAlbumAppearance>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(key, card, beside)| {
+            let credited_with = match beside {
+                Some(beside) => beside.into_line()?,
+                None => None,
+            };
+            Ok((AlbumAppearanceRow::of(card, credited_with)?.process(group_by_artist)?, key))
+        })
+        .collect::<Result<_, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 
-/// The albums of the flat grid sorted first by `first` under `order`, at the
-/// places `page` names.
-pub(crate) fn album_page_on(
-    sql: &SqlReadContext<'_>,
+/// The read of the cards of the flat grid sorted first by `first` under
+/// `order`, at the places `page` names.
+pub(crate) fn album_page_read(
     first_sort: SortCode,
     order: &AlbumOrder,
     page: ListPage,
-) -> Result<Vec<AlbumAppearanceRow>, DbError> {
+) -> coven::ReadAs<AlbumCardRow> {
     macro_rules! page {
         ($params:ident) => {{
             let [first, second, third, fourth] = order.codes();
-            statement_rows(
-                sql,
-                &$params {
-                    first,
-                    second,
-                    third,
-                    fourth,
-                    offset: sql_bound(page.offset),
-                    limit: sql_bound(page.limit),
-                },
-            )?
-            .into_iter()
-            .map(|row| AlbumAppearanceRow::of(row.card, None))
-            .collect()
+            let statement = $params {
+                first,
+                second,
+                third,
+                fourth,
+                offset: sql_bound(page.offset),
+                limit: sql_bound(page.limit),
+            };
+            coven::ReadAs::new(statement, |row| row.card)
         }};
     }
     match first_sort {
@@ -315,34 +348,41 @@ pub(crate) fn album_page_on(
 }
 
 /// How many rows of the grid under `order` come before the row at `key`.
+#[cfg(test)]
 pub(crate) fn albums_before_on(
     sql: &SqlReadContext<'_>,
     order: &AlbumOrder,
     key: &OrderKey,
 ) -> Result<u64, DbError> {
+    exactly_one::<coven::ReadAs<u64>, _>(sql.reads(&albums_before_read(order, key)?)?)
+}
+
+/// The read of how many rows of the grid under `order` come before the row
+/// at `key`.
+pub(crate) fn albums_before_read(
+    order: &AlbumOrder,
+    key: &OrderKey,
+) -> Result<coven::ReadAs<u64>, DbError> {
     let values = AlbumOrder::values_of(key)?;
     macro_rules! before {
         ($params:ident) => {{
             let [first, second, third, fourth] = order.codes();
             let [key_0, key_1, key_2, key_3, key_4, key_5, key_6, key_7] = values;
-            statement_row(
-                sql,
-                &$params {
-                    first,
-                    second,
-                    third,
-                    fourth,
-                    key_0,
-                    key_1,
-                    key_2,
-                    key_3,
-                    key_4,
-                    key_5,
-                    key_6,
-                    key_7,
-                },
-            )?
-            .rows_before
+            let statement = $params {
+                first,
+                second,
+                third,
+                fourth,
+                key_0,
+                key_1,
+                key_2,
+                key_3,
+                key_4,
+                key_5,
+                key_6,
+                key_7,
+            };
+            coven::ReadAs::new(statement, |row| row.rows_before)
         }};
     }
     Ok(match order.lead {
@@ -415,29 +455,26 @@ macro_rules! numbered {
     }};
 }
 
-/// Where the album `album_id`'s card is in the grid under `order`: its card in
+/// The read of where the album `album_id`'s card is in the grid under `order`: its card in
 /// the group of the artist `section` when that group holds one, else its first
 /// card. `None` when the grid shows no card of the album.
-pub(crate) fn album_place_on(
-    sql: &SqlReadContext<'_>,
+pub(crate) fn album_place_read(
     order: &AlbumOrder,
     album_id: &str,
     section: Option<&str>,
-) -> Result<Option<AlbumPlace>, DbError> {
+) -> coven::ReadAs<AlbumPlace> {
     let [first, second, third, fourth] = order.codes();
     let (album, section) = (album_id.to_string(), section.map(str::to_string));
-    Ok(match order.lead {
-        AlbumLead::Flat(_) => statement_optional(
-            sql,
-            &FlatAlbumPlaceReadParams { first, second, third, fourth, album, section },
-        )?
-        .map(|row| AlbumPlace { position: row.position, section_id: row.section_id }),
-        AlbumLead::Grouped(_) => statement_optional(
-            sql,
-            &GroupedAlbumPlaceReadParams { first, second, third, fourth, album, section },
-        )?
-        .map(|row| AlbumPlace { position: row.position, section_id: Some(row.section_id) }),
-    })
+    match order.lead {
+        AlbumLead::Flat(_) => coven::ReadAs::new(
+            FlatAlbumPlaceReadParams { first, second, third, fourth, album, section },
+            |row| AlbumPlace { position: row.position, section_id: row.section_id },
+        ),
+        AlbumLead::Grouped(_) => coven::ReadAs::new(
+            GroupedAlbumPlaceReadParams { first, second, third, fourth, album, section },
+            |row| AlbumPlace { position: row.position, section_id: Some(row.section_id) },
+        ),
+    }
 }
 
 /// The albums of the grid's cards under `order` from the card `from` to the

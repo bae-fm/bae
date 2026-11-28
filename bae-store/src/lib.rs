@@ -28,7 +28,7 @@ pub mod query;
 pub mod read;
 mod read_statement;
 pub use read_statement::{
-    statement_optional, statement_row, statement_rows, RowsOfBoth, WriterRead,
+    at_most_one, exactly_one, statement_optional, statement_row, statement_rows, WriterRead,
 };
 pub mod schema;
 pub use schema::{

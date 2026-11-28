@@ -216,7 +216,7 @@ sqlive_compose::read!(
 pub fn subscribe_queue_value(
     store: &Store,
 ) -> coven::LiveQuery<crate::ResolvedQueueSnapshot, bae_store::DbError> {
-    store.subscribe(|sql| queue_value_on(&sql))
+    store.subscribe(QueueValueParams {}).process(queue_value_of)
 }
 
 /// The queue as its screens show it now.
@@ -234,15 +234,17 @@ pub fn subscribe_session_up_next(
     store: &Store,
     limit: u64,
 ) -> coven::LiveQuery<Vec<QueueItem>, bae_store::DbError> {
-    store.subscribe(move |sql| session_up_next_on(&sql, limit))
+    store.subscribe(session_up_next_read(limit)).process(session_up_next_of)
 }
 
-fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueItem>, DbError> {
-    let statement = SessionUpNextItemsParams { limit: bae_store::list_windows::sql_bound(limit) };
-    statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| queue_item(row.item.entry, row.item.track))
-        .collect()
+/// The read of the first `limit` tracks a system media session lists.
+fn session_up_next_read(limit: u64) -> SessionUpNextItemsParams {
+    SessionUpNextItemsParams { limit: bae_store::list_windows::sql_bound(limit) }
+}
+
+/// The tracks a system media session lists, as their read returns them.
+fn session_up_next_of(rows: Vec<SessionUpNextItemsRow>) -> Result<Vec<QueueItem>, DbError> {
+    rows.into_iter().map(|row| queue_item(row.item.entry, row.item.track)).collect()
 }
 
 /// The track that plays next, as the session's up-next list starts.
@@ -255,10 +257,16 @@ pub(super) fn next_in_order_on(sql: &SqlReadContext<'_>) -> Result<Option<String
     Ok(statement_optional(sql, &NextInOrderParams {})?.map(|row| row.track_id))
 }
 
+/// The queue as one read sees it.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn queue_value_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<crate::ResolvedQueueSnapshot, DbError> {
-    let rows = statement_rows(sql, &QueueValueParams {})?;
+    queue_value_of(statement_rows(sql, &QueueValueParams {})?)
+}
+
+/// The queue as its rows hold it.
+fn queue_value_of(rows: Vec<QueueValueRow>) -> Result<crate::ResolvedQueueSnapshot, DbError> {
     // Every row repeats the one head and its flags.
     let mut head = None;
     let mut manual = Vec::new();

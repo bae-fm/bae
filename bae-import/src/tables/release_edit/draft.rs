@@ -12,7 +12,6 @@ use super::*;
 use crate::tables::draft_rows::{assignment_kind_column, assignments_of, decoded, DraftAlbumRow};
 use crate::{AlbumPick, DraftAlbum, RawTrackEdit, TrackArtistAssignments};
 use bae_records::records::layout::LibraryLayout;
-use bae_store::{statement_row, statement_rows};
 
 /// One form track as `:form_tracks` binds it.
 #[derive(serde::Serialize)]
@@ -125,8 +124,8 @@ impl FormParams {
 // they name (a new one where they name none the library holds); else, with
 // the release's own records or none, the album the release is in. `kind` says
 // which of those names it, and `album` is the library album it names.
-sqlive_compose::read!(
-    writer FiledDraftAlbum(
+sqlive_compose::fragment!(
+    FiledAlbum(
         release: String, pick_kind: String, pick_album: Option<String>, linked: bool,
         records: String
     ) { kind: String },
@@ -167,34 +166,14 @@ sqlive_compose::read!(
 "#
 );
 
-/// The album a save of the form files its release under
-/// ([`FiledDraftAlbum`]).
-fn release_edit_album_on(
-    sql: &impl bae_store::WriterRead,
-    form: &FormParams,
-) -> Result<DraftAlbum, DbError> {
-    let row = statement_row(
-        sql,
-        &FiledDraftAlbumParams {
-            release: form.release.clone(),
-            pick_kind: form.pick_kind.to_string(),
-            pick_album: form.pick_album.clone(),
-            linked: form.linked,
-            records: form.records.clone(),
-        },
-    )?;
-    DraftAlbumRow::of_choice(row.kind, row.album)?
-        .album(&format!("the editor of release {}", form.release))
-}
-
 // The tracks of a form's release as the form lays them out
 // ([`DraftEditorTrackRows`](bae_records::records::editor_tracks::DraftEditorTrackRows)),
 // each with the row of the form that edits it as the JSON object `form` (NULL
 // when the form holds no row for it). `form` has the row's `own` artists where
 // it has any: its assignments, with each picked artist as the library holds it,
 // and how they stand to the library.
-sqlive_compose::read!(
-    writer FormDraftTracks(
+sqlive_compose::fragment!(
+    FormDraftTrackRows(
         release: String, applied: bool, mediums: String, places: String, moves: String,
         edits: String, album_artists: String, track_artists: String, form_tracks: String
     ) { form: Option<String> },
@@ -219,14 +198,39 @@ sqlive_compose::read!(
         moves: :moves, edits: :edits) AS shown
     LEFT JOIN edited ON edited.id = shown.row_id
     LEFT JOIN fields ON fields.track_id = shown.row_id
-    ORDER BY shown.placed_medium, shown.placed_position
+"#
+);
+
+// The album a save of the form files its release under ([`FiledAlbum`]),
+// beside each of the form's tracks in their order ([`FormDraftTrackRows`]);
+// one row with no track when the form lays out none, and none once the
+// library no longer holds the release. The album is read with the tracks, not
+// with the rest of the draft, because one statement of them all opens more
+// tables than SQLite allows.
+sqlive_compose::read!(
+    writer FormDraftTracks(
+        release: String, applied: bool, mediums: String, places: String, moves: String,
+        edits: String, album_artists: String, track_artists: String, form_tracks: String,
+        pick_kind: String, pick_album: Option<String>, linked: bool, records: String
+    ),
+    r#"
+    SELECT filed.*, track.*
+    FROM @crate::tables::release_edit::draft::FiledAlbum(
+        release: :release, pick_kind: :pick_kind, pick_album: :pick_album, linked: :linked,
+        records: :records) AS filed
+    LEFT JOIN @crate::tables::release_edit::draft::FormDraftTrackRows(
+        release: :release, applied: :applied, mediums: :mediums, places: :places,
+        moves: :moves, edits: :edits, album_artists: :album_artists,
+        track_artists: :track_artists, form_tracks: :form_tracks) AS track
+      ON 1
+    ORDER BY track.placed_medium, track.placed_position
 "#
 );
 
 // Whether a track the save of the edits `edits` deletes from the release
 // `release` has a rating, a play in the history or a playlist entry.
-sqlive_compose::read!(
-    writer DroppedTracksKeptData(release: String, edits: String),
+sqlive_compose::fragment!(
+    DroppedKeptData(release: String, edits: String),
     r#"
     WITH gone AS (
         SELECT dropped.*
@@ -235,6 +239,34 @@ sqlive_compose::read!(
     SELECT data.*
     FROM @bae_people::people::fragments::TracksHaveKeptData(
         asked: (SELECT track_id FROM gone)) AS data
+"#
+);
+
+// The draft of a form beside its tracks: the release as its editor shows it,
+// with no row once the library holds no such release; the album's artist
+// field, none when the album has none; whether a track the save deletes has
+// kept data; the files a save reads first; and the release's files.
+sqlive_compose::read!(
+    writer EditorDraftHead(
+        release: String, relinked: bool, form_records: String, album_artists: String,
+        track_artists: String, applied: bool, mediums: String, edits: String
+    ),
+    r#"
+    SELECT head.*, artist.*, kept.*, sheets.*, listed.*
+    FROM @bae_records::records::release::EditedHead(
+        release: :release, relinked: :relinked, records: :form_records) AS head
+    LEFT JOIN @crate::tables::release_edit::artist_fields::FormArtistFields(
+        album_artists: :album_artists, track_artists: :track_artists) AS artist
+      ON artist.part = 0
+    JOIN @crate::tables::release_edit::draft::DroppedKeptData(release: :release, edits: :edits)
+        AS kept
+      ON 1
+    JOIN @bae_records::records::sheet_files::SheetFilesToRead(release: :release, edits: :edits)
+        AS sheets
+      ON 1
+    JOIN @bae_records::records::editor_files::EditorFiles(
+        release: :release, applied: :applied, mediums: :mediums, edits: :edits) AS listed
+      ON 1
 "#
 );
 
@@ -315,85 +347,92 @@ impl FormTrackRow {
     }
 }
 
-/// The rows of `form`'s draft, one read per part; `None` once the library no
-/// longer holds the form's release.
-pub(crate) fn release_edit_draft_rows_on(
-    sql: &impl bae_store::WriterRead,
+/// The reads of `form`'s draft: its head and its tracks.
+pub(crate) fn release_edit_draft_read(
     form: &ReleaseEditForm,
+) -> Result<coven::Both<EditorDraftHeadParams, FormDraftTracksParams>, DbError> {
+    let form = FormParams::of(form)?;
+    let head = EditorDraftHeadParams {
+        release: form.release.clone(),
+        relinked: form.relinked,
+        form_records: if form.relinked { form.records.clone() } else { "[]".to_string() },
+        album_artists: form.album_artists.clone(),
+        track_artists: form.track_artists.clone(),
+        applied: form.applied,
+        mediums: form.mediums.clone(),
+        edits: form.edits.clone(),
+    };
+    let tracks = FormDraftTracksParams {
+        release: form.release,
+        applied: form.applied,
+        mediums: form.mediums,
+        places: form.places,
+        moves: form.moves,
+        edits: form.edits,
+        album_artists: form.album_artists,
+        track_artists: form.track_artists,
+        form_tracks: form.form_tracks,
+        pick_kind: form.pick_kind.to_string(),
+        pick_album: form.pick_album,
+        linked: form.linked,
+        records: form.records,
+    };
+    Ok(coven::Both(head, tracks))
+}
+
+/// The rows of `form`'s draft as [`release_edit_draft_read`] returned them;
+/// `None` once the library no longer holds the form's release.
+pub(crate) fn release_edit_draft_rows_of(
+    form: &ReleaseEditForm,
+    (head, tracks): (Vec<EditorDraftHeadRow>, Vec<FormDraftTracksRow>),
 ) -> Result<Option<ReleaseEditDraftRows>, DbError> {
-    let params = FormParams::of(form)?;
-    let form_records = params.relinked.then_some(params.records.as_str());
-    let Some(head) = bae_records::records::edited_release_on(sql, &params.release, form_records)?
-    else {
+    let Some(row) = bae_store::at_most_one::<EditorDraftHeadParams, _>(head)? else {
         return Ok(None);
     };
+    let EditorDraftHeadRow { head, artist, kept, sheets, listed } = row;
+    let release_id = &form.release_id;
+    // Every row of the tracks' read holds the album a save files the release
+    // under.
+    let filed = tracks.first().map(|row| row.filed.clone()).ok_or_else(|| {
+        DbError::unreadable(
+            format!("the album a save of release {release_id} files it under"),
+            None::<String>,
+        )
+    })?;
+    let edited = bae_records::records::edited_release_of(head)?;
     Ok(Some(ReleaseEditDraftRows {
         form: form.clone(),
-        album_artists: super::artist_fields::album_artist_field_on(
-            sql,
-            &params.album_artists,
-            &params.track_artists,
-        )?,
-        album: release_edit_album_on(sql, &params)?,
-        cover_version: head.cover_version,
-        tracks: draft_tracks_on(sql, &params)?,
-        files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
-            sql,
-            &params.release,
-            &params.edits,
-        )?,
-        has_tracks: head.has_tracks,
-        files: bae_records::records::release_files_on(
-            sql,
-            bae_records::records::EditorReleaseFilesParams {
-                release: params.release.clone(),
-                applied: params.applied,
-                mediums: params.mediums.clone(),
-                edits: params.edits.clone(),
-            },
-        )?,
-        deletes_track_data: statement_row(
-            sql,
-            &DroppedTracksKeptDataParams {
-                release: params.release.clone(),
-                edits: params.edits.clone(),
-            },
-        )?
-        .data
-        .any(),
-        records: form.records.clone().unwrap_or(head.records),
-        shows_records: head.shows_records,
+        album_artists: artist.map(|artist| artist_field_of_json(&artist.field)).transpose()?,
+        album: DraftAlbumRow::of_choice(filed.kind, filed.album)?
+            .album(&format!("the editor of release {release_id}"))?,
+        cover_version: edited.cover_version,
+        tracks: tracks
+            .into_iter()
+            .filter_map(|row| row.track)
+            .map(draft_row_of)
+            .collect::<Result<_, _>>()?,
+        files_to_read: bae_records::records::sheet_files::sheet_files_to_read_of(sheets)?,
+        has_tracks: edited.has_tracks,
+        files: bae_records::records::release_files_of(listed)?,
+        deletes_track_data: kept.data.any(),
+        records: form.records.clone().unwrap_or(edited.records),
+        shows_records: edited.shows_records,
     }))
 }
 
-/// The tracks of the form's release in release order, and the tracks its
-/// save adds, on the mediums and with the listed lengths the catalog the
-/// person applied gives them or else the release's own, each track the
-/// library holds with the form row that edits it.
-fn draft_tracks_on(sql: &impl bae_store::WriterRead, form: &FormParams) -> Result<Vec<DraftRow>, DbError> {
-    let params = FormDraftTracksParams {
-        release: form.release.clone(),
-        applied: form.applied,
-        mediums: form.mediums.clone(),
-        places: form.places.clone(),
-        moves: form.moves.clone(),
-        edits: form.edits.clone(),
-        album_artists: form.album_artists.clone(),
-        track_artists: form.track_artists.clone(),
-        form_tracks: form.form_tracks.clone(),
-    };
-    statement_rows(sql, &params)?
-        .into_iter()
-        .map(|row| {
-            Ok(match bae_records::records::draft_release_edit_row_of(row.shown)? {
-                bae_records::DbReleaseEditRow::Stored(track) => {
-                    DraftRow::Stored(DraftTrackRow { track: *track, form: row.form })
-                }
-                bae_records::DbReleaseEditRow::Added(added) => DraftRow::Added(added),
-                bae_records::DbReleaseEditRow::EmptySide(side) => DraftRow::EmptySide(side),
-            })
-        })
-        .collect()
+/// A row of the form's tracks as [`FormDraftTrackRows`] gives it: a track of
+/// the form's release in release order, or a track its save adds, on the
+/// mediums and with the listed lengths the catalog the person applied gives
+/// them or else the release's own, each track the library holds with the form
+/// row that edits it.
+fn draft_row_of(row: FormDraftTrackRows) -> Result<DraftRow, DbError> {
+    Ok(match bae_records::records::draft_release_edit_row_of(row.shown)? {
+        bae_records::DbReleaseEditRow::Stored(track) => {
+            DraftRow::Stored(DraftTrackRow { track: *track, form: row.form })
+        }
+        bae_records::DbReleaseEditRow::Added(added) => DraftRow::Added(added),
+        bae_records::DbReleaseEditRow::EmptySide(side) => DraftRow::EmptySide(side),
+    })
 }
 
 impl DraftTrackRow {

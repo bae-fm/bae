@@ -33,7 +33,7 @@
 use super::*;
 use crate::list_sort::{key, key_values, ListSort, ListSortField};
 use bae_store::list_windows::{sql_bound, SortValue};
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::statement_optional;
 
 impl ListSortField for ArtistSortField {
     const NAME: Self = Self::Name;
@@ -537,29 +537,47 @@ sqlive_compose::read!(
 );
 
 /// The artist list's `window` under `sort`, each row with its key.
+#[cfg(test)]
 pub(crate) fn artist_window_on(
     sql: &SqlReadContext<'_>,
     sort: &ListSort<ArtistSortField, 2>,
     window: &ListWindow,
 ) -> Result<WindowRead<DbArtistSummary>, DbError> {
+    artist_window_of(window, sql.reads(&artist_window_read(sort, window)?)?)
+}
+
+/// The artist list's `window` from the rows its read returned.
+pub(crate) fn artist_window_of(
+    window: &ListWindow,
+    rows: Vec<bae_store::list_windows::Keyed<crate::artist::ListedArtist>>,
+) -> Result<WindowRead<DbArtistSummary>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(shown, key)| Ok((shown.into_summary()?, key)))
+        .collect::<Result<_, DbError>>()?;
+    Ok(WindowRead { window: window.clone(), rows })
+}
+
+/// The read of the artist list's `window` under `sort`, each row with its
+/// key. A window from the top reads from the order's first row, and one from
+/// a key from the key's row.
+pub(crate) fn artist_window_read(
+    sort: &ListSort<ArtistSortField, 2>,
+    window: &ListWindow,
+) -> Result<coven::ReadAs<bae_store::list_windows::Keyed<crate::artist::ListedArtist>>, DbError> {
     let limit = sql_bound(window.limit);
     let field_2 = sort.later(1);
     macro_rules! rows {
-        ($statement:expr) => {{
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|row| {
-                    let key =
-                        key([row.order_1, row.order_2, row.order_3], row.order_name, row.order_id);
-                    Ok((row.shown.into_summary()?, key))
-                })
-                .collect::<Result<_, DbError>>()?
-        }};
+        ($statement:expr) => {
+            coven::ReadAs::new($statement, |row| {
+                let key =
+                    key([row.order_1, row.order_2, row.order_3], row.order_name, row.order_id);
+                (row.shown, key)
+            })
+        };
     }
-    // A window from the top reads from the order's first row, and one from a
-    // key from the key's row.
     let Some(from) = &window.from else {
-        let rows = match sort.first() {
+        return Ok(match sort.first() {
             (ArtistSortField::Name, SortDirection::Ascending) => {
                 rows!(ArtistTopByNameParams { field_2, limit })
             }
@@ -572,8 +590,7 @@ pub(crate) fn artist_window_on(
             (ArtistSortField::AlbumCount, SortDirection::Descending) => {
                 rows!(ArtistTopByAlbumsDescendingParams { field_2, limit })
             }
-        };
-        return Ok(WindowRead { window: window.clone(), rows });
+        });
     };
     let ([key_1, key_2, key_3], key_name, key_id) = key_values(from)?;
     macro_rules! from_key {
@@ -581,7 +598,7 @@ pub(crate) fn artist_window_on(
             rows!($params { field_2, key_1, key_2, key_3, key_name, key_id, limit })
         };
     }
-    let rows = match sort.first() {
+    Ok(match sort.first() {
         (ArtistSortField::Name, SortDirection::Ascending) => from_key!(ArtistWindowByNameParams),
         (ArtistSortField::Name, SortDirection::Descending) => {
             from_key!(ArtistWindowByNameDescendingParams)
@@ -592,25 +609,35 @@ pub(crate) fn artist_window_on(
         (ArtistSortField::AlbumCount, SortDirection::Descending) => {
             from_key!(ArtistWindowByAlbumsDescendingParams)
         }
-    };
-    Ok(WindowRead { window: window.clone(), rows })
+    })
 }
 
 /// How many artists come before the row at `at` under `sort`.
+#[cfg(test)]
 pub(crate) fn artists_before_on(
     sql: &SqlReadContext<'_>,
     sort: &ListSort<ArtistSortField, 2>,
     at: &OrderKey,
 ) -> Result<u64, DbError> {
+    list_count(bae_store::exactly_one::<coven::ReadAs<i64>, _>(
+        sql.reads(&artists_before_read(sort, at)?)?,
+    )?)
+}
+
+/// The read of how many artists come before the row at `at` under `sort`.
+pub(crate) fn artists_before_read(
+    sort: &ListSort<ArtistSortField, 2>,
+    at: &OrderKey,
+) -> Result<coven::ReadAs<i64>, DbError> {
     let ([key_1, key_2, key_3], key_name, key_id) = key_values(at)?;
     macro_rules! entries {
         ($params:ident) => {{
             let statement =
                 $params { field_2: sort.later(1), key_1, key_2, key_3, key_name, key_id };
-            statement_row(sql, &statement)?.entries
+            coven::ReadAs::new(statement, |row| row.entries)
         }};
     }
-    list_count(match sort.first() {
+    Ok(match sort.first() {
         (ArtistSortField::Name, SortDirection::Ascending) => entries!(ArtistBeforeByNameParams),
         (ArtistSortField::Name, SortDirection::Descending) => {
             entries!(ArtistBeforeByNameDescendingParams)
@@ -651,11 +678,6 @@ pub(crate) fn artist_key_at_on(
             key_at!(ArtistKeyAtByAlbumsDescendingParams)
         }
     })
-}
-
-/// How many artists the list has.
-pub(crate) fn artist_list_length_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    list_count(statement_row(sql, &ArtistListLengthParams {})?.entries)
 }
 
 /// The artist list's sort as its statements bind it.

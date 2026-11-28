@@ -104,13 +104,10 @@ impl AlbumAppearanceRow {
     }
 }
 
-/// The cards of the artist `artist_id`'s page, in its order.
-pub(crate) fn artist_albums_on(
-    sql: &SqlReadContext<'_>,
-    artist_id: &str,
+/// The cards of an artist's page as [`ArtistAlbums`] returned them, in its
+/// order.
+pub(crate) fn artist_albums_of(
+    rows: Vec<ArtistAlbumsRow>,
 ) -> Result<Vec<AlbumAppearanceRow>, DbError> {
-    statement_rows(sql, &ArtistAlbumsParams { artist: artist_id.to_string() })?
-        .into_iter()
-        .map(|row| AlbumAppearanceRow::of(row.card, None))
-        .collect()
+    rows.into_iter().map(|row| AlbumAppearanceRow::of(row.card, None)).collect()
 }

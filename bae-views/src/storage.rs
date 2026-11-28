@@ -7,7 +7,7 @@ use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::album_detail::StoragePage;
 use crate::album_detail::StorageRow;
-use bae_store::{statement_row, statement_rows};
+use bae_store::statement_rows;
 pub(crate) use order::{StorageList, StorageScope};
 use reads::*;
 use row::StorageRowParts;
@@ -24,7 +24,13 @@ mod row;
 mod top_reads;
 mod window_reads;
 
-pub(crate) use lists::{storage_key_at_on, storage_rows_before_on, storage_window_on};
+#[cfg(test)]
+pub(crate) use lists::storage_rows_before_on;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) use lists::storage_window_on;
+pub(crate) use lists::{
+    storage_key_at_on, storage_rows_before_read, storage_window_of, storage_window_read,
+};
 
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
@@ -95,10 +101,10 @@ impl LibraryViews {
     {
         let list = StorageList::new(sort, filter, search);
         self.store
-            .subscribe_reconfigurable(initial, move |window, sql| {
-                storage_window_on(&sql, &list, window)
+            .subscribe_reconfigurable(initial, move |window| storage_window_read(&list, window))
+            .process(|window, rows| {
+                storage_window_of(window, rows)?.try_map_rows(StorageRowParts::process)
             })
-            .process(|window| window.try_map_rows(StorageRowParts::process))
     }
 
     /// Follow how many releases the Storage Manager list holds under `filter`
@@ -111,9 +117,9 @@ impl LibraryViews {
         search: &str,
     ) -> coven::LiveQuery<StorageCounts, bae_store::DbError> {
         let scope = StorageScope::new(filter, search);
-        self.store.subscribe(move |sql| {
-            let (rows, total_size) = storage_counts_on(&sql, &scope)?;
-            let searching = matches!(scope, StorageScope::Found { .. });
+        let searching = matches!(scope, StorageScope::Found { .. });
+        self.store.subscribe(storage_counts_read(&scope)).process(move |rows| {
+            let (rows, total_size) = crate::storage_totals::storage_totals_of(rows)?;
             Ok(StorageCounts { rows, total_size, searching })
         })
     }
@@ -128,9 +134,9 @@ impl LibraryViews {
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let list = StorageList::new(sort, filter, search);
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            storage_rows_before_on(&sql, &list, key)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |key| storage_rows_before_read(&list, key))
+            .process(|_, before| bae_store::exactly_one::<coven::ReadAs<u64>, _>(before))
     }
 
     /// The releases the Storage Manager list under `sort`, `filter` and the
@@ -191,10 +197,10 @@ impl LibraryViews {
     {
         let scope = StorageScope::new(filter, search);
         self.store
-            .subscribe_reconfigurable(initial, move |selected, sql| {
-                storage_selection_on(&sql, &scope, selected)
+            .subscribe_reconfigurable(initial, move |selected| {
+                storage_selection_read(&scope, selected)
             })
-            .process(|(rows, actions, sole)| Ok((process_storage_rows(rows)?, actions, sole)))
+            .process(|_, found| storage_selection_of(found))
     }
 
     /// Follow the transfer queues holding work, as the Storage Manager shows
@@ -202,7 +208,7 @@ impl LibraryViews {
     pub fn subscribe_storage_queues(
         &self,
     ) -> coven::LiveQuery<crate::StorageQueues, bae_store::DbError> {
-        self.store.subscribe(|sql| storage_queues_on(&sql))
+        self.store.subscribe_row(StorageQueueWorkParams {}).process(storage_queues_of)
     }
 }
 
@@ -262,8 +268,7 @@ pub fn resolve_storage_selection(
 /// The transfer queues holding files waiting or on the move, each with what
 /// holds it back, and for the pin and output queues the release running. A
 /// queue holding only failed entries holds no work.
-fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, DbError> {
-    let work = statement_row(sql, &StorageQueueWorkParams {})?;
+fn storage_queues_of(work: StorageQueueWorkRow) -> Result<crate::StorageQueues, DbError> {
     let uploads =
         if work.uploading { Some(crate::UploadQueueRun { wait: work.held.wait()? }) } else { None };
     let run = |(wait, active)| crate::ReleaseQueueRun { wait, active };
@@ -274,45 +279,51 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
     })
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 fn process_storage_rows(rows: Vec<StorageRowParts>) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter().map(StorageRowParts::process).collect()
 }
 
-/// How many releases the list of `scope` holds and their files' total size:
-/// the stored totals (`storage_totals.sql`), and for a list a search narrows,
-/// a count over the releases the search finds.
-pub(crate) fn storage_counts_on(
-    sql: &SqlReadContext<'_>,
-    scope: &StorageScope,
-) -> Result<(u64, u64), DbError> {
+/// The read of how many releases the list of `scope` holds and their files'
+/// total size: the stored totals (`storage_totals.sql`), and for a list a
+/// search narrows, a count over the releases the search finds.
+fn storage_counts_read(scope: &StorageScope) -> coven::ReadAs<crate::storage_totals::StoredTotals> {
     match scope {
-        StorageScope::All => crate::storage_totals::storage_totals_on(sql, None),
-        StorageScope::Kept(stored) => crate::storage_totals::storage_totals_on(sql, Some(*stored)),
+        StorageScope::All => crate::storage_totals::storage_totals_read(None),
+        StorageScope::Kept(stored) => crate::storage_totals::storage_totals_read(Some(*stored)),
         StorageScope::Found { pattern, stored } => {
             let statement =
                 found_reads::FoundTotalsParams { search: Some(pattern.clone()), stored: *stored };
-            let found = statement_row(sql, &statement)?;
-            Ok((found.found, found.total_size))
+            coven::ReadAs::new(statement, |found| (Some(found.found), Some(found.total_size)))
         }
     }
 }
 
-/// The rows of the `release_ids` the list of `scope` holds, wherever in it
-/// they sit, by release id; what every one of those rows allows; and the one
-/// release among them, with its album's title, when the list holds exactly
-/// one.
-fn storage_selection_on(
+/// How many releases the list of `scope` holds and their files' total size.
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) fn storage_counts_on(
     sql: &SqlReadContext<'_>,
     scope: &StorageScope,
+) -> Result<(u64, u64), DbError> {
+    crate::storage_totals::storage_totals_of(sql.reads(&storage_counts_read(scope))?)
+}
+
+/// The read of the rows of the `release_ids` the list of `scope` holds,
+/// wherever in it they sit.
+fn storage_selection_read(
+    scope: &StorageScope,
     release_ids: &BTreeSet<String>,
-) -> Result<
-    (Vec<StorageRowParts>, crate::DbStorageActionFlags, Option<crate::StorageSoleRelease>),
-    DbError,
-> {
+) -> Result<SelectedStorageRowsParams, DbError> {
     let selected = serde_json::to_string(release_ids)
         .map_err(|error| DbError::encode("selected release ids", error))?;
     let (stored, search) = scope.bound();
-    let found = statement_rows(sql, &SelectedStorageRowsParams { selected, stored, search })?;
+    Ok(SelectedStorageRowsParams { selected, stored, search })
+}
+
+/// The rows of the selected releases the list holds, by release id; what
+/// every one of those rows allows; and the one release among them, with its
+/// album's title, when the list holds exactly one.
+fn storage_selection_of(found: Vec<SelectedStorageRowsRow>) -> Result<DbStorageSelection, DbError> {
     // Every row holds the same aggregates over all of them.
     let actions = found.first().map_or_else(crate::DbStorageActionFlags::none, |row| {
         crate::DbStorageActionFlags {
@@ -327,7 +338,8 @@ fn storage_selection_on(
         release_id: row.shown.row_release_id.clone(),
         album_title: row.shown.album.title().to_string(),
     });
-    let rows = found.into_iter().map(|row| row.shown.into_parts()).collect::<Result<_, _>>()?;
+    let rows =
+        found.into_iter().map(|row| row.shown.into_parts()?.process()).collect::<Result<_, _>>()?;
     Ok((rows, actions, sole))
 }
 

@@ -13,15 +13,6 @@ use crate::list::{ImportListCount, ImportQueueSummary, ImportWindow};
 use bae_store::list_windows::OrderKey;
 use bae_store::ListWindow;
 
-/// How many items sit before the one at `key` in the list `request` shows.
-fn position_on(
-    sql: &impl bae_store::WriterRead,
-    request: &ImportListRequest,
-    key: &OrderKey,
-) -> Result<u64, DbError> {
-    PositionStatement::of(request, key)?.read(sql)
-}
-
 impl ImportTables {
     /// One window of the list `request` shows as a live query whose request
     /// is the window, so moving its bounds reruns it on the same
@@ -33,10 +24,8 @@ impl ImportTables {
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, ImportWindow, DbError> {
         self.store
-            .subscribe_reconfigurable(initial, move |window, sql| {
-                window::read_window(&sql, &request, window)
-            })
-            .process(window::process_window)
+            .subscribe_reconfigurable(initial, move |window| window::window_read(&request, window))
+            .process(|window, items| window::process_window(window::window_of(window, items)?))
     }
 
     /// How many items the list `request` shows holds and how many its
@@ -45,7 +34,7 @@ impl ImportTables {
         &self,
         request: ImportListRequest,
     ) -> coven::LiveQuery<ImportListCount, DbError> {
-        self.store.subscribe(move |sql| summary::count(&sql, &request))
+        summary::subscribe_count(&self.store, request)
     }
 
     /// How many items of the list `request` shows sit before the one at a
@@ -56,12 +45,21 @@ impl ImportTables {
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, DbError> {
         self.store
-            .subscribe_reconfigurable(initial, move |key, sql| position_on(&sql, &request, key))
+            .subscribe_reconfigurable(initial, move |key| {
+                Ok(PositionStatement::of(&request, key)?.reads())
+            })
+            .process(|_, before| {
+                super::list_items::position_of(bae_store::exactly_one::<PositionStatement, _>(
+                    before,
+                )?)
+            })
     }
 
     /// The watched folders and whether Found has groups, live.
     pub(crate) fn subscribe_import_summary(&self) -> coven::LiveQuery<ImportQueueSummary, DbError> {
-        self.store.subscribe(move |sql| summary::summary(&sql))
+        self.store
+            .subscribe_row(summary::SummaryParams {})
+            .process(|row| Ok(summary::summary_of(row)))
     }
 
     /// Every entry of Found's filter with how many of Found's rows it holds,
@@ -69,7 +67,7 @@ impl ImportTables {
     pub(crate) fn subscribe_import_filter_entries(
         &self,
     ) -> coven::LiveQuery<Vec<crate::PendingFilterEntry>, DbError> {
-        self.store.subscribe(move |sql| summary::filter_entries(&sql))
+        self.store.subscribe(summary::filter_entries_params()).process(summary::filter_entries_of)
     }
 
     /// What the rows at the caller's keys hold and the actions the person
@@ -82,9 +80,14 @@ impl ImportTables {
         crate::selection::SelectionSummary,
         DbError,
     > {
-        self.store.subscribe_reconfigurable(Default::default(), move |keys, sql| {
-            selection::selection(&sql, &keys.iter().cloned().collect::<Vec<_>>())
-        })
+        self.store
+            .subscribe_reconfigurable(
+                Default::default(),
+                move |keys: &std::collections::BTreeSet<crate::CandidateKey>| {
+                    Ok(selection::selection_params(&keys.iter().cloned().collect::<Vec<_>>()))
+                },
+            )
+            .process(|_, rows| selection::selection_of(rows))
     }
 
     /// One window of the list `request` shows, once.
@@ -118,7 +121,14 @@ impl ImportTables {
         request: ImportListRequest,
         key: OrderKey,
     ) -> Result<u64, DbError> {
-        self.store.read(move |sql| position_on(&sql, &request, &key)).await
+        let read = PositionStatement::of(&request, &key)?.reads();
+        self.store
+            .read(move |sql| {
+                list_items::position_of(bae_store::exactly_one::<coven::ReadAs<i64>, _>(
+                    sql.reads(&read)?,
+                )?)
+            })
+            .await
     }
 
     /// Every item of the list `request` shows, with its count, summary,

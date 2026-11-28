@@ -469,10 +469,16 @@ async fn progress_lists_the_folders_in_their_order_from_the_index() {
         roots
     );
 
-    for statement in [super::FOLDER_SCAN_STATUSES, super::SCANNING_FOLDERS] {
+    use sqlive_compose::Read;
+    // The statuses bind the raised scans as a JSON array; the scanning
+    // folders bind nothing.
+    let statuses = (super::FolderScanStatusesParams::compiled().sql, vec!["[]"]);
+    let scanning = (super::ScanningFoldersParams::compiled().sql, vec![]);
+    for (statement, values) in [statuses, scanning] {
         let plan = db
             .read(move |sql| {
-                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
+                let values = rusqlite::params_from_iter(values);
+                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), values, |row| {
                     row.get::<_, String>(3)
                 })
                 .map_err(bae_store::DbError::from)
@@ -559,10 +565,9 @@ async fn the_found_count_is_counted_off_the_found_folders_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
-            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::SCANNING_FOLDERS), [], |row| {
-                row.get::<_, String>(3)
-            })
-            .map_err(bae_store::DbError::from)
+            let scanning = <super::ScanningFoldersParams as sqlive_compose::Read>::compiled().sql;
+            sql.query(&format!("EXPLAIN QUERY PLAN {scanning}"), [], |row| row.get::<_, String>(3))
+                .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap();

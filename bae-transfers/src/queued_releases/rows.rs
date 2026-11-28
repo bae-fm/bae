@@ -216,8 +216,10 @@ pub(super) fn next_output_on(
 
 /// Whether coven says the device has a usable network; `None` where nothing
 /// tells.
-pub(super) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>, DbError> {
-    Ok(statement_row(sql, &CurrentNetworkParams {})?.network.network_usable)
+pub(super) fn subscribe_network_usable(
+    store: &bae_store::Store,
+) -> coven::LiveQuery<Option<bool>, DbError> {
+    store.subscribe_row(CurrentNetworkParams {}).process(|row| Ok(row.network.network_usable))
 }
 
 /// What every queue's row stores of an entry, whatever the entry carries.
@@ -328,11 +330,24 @@ pub(super) fn download_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueu
     Ok(statement_row(sql, &DownloadQueueTotalsParams {})?.counts.into_counts())
 }
 
+/// Follow how many downloads are in each phase, and whether the queue is
+/// paused.
+pub(super) fn subscribe_download_counts(
+    store: &bae_store::Store,
+) -> coven::LiveQuery<ReleaseQueueCounts, DbError> {
+    store.subscribe_row(DownloadQueueTotalsParams {}).process(|row| Ok(row.counts.into_counts()))
+}
+
 /// How many entries the export and save queue holds in each phase, and
 /// whether it is paused: it needs no network.
 pub(super) fn output_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueCounts, DbError> {
-    let OutputQueueTotalsRow { tally, pause } = statement_row(sql, &OutputQueueTotalsParams {})?;
-    Ok(ReleaseQueueCounts {
+    Ok(output_counts_of(statement_row(sql, &OutputQueueTotalsParams {})?))
+}
+
+/// The export and save queue's counts as their row holds them.
+pub(super) fn output_counts_of(row: OutputQueueTotalsRow) -> ReleaseQueueCounts {
+    let OutputQueueTotalsRow { tally, pause } = row;
+    ReleaseQueueCounts {
         total: ReleaseQueueProgress {
             queued: tally.queued,
             active: tally.active,
@@ -341,7 +356,7 @@ pub(super) fn output_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueC
         has_entries: tally.has_entries,
         has_failures: tally.has_failures,
         wait: QueueWait::of(pause.paused, None),
-    })
+    }
 }
 
 /// Every entry of the export and save queue, in the order queued.
@@ -349,8 +364,13 @@ pub(super) fn output_counts_on(sql: &SqlReadContext<'_>) -> Result<ReleaseQueueC
 pub(super) fn output_rows_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<ReleaseQueueRow<crate::OutputRequest, ()>>, DbError> {
-    bae_store::statement_rows(sql, &OutputQueueEntriesParams {})?
-        .into_iter()
-        .map(|row| row.entry.into_row(row.release, row.album))
-        .collect()
+    output_rows_of(bae_store::statement_rows(sql, &OutputQueueEntriesParams {})?)
+}
+
+/// The export and save queue's entries as their read returned them.
+#[cfg(any(desktop, test, feature = "test-utils"))]
+pub(super) fn output_rows_of(
+    rows: Vec<OutputQueueEntriesRow>,
+) -> Result<Vec<ReleaseQueueRow<crate::OutputRequest, ()>>, DbError> {
+    rows.into_iter().map(|row| row.entry.into_row(row.release, row.album)).collect()
 }

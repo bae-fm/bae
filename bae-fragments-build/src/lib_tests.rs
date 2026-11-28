@@ -36,6 +36,7 @@ sqlive_compose::fragment!(
 fn refusals(people: &str) -> Vec<String> {
     let compiled = compile_crate(Input {
         crate_name: "bae-music".to_owned(),
+        macros_crate: "sqlive_compose".to_owned(),
         source_reader: &|path| match path {
             "src/lib.rs" => Ok("mod people;\nmod records;\n".to_owned()),
             "src/people.rs" => Ok(people.to_owned()),

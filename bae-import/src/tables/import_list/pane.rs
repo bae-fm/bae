@@ -425,8 +425,10 @@ impl ImportTables {
         crate::ImportError,
     > {
         self.store
-            .subscribe_reconfigurable_statements::<_, PaneHeadParams, PaneDraftParams, _>(initial)
-            .process(|rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
+            .subscribe_reconfigurable(initial, |key| {
+                Ok(coven::Both(PaneHeadParams::from(key), PaneDraftParams::from(key)))
+            })
+            .process(|_, rows| detail_rows(rows)?.map(CandidateDetailRows::process).transpose())
     }
 
     /// The mapping rows and album artists of the pane's draft read, once.
@@ -444,7 +446,7 @@ impl ImportTables {
     /// The folder that failed validation at the key the read is set to, as
     /// the pane that shows its details reads it, live; `None` for no key, or
     /// a key naming no such folder, which clears a selection. Each statement
-    /// in `load_invalid_detail` keeps only rows whose folder the scan stored
+    /// in `invalid_detail_read` keeps only rows whose folder the scan stored
     /// as invalid, so the read returns no rows for a key of any other kind.
     pub(crate) fn subscribe_invalid_candidate(
         &self,
@@ -454,10 +456,14 @@ impl ImportTables {
         Option<crate::InvalidCandidateDetail>,
         bae_store::DbError,
     > {
-        self.store.subscribe_reconfigurable(initial, |key, sql| match key {
-            None => Ok(None),
-            Some(key) => folder_scans::load_invalid_detail(&sql, key),
-        })
+        self.store
+            .subscribe_reconfigurable(initial, |key| {
+                Ok(coven::Maybe(key.as_ref().map(folder_scans::invalid_detail_read)))
+            })
+            .process(|key, reads| match (key, reads) {
+                (Some(key), Some(reads)) => folder_scans::invalid_detail_of(key, reads),
+                _ => Ok(None),
+            })
     }
 
     /// One candidate as the pane reads it, once.

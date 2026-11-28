@@ -59,8 +59,8 @@ pub mod spread_fragments;
 // Only identifying a release, a desktop operation, changes its records.
 #[cfg(desktop)]
 pub use release_records::RecordsChange;
-mod release;
-pub use release::{edited_release_on, EditedRelease, ReleaseMetadataRows};
+pub mod release;
+pub use release::{edited_release_of, EditedRelease, ReleaseMetadataRows};
 // Only saving a release edit session writes metadata alongside records.
 #[cfg(desktop)]
 #[cfg(desktop)]
@@ -98,9 +98,11 @@ mod release_credits;
 mod release_deletion;
 pub mod release_detail;
 pub mod track_group_fragments;
-#[cfg(desktop)]
+#[cfg(all(desktop, test))]
 pub use editor_files::EditorReleaseFilesParams;
 #[cfg(desktop)]
+pub use release_detail::release_files_of;
+#[cfg(all(desktop, test))]
 pub use release_detail::release_files_on;
 pub use release_detail::OtherDeviceError;
 pub mod export_numbers;
@@ -111,14 +113,14 @@ pub mod release_with_files;
 pub mod served;
 pub mod track_display;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
-pub use release_tracks::{track_places_on, track_position_of, track_side_of};
+pub use release_tracks::{track_place_of, track_places_read, track_position_of, track_side_of};
 pub use release_with_files::ReleaseWithFiles;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
-mod test_capabilities;
+pub(crate) mod test_capabilities;
 mod track;
 mod track_list;
 pub use track::UnknownTrackSource;

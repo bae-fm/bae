@@ -63,12 +63,18 @@ sqlive_compose::read!(
 /// [`CandidateAction::ALL`]. A key whose row the tables no longer hold names
 /// no row. A row that Combine cannot merge shows the reason, and Combine
 /// stays in the offers.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn selection(
     sql: &impl bae_store::WriterRead,
     keys: &[CandidateKey],
 ) -> Result<SelectionSummary, DbError> {
+    selection_of(statement_rows(sql, &selection_params(keys))?)
+}
+
+/// What the selected rows hold and offer, as their read returns it.
+pub(super) fn selection_of(rows: Vec<SelectionRow>) -> Result<SelectionSummary, DbError> {
     let mut summary = SelectionSummary::default();
-    for row in statement_rows(sql, &selection_params(keys))? {
+    for row in rows {
         summary.count = to_u64(row.rows, "a selection's count")?;
         let item = row.single_item.as_deref().map(Item::of).transpose()?;
         summary.single = match (item, row.single_key) {

@@ -8,7 +8,7 @@ use bae_records::records::files::CoverVersion;
 use bae_records::records::fragments::ShownTrack;
 use bae_records::records::read::credit_line_of_json;
 use bae_store::list_windows::{sql_bound, Keyed, SortValue};
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::statement_optional;
 
 /// One play as History lists it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,6 +237,7 @@ fn place_of(key: &OrderKey) -> Result<(String, String), DbError> {
 }
 
 /// A play's own columns, as both windows select them.
+#[derive(Clone, PartialEq)]
 struct PlayColumns {
     started_at: String,
     id: String,
@@ -244,12 +245,19 @@ struct PlayColumns {
     opens_day: bool,
 }
 
-/// A window's row as History lists it, with its key.
-fn listed_play(
+/// A row of either window as read: the play, its track, the track's cover and
+/// the person who played it.
+#[derive(Clone, PartialEq)]
+struct ListedPlay {
     play: PlayColumns,
     track: ShownTrack,
     cover: Option<CoverVersion>,
     person: Profile,
+}
+
+/// A window's row as History lists it, with its key.
+fn listed_play(
+    ListedPlay { play, track, cover, person }: ListedPlay,
 ) -> Result<Keyed<HistoryRow>, DbError> {
     let id = uuid::Uuid::parse_str(&play.id)
         .map_err(|error| DbError::unreadable(format!("the id of play {}", play.id), error))?;
@@ -272,52 +280,49 @@ fn listed_play(
     Ok((row, key_of(play.started_at, play.id)))
 }
 
-/// History's `window` under `filter`: its plays from the window's key on, or
-/// from its newest play for a window from the top, each with its key.
-fn history_window_on(
-    sql: &SqlReadContext<'_>,
+/// The read of History's `window` under `filter`: its plays from the window's
+/// key on, or from its newest play for a window from the top, each with its
+/// key.
+fn history_window_read(
     filter: &HistoryFilter,
     window: &ListWindow,
-) -> Result<WindowRead<HistoryRow>, DbError> {
+) -> Result<coven::ReadAs<ListedPlay>, DbError> {
     let limit = sql_bound(window.limit);
     let from = window.from.as_ref().map(place_of).transpose()?;
-    macro_rules! rows {
+    macro_rules! plays {
         ($statement:expr) => {
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|row| {
-                    let play = PlayColumns {
-                        started_at: row.started_at,
-                        id: row.id,
-                        played_on: row.played_on,
-                        opens_day: row.opens_day,
-                    };
-                    listed_play(play, row.track, row.cover, row.person)
-                })
-                .collect::<Result<_, _>>()?
+            coven::ReadAs::new($statement, |row| ListedPlay {
+                play: PlayColumns {
+                    started_at: row.started_at,
+                    id: row.id,
+                    played_on: row.played_on,
+                    opens_day: row.opens_day,
+                },
+                track: row.track,
+                cover: row.cover,
+                person: row.person,
+            })
         };
     }
-    let rows = match (*filter, from) {
-        (None, None) => rows!(HistoryTopParams { limit }),
+    Ok(match (*filter, from) {
+        (None, None) => plays!(HistoryTopParams { limit }),
         (None, Some((from_at, from_id))) => {
-            rows!(HistoryWindowParams { from_at, from_id, limit })
+            plays!(HistoryWindowParams { from_at, from_id, limit })
         }
-        (Some(person), None) => rows!(PersonHistoryTopParams { person, limit }),
+        (Some(person), None) => plays!(PersonHistoryTopParams { person, limit }),
         (Some(person), Some((from_at, from_id))) => {
-            rows!(PersonHistoryWindowParams { person, from_at, from_id, limit })
+            plays!(PersonHistoryWindowParams { person, from_at, from_id, limit })
         }
-    };
-    Ok(WindowRead { window: window.clone(), rows })
+    })
 }
 
 /// How many plays History shows under `filter`, with its menu of whose
 /// plays. A filter naming a person with no profile fails the read: the menu
 /// offers only people with one, and bae never deletes a profile.
-fn history_count_on(
-    sql: &SqlReadContext<'_>,
+fn history_count_of(
     filter: &HistoryFilter,
+    totals: HistoryTotalsRow,
 ) -> Result<HistoryCount, DbError> {
-    let totals = statement_row(sql, &HistoryTotalsParams { person: *filter })?;
     let shown = match filter {
         Some(person) => HistoryShown::Person {
             name: totals.shown_name.ok_or_else(|| {
@@ -329,16 +334,18 @@ fn history_count_on(
     Ok(HistoryCount { plays: totals.plays, people: totals.people, shown })
 }
 
-/// How many plays History shows under `filter` before the play at `key`.
-fn history_rows_before_on(
-    sql: &SqlReadContext<'_>,
+/// The read of how many plays History shows under `filter` before the play
+/// at `key`.
+fn history_rows_before_read(
     filter: &HistoryFilter,
     key: &OrderKey,
-) -> Result<u64, DbError> {
+) -> Result<coven::ReadAs<u64>, DbError> {
     let (at, id) = place_of(key)?;
     Ok(match *filter {
-        None => statement_row(sql, &PlaysBeforeParams { at, id })?.plays,
-        Some(person) => statement_row(sql, &PersonPlaysBeforeParams { person, at, id })?.plays,
+        None => coven::ReadAs::new(PlaysBeforeParams { at, id }, |row| row.plays),
+        Some(person) => {
+            coven::ReadAs::new(PersonPlaysBeforeParams { person, at, id }, |row| row.plays)
+        }
     })
 }
 
@@ -382,9 +389,12 @@ impl LibraryViews {
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<HistoryRow>, bae_store::DbError>
     {
-        self.store.subscribe_reconfigurable(initial, move |window, sql| {
-            history_window_on(&sql, &filter, window)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |window| history_window_read(&filter, window))
+            .process(|window, plays| {
+                let rows = plays.into_iter().map(listed_play).collect::<Result<_, DbError>>()?;
+                Ok(WindowRead { window: window.clone(), rows })
+            })
     }
 
     /// Follow how many plays History shows under `filter`, with its menu of
@@ -393,7 +403,9 @@ impl LibraryViews {
         &self,
         filter: HistoryFilter,
     ) -> coven::LiveQuery<HistoryCount, bae_store::DbError> {
-        self.store.subscribe(move |sql| history_count_on(&sql, &filter))
+        self.store
+            .subscribe_row(HistoryTotalsParams { person: filter })
+            .process(move |totals| history_count_of(&filter, totals))
     }
 
     /// Follow how many plays History shows under `filter` before the row at
@@ -403,9 +415,9 @@ impl LibraryViews {
         filter: HistoryFilter,
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            history_rows_before_on(&sql, &filter, key)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |key| history_rows_before_read(&filter, key))
+            .process(|_, before| exactly_one::<coven::ReadAs<u64>, _>(before))
     }
 
     /// The key of the play at `position` of History under `filter`, or of

@@ -37,13 +37,13 @@ impl PlaybackNowRow {
 pub fn subscribe_now_playing(
     store: &Store,
 ) -> coven::LiveQuery<NowPlayingValues, bae_store::DbError> {
-    store.subscribe(|sql| now_playing_on(&sql))
+    store.subscribe_row(PlayingNowParams {}).process(now_playing_of)
 }
 
 /// What playback is doing now, as `subscribe_now_playing` reads it.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn now_playing(store: &Store) -> Result<NowPlayingValues, DbError> {
-    store.read(|sql| now_playing_on(&sql)).await
+    now_playing_of(store.read_row(PlayingNowParams {}).await?)
 }
 
 sqlive_compose::fragment!(
@@ -802,8 +802,8 @@ impl PlayingNowRow {
 /// The row as the screens show it, with the queue's repeat mode and the
 /// current display of the track it names; a track the library no longer holds
 /// shows as removed.
-fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<NowPlayingValues, DbError> {
-    let row = statement_row(sql, &PlayingNowParams {})?;
+/// What playback is doing now, as its row holds it.
+fn now_playing_of(row: PlayingNowRow) -> Result<NowPlayingValues, DbError> {
     let values = PlaybackValues {
         state: row.state()?,
         volume: row.volume,

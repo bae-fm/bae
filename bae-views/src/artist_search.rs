@@ -6,7 +6,7 @@ use super::*;
 use crate::list_sort::{key, key_values};
 use bae_records::records::files::ArtistImageVersion;
 use bae_store::list_windows::{sql_bound, SortValue};
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::{exactly_one, statement_optional};
 
 // Each artist the text `text` finds, with what the search orders it by: its
 // `match_rank`, 0 for a library or provider id or an exact name or sort-name
@@ -198,10 +198,12 @@ impl LibraryViews {
         initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbArtistSearchRow>, bae_store::DbError>
     {
-        self.store.subscribe_reconfigurable(initial, move |window, sql| match &query {
-            Some(query) => artist_search_window_on(&sql, query, window),
-            None => Ok(WindowRead { window: window.clone(), rows: Vec::new() }),
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |window| {
+                let read = query.as_ref().map(|query| artist_search_window_read(query, window));
+                Ok(coven::Maybe(read.transpose()?))
+            })
+            .process(|window, rows| artist_search_window_of(window, rows.unwrap_or_default()))
     }
 
     /// Follow how many artists the text finds. The count runs as a separate
@@ -210,14 +212,12 @@ impl LibraryViews {
         &self,
         query: Option<crate::LibrarySearchQuery>,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
-        self.store.subscribe(move |sql| match &query {
-            Some(query) => {
-                let statement = ArtistSearchCountParams {
-                    text: query.as_str().to_string(),
-                    pattern: search_pattern(query.as_str()),
-                };
-                Ok(statement_row(&sql, &statement)?.artists)
-            }
+        let count = query.map(|query| ArtistSearchCountParams {
+            text: query.as_str().to_string(),
+            pattern: search_pattern(query.as_str()),
+        });
+        self.store.subscribe(coven::Maybe(count)).process(|rows| match rows {
+            Some(rows) => Ok(exactly_one::<ArtistSearchCountParams, _>(rows)?.artists),
             None => Ok(0),
         })
     }
@@ -229,10 +229,15 @@ impl LibraryViews {
         query: Option<crate::LibrarySearchQuery>,
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        self.store.subscribe_reconfigurable(initial, move |key, sql| match &query {
-            Some(query) => artist_search_rows_before_on(&sql, query, key),
-            None => Ok(0),
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |key| {
+                let read = query.as_ref().map(|query| artist_search_rows_before_read(query, key));
+                Ok(coven::Maybe(read.transpose()?))
+            })
+            .process(|_, rows| match rows {
+                Some(rows) => Ok(exactly_one::<ArtistSearchBeforeParams, _>(rows)?.artists_before),
+                None => Ok(0),
+            })
     }
 
     /// The key of the artist at `position` of what the text finds, or of the
@@ -272,53 +277,82 @@ fn artist_search_key(rank: i64, name: Vec<u8>, id: String) -> OrderKey {
 }
 
 /// The artists `query` finds that `window` holds, each with its key.
+#[cfg(any(test, feature = "test-utils"))]
 fn artist_search_window_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
     window: &ListWindow,
 ) -> Result<WindowRead<DbArtistSearchRow>, DbError> {
+    artist_search_window_of(window, sql.reads(&artist_search_window_read(query, window)?)?)
+}
+
+/// An artist the search finds, as a window's read returns it: the artist, its
+/// image's version and its other names, with its key.
+type FoundArtist = (
+    bae_records::records::browse_fragments::ArtistRecord,
+    Option<ArtistImageVersion>,
+    bae_records::records::artist_credit_names::ArtistOtherNames,
+    OrderKey,
+);
+
+/// The read of the artists `query` finds that `window` holds: from the top of
+/// what it finds with a statement of its own, else from the window's key.
+fn artist_search_window_read(
+    query: &crate::LibrarySearchQuery,
+    window: &ListWindow,
+) -> Result<coven::ReadAs<FoundArtist>, DbError> {
     let (text, pattern) = (query.as_str().to_string(), search_pattern(query.as_str()));
     let limit = sql_bound(window.limit);
     macro_rules! rows {
         ($statement:expr) => {
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|row| {
-                    let found = DbArtistSearchRow {
-                        artist: row.artist.into_artist()?,
-                        image_version: row.image.and_then(ArtistImageVersion::into_version),
-                        credit_names: row.names.into_names().0,
-                    };
-                    Ok((found, artist_search_key(row.order_rank, row.order_name, row.order_id)))
-                })
-                .collect::<Result<_, DbError>>()?
+            coven::ReadAs::new($statement, |row| {
+                let key = artist_search_key(row.order_rank, row.order_name, row.order_id);
+                (row.artist, row.image, row.names, key)
+            })
         };
     }
-    let rows = match &window.from {
+    Ok(match &window.from {
         None => rows!(ArtistSearchTopParams { text, pattern, limit }),
         Some(from) => {
             let ([key_rank], key_name, key_id) = key_values(from)?;
             rows!(ArtistSearchWindowParams { text, pattern, limit, key_rank, key_name, key_id })
         }
-    };
+    })
+}
+
+/// The window `window` from the rows its read returned, each with its key.
+fn artist_search_window_of(
+    window: &ListWindow,
+    rows: Vec<FoundArtist>,
+) -> Result<WindowRead<DbArtistSearchRow>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(artist, image, names, key)| {
+            let found = DbArtistSearchRow {
+                artist: artist.into_artist()?,
+                image_version: image.and_then(ArtistImageVersion::into_version),
+                credit_names: names.into_names().0,
+            };
+            Ok((found, key))
+        })
+        .collect::<Result<_, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 
-/// How many of the artists `query` finds come before the row at `at`.
-fn artist_search_rows_before_on(
-    sql: &SqlReadContext<'_>,
+/// The read of how many of the artists `query` finds come before the row at
+/// `at`.
+fn artist_search_rows_before_read(
     query: &crate::LibrarySearchQuery,
     at: &OrderKey,
-) -> Result<u64, DbError> {
+) -> Result<ArtistSearchBeforeParams, DbError> {
     let ([key_rank], key_name, key_id) = key_values(at)?;
-    let statement = ArtistSearchBeforeParams {
+    Ok(ArtistSearchBeforeParams {
         text: query.as_str().to_string(),
         pattern: search_pattern(query.as_str()),
         key_rank,
         key_name,
         key_id,
-    };
-    Ok(statement_row(sql, &statement)?.artists_before)
+    })
 }
 
 /// The key of the artist at `position` of what `query` finds, or of the last

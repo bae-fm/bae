@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::{CatalogApplyId, CatalogApplyStep};
-use bae_store::{statement_optional, WriteStatements};
+use bae_store::WriteStatements;
 
 /// The stored `step` value of `step`, and its catalog.
 fn step_columns(step: CatalogApplyStep) -> (&'static str, Catalog) {
@@ -27,13 +27,13 @@ sqlive_compose::read!(
 "#
 );
 
-/// The read `apply` waits on now, or `None` while it waits on none.
-fn load_step_on(
-    sql: &impl bae_store::WriterRead,
+/// The read `apply` waits on as its row holds it, or `None` while it waits
+/// on none.
+fn step_of(
     apply: &CatalogApplyId,
+    row: Option<StepOfApplyRow>,
 ) -> Result<Option<CatalogApplyStep>, DbError> {
-    let params = StepOfApplyParams { apply: apply.as_str().to_string() };
-    let Some(StepOfApplyRow { step, catalog }) = statement_optional(sql, &params)? else {
+    let Some(StepOfApplyRow { step, catalog }) = row else {
         return Ok(None);
     };
     let broken = |what: &str| {
@@ -115,8 +115,9 @@ impl ImportTables {
         &self,
         apply: &CatalogApplyId,
     ) -> coven::LiveQuery<Option<CatalogApplyStep>, DbError> {
+        let statement = StepOfApplyParams { apply: apply.as_str().to_string() };
         let apply = apply.clone();
-        self.store.subscribe(move |sql| load_step_on(&sql, &apply))
+        self.store.subscribe_optional(statement).process(move |row| step_of(&apply, row))
     }
 }
 

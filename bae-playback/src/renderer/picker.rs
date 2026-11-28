@@ -7,8 +7,7 @@
 
 use bae_store::DbError;
 use bae_store::Store;
-use bae_store::{statement_row, WriteStatements};
-use coven::SqlReadContext;
+use bae_store::WriteStatements;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 
 use super::receiver::{CastReceiver, RendererKind};
@@ -104,8 +103,8 @@ impl FoundReceiverDocument {
     }
 }
 
-fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
-    let row = statement_row(sql, &PickerListParams {})?;
+/// The receivers the picker lists, as their row holds them.
+fn cast_receivers_of(row: PickerListRow) -> Result<CastReceiverList, DbError> {
     let casting = row.casting.map(|casting| casting.into_receiver()).transpose()?;
     let found = row
         .listed
@@ -170,7 +169,7 @@ impl CastPicker {
     /// apart from the rest, by name in the device's language. The read reads
     /// `name_sort`, so coven reruns it when the device's language changes.
     pub fn subscribe(&self) -> coven::LiveQuery<CastReceiverList, bae_store::DbError> {
-        self.store.subscribe(|sql| cast_receivers_on(&sql))
+        self.store.subscribe_row(PickerListParams {}).process(cast_receivers_of)
     }
 
     /// Empty the list: what the library opens with, since no discovery
@@ -187,7 +186,7 @@ impl CastPicker {
     /// The receivers the picker lists now.
     #[cfg(test)]
     async fn receivers(&self) -> Result<CastReceiverList, DbError> {
-        self.store.read(|sql| cast_receivers_on(&sql)).await
+        cast_receivers_of(self.store.read_row(PickerListParams {}).await?)
     }
 }
 

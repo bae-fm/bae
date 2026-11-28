@@ -4,7 +4,6 @@ use crate::test_fixtures::live_query::*;
 use crate::test_fixtures::*;
 use bae_store::test_fixtures::live_query::next_run_is_only_the_request;
 use bae_store::test_fixtures::*;
-use rusqlite::params;
 
 #[tokio::test]
 async fn release_file_source_audio_facts_round_trip_without_track_rows() {
@@ -200,13 +199,17 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
     .await;
     // The request only gives the test a change of its own to make; the query
     // reads the same row whatever it is.
-    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> =
-        db.subscribe_reconfigurable(0_u8, |_, sql| {
-            Ok(sql.query_row(
-                "SELECT title FROM albums WHERE id = ?1",
-                params![ALBUM_ID],
-                |row| row.get::<_, String>(0),
-            )?)
+    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> = db
+        .subscribe_reconfigurable(0_u8, |_| {
+            Ok(crate::records::test_capabilities::TitleOfAlbumParams {
+                album: ALBUM_ID.to_string(),
+            })
+        })
+        .process(|_, rows| {
+            Ok(bae_store::exactly_one::<crate::records::test_capabilities::TitleOfAlbumParams, _>(
+                rows,
+            )?
+            .title)
         });
     assert_eq!(
         live.next_inline().await.expect("the query stays open").result.unwrap(),

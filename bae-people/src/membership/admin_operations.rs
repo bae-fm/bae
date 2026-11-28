@@ -9,7 +9,7 @@ use crate::admin_change::{
     AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangePlace, AdminChangeState,
     AdminChanges,
 };
-use bae_store::{statement_row, WriteStatements};
+use bae_store::WriteStatements;
 use rusqlite::types::{FromSql, FromSqlError, ValueRef};
 
 /// What an admin change changes, as its `admin_operations` row holds it.
@@ -91,11 +91,8 @@ impl PlaceAdminChangesParams {
     }
 }
 
-fn admin_changes_on(
-    sql: &impl bae_store::WriterRead,
-    place: &AdminChangePlace,
-) -> Result<AdminChanges, DbError> {
-    let row = statement_row(sql, &PlaceAdminChangesParams::of(place))?;
+/// The admin changes of a place as its read returns them.
+fn admin_changes_of(row: PlaceAdminChangesRow) -> Result<AdminChanges, DbError> {
     let changes = row
         .listed
         .changes
@@ -255,7 +252,7 @@ impl Membership {
         &self,
         place: AdminChangePlace,
     ) -> coven::LiveQuery<AdminChanges, bae_store::DbError> {
-        self.store.subscribe(move |sql| admin_changes_on(&sql, &place))
+        self.store.subscribe_row(PlaceAdminChangesParams::of(&place)).process(admin_changes_of)
     }
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:

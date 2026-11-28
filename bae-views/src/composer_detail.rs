@@ -9,7 +9,7 @@ use super::*;
 use crate::album_detail::{ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading};
 use crate::composer::work_summary;
 use bae_store::list_windows::SortValue;
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::statement_optional;
 
 impl LibraryViews {
     #[cfg(test)]
@@ -28,12 +28,14 @@ impl LibraryViews {
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection, bae_store::DbError>
     {
-        self.store.subscribe_reconfigurable(initial, |artist_id, sql| {
-            let Some(artist_id) = artist_id else {
-                return Ok(ComposerDetailProjection { detail: None });
-            };
-            Ok(ComposerDetailProjection { detail: find_composer_detail_on(&sql, artist_id)? })
-        })
+        self.store
+            .subscribe_reconfigurable(initial, |artist_id| {
+                Ok(coven::Maybe(artist_id.clone().map(|artist| ComposerHeadParams { artist })))
+            })
+            .process(|_, rows| {
+                let row = rows.map(at_most_one::<ComposerHeadParams, _>).transpose()?.flatten();
+                Ok(ComposerDetailProjection { detail: composer_detail_rows_of(row)? })
+            })
     }
 
     /// The rows of `artist_id`'s page from `offset`, at most `limit`.
@@ -46,7 +48,14 @@ impl LibraryViews {
     ) -> Result<Vec<DbComposerDetailRow>, DbError> {
         let artist_id = artist_id.to_string();
         let page = ListPage { offset, limit };
-        self.store.read(move |sql| composer_page_on(&sql, &artist_id, page)).await
+        self.store
+            .read(move |sql| {
+                sql.reads(&composer_page_read(&artist_id, page))?
+                    .into_iter()
+                    .map(row_of_entry)
+                    .collect()
+            })
+            .await
     }
 
     /// Follow one window of `artist_id`'s page: the rows at or after a key of
@@ -61,9 +70,11 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         let artist_id = artist_id.to_string();
-        self.store.subscribe_reconfigurable(initial, move |window, sql| {
-            composer_page_window_on(&sql, &artist_id, window)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |window| {
+                composer_page_window_read(&artist_id, window)
+            })
+            .process(composer_page_window_of)
     }
 
     /// Follow one page of the rows of `artist_id`'s composer page: the rows
@@ -74,9 +85,9 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let artist_id = artist_id.to_string();
-        self.store
-            .subscribe(move |sql| composer_page_on(&sql, &artist_id, page))
-            .process(|rows| Ok(composer_detail_rows(rows)))
+        self.store.subscribe(composer_page_read(&artist_id, page)).process(|rows| {
+            Ok(composer_detail_rows(rows.into_iter().map(row_of_entry).collect::<Result<_, _>>()?))
+        })
     }
 
     /// Follow how many rows `artist_id`'s page holds. The count runs as a
@@ -86,7 +97,9 @@ impl LibraryViews {
         artist_id: &str,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
         let artist_id = artist_id.to_string();
-        self.store.subscribe(move |sql| composer_page_length_on(&sql, &artist_id))
+        self.store
+            .subscribe_row(ComposerPageLengthParams { artist: artist_id })
+            .process(|row| list_count(row.entries))
     }
 
     /// Follow how many rows of `artist_id`'s page come before the row at a
@@ -97,9 +110,13 @@ impl LibraryViews {
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let artist_id = artist_id.to_string();
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            composer_page_rows_before_on(&sql, &artist_id, key)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |key| {
+                composer_page_rows_before_read(&artist_id, key)
+            })
+            .process(|_, rows| {
+                list_count(exactly_one::<ComposerPageRowsBeforeParams, _>(rows)?.entries)
+            })
     }
 
     /// The key of the row at `position` of `artist_id`'s page, or of its last
@@ -359,37 +376,33 @@ fn page_key_values(key: &OrderKey) -> Result<[SortValue; 9], DbError> {
         .map_err(|values| DbError::unreadable("a composer page key", values))
 }
 
-/// The `window` of `artist_id`'s page, each row with its key: from the page's
-/// first row for a window from its top, else from the window's key.
-fn composer_page_window_on(
-    sql: &SqlReadContext<'_>,
+/// The read of the `window` of `artist_id`'s page, each row with its key: from
+/// the page's first row for a window from its top, else from the window's key.
+fn composer_page_window_read(
     artist_id: &str,
     window: &ListWindow,
-) -> Result<WindowRead<DbComposerDetailRow>, DbError> {
+) -> Result<coven::ReadAs<(ComposerPageEntry, OrderKey)>, DbError> {
     let artist = artist_id.to_string();
     let limit = bae_store::list_windows::sql_bound(window.limit);
     macro_rules! rows {
         ($statement:expr) => {
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|row| {
-                    let key = OrderKey::new(vec![
-                        row.order_key_0,
-                        row.order_key_1,
-                        row.order_key_2,
-                        row.order_key_3,
-                        row.order_key_4,
-                        row.order_key_5,
-                        row.order_key_6,
-                        row.order_key_7,
-                        row.order_key_8,
-                    ]);
-                    Ok((row_of_entry(row.shown)?, key))
-                })
-                .collect::<Result<_, DbError>>()?
+            coven::ReadAs::new($statement, |row| {
+                let key = OrderKey::new(vec![
+                    row.order_key_0,
+                    row.order_key_1,
+                    row.order_key_2,
+                    row.order_key_3,
+                    row.order_key_4,
+                    row.order_key_5,
+                    row.order_key_6,
+                    row.order_key_7,
+                    row.order_key_8,
+                ]);
+                (row.shown, key)
+            })
         };
     }
-    let rows = match &window.from {
+    Ok(match &window.from {
         None => rows!(ComposerPageTopParams { artist, limit }),
         Some(from) => {
             let [order_key_0, order_key_1, order_key_2, order_key_3, order_key_4, order_key_5, order_key_6, order_key_7, order_key_8] =
@@ -408,36 +421,38 @@ fn composer_page_window_on(
                 limit,
             })
         }
-    };
+    })
+}
+
+/// The `window` of a composer's page as its read returned it, each row with
+/// its key.
+fn composer_page_window_of(
+    window: &ListWindow,
+    rows: Vec<(ComposerPageEntry, OrderKey)>,
+) -> Result<WindowRead<DbComposerDetailRow>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(shown, key)| Ok((row_of_entry(shown)?, key)))
+        .collect::<Result<_, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 
-/// The rows of `artist_id`'s page at `page`'s places.
-fn composer_page_on(
-    sql: &SqlReadContext<'_>,
-    artist_id: &str,
-    page: ListPage,
-) -> Result<Vec<DbComposerDetailRow>, DbError> {
+/// The read of the rows of `artist_id`'s page at `page`'s places.
+fn composer_page_read(artist_id: &str, page: ListPage) -> coven::ReadAs<ComposerPageEntry> {
     let statement = ComposerPageRowsParams {
         artist: artist_id.to_string(),
         offset: bae_store::list_windows::sql_bound(page.offset),
         limit: bae_store::list_windows::sql_bound(page.limit),
     };
-    statement_rows(sql, &statement)?.into_iter().map(|row| row_of_entry(row.shown)).collect()
+    coven::ReadAs::new(statement, |row| row.shown)
 }
 
-/// How many rows `artist_id`'s page lists.
-fn composer_page_length_on(sql: &SqlReadContext<'_>, artist_id: &str) -> Result<u64, DbError> {
-    let statement = ComposerPageLengthParams { artist: artist_id.to_string() };
-    list_count(statement_row(sql, &statement)?.entries)
-}
-
-/// How many rows of `artist_id`'s page come before the row at `key`.
-fn composer_page_rows_before_on(
-    sql: &SqlReadContext<'_>,
+/// The read of how many rows of `artist_id`'s page come before the row at
+/// `key`.
+fn composer_page_rows_before_read(
     artist_id: &str,
     key: &OrderKey,
-) -> Result<u64, DbError> {
+) -> Result<ComposerPageRowsBeforeParams, DbError> {
     let [order_key_0, order_key_1, order_key_2, order_key_3, order_key_4, order_key_5, order_key_6, order_key_7, order_key_8] =
         page_key_values(key)?;
     let statement = ComposerPageRowsBeforeParams {
@@ -452,7 +467,7 @@ fn composer_page_rows_before_on(
         order_key_7,
         order_key_8,
     };
-    list_count(statement_row(sql, &statement)?.entries)
+    Ok(statement)
 }
 
 /// The key of the row at `position` of `artist_id`'s page, or of its last row.
@@ -522,19 +537,26 @@ fn row_of_entry(entry: ComposerPageEntry) -> Result<DbComposerDetailRow, DbError
 
 /// The composer `artist_id` names, with the first work its page lists;
 /// `None` when the composer list doesn't show it.
+#[cfg(test)]
 fn find_composer_detail_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
 ) -> Result<Option<DbComposerDetail>, DbError> {
     let statement = ComposerHeadParams { artist: artist_id.to_string() };
-    statement_optional(sql, &statement)?
-        .map(|row| {
-            Ok(DbComposerDetail {
-                composer: row.shown.into_summary()?,
-                default_work_id: row.default_work_id,
-            })
+    composer_detail_rows_of(statement_optional(sql, &statement)?)
+}
+
+/// The composer as its head row holds it.
+fn composer_detail_rows_of(
+    row: Option<ComposerHeadRow>,
+) -> Result<Option<DbComposerDetail>, DbError> {
+    row.map(|row| {
+        Ok(DbComposerDetail {
+            composer: row.shown.into_summary()?,
+            default_work_id: row.default_work_id,
         })
-        .transpose()
+    })
+    .transpose()
 }
 
 #[derive(Debug, Clone, PartialEq)]

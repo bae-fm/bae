@@ -95,7 +95,39 @@ pub(super) fn read_window(
     request: &ImportListRequest,
     window: &ListWindow,
 ) -> Result<WindowRows, DbError> {
-    let rows = WindowStatement::of(request, window)?.read(sql)?;
+    window_of(window, sql.reads(&window_read(request, window)?)?)
+}
+
+/// The read of a window's rows.
+pub(super) type WindowItems = coven::ReadAs<WindowItemRow>;
+
+/// One row of a window's read, as its order's statement returned it.
+#[derive(Clone, PartialEq)]
+pub(super) enum WindowItemRow {
+    NewestFirstTop(NewestFirstTopRow),
+    OldestFirstTop(OldestFirstTopRow),
+    PathAscendingTop(PathAscendingTopRow),
+    PathDescendingTop(PathDescendingTopRow),
+    NewestFirst(NewestFirstWindowRow),
+    OldestFirst(OldestFirstWindowRow),
+    PathAscending(PathAscendingWindowRow),
+    PathDescending(PathDescendingWindowRow),
+}
+
+/// The read of the window `window` of the list `request` shows.
+pub(super) fn window_read(
+    request: &ImportListRequest,
+    window: &ListWindow,
+) -> Result<WindowItems, DbError> {
+    Ok(WindowStatement::of(request, window)?.reads())
+}
+
+/// The window `window` as its read returned it.
+pub(super) fn window_of(
+    window: &ListWindow,
+    items: Vec<WindowItemRow>,
+) -> Result<WindowRows, DbError> {
+    let rows = items.into_iter().map(WindowItemRow::item).collect::<Result<_, _>>()?;
     Ok(WindowRows { window: window.clone(), rows })
 }
 
@@ -238,60 +270,68 @@ impl WindowStatement {
         }
     }
 
-    /// The items the statement reads, each with its key.
-    fn read(
-        &self,
-        sql: &impl bae_store::WriterRead,
-    ) -> Result<Vec<(StoredItem, OrderKey)>, DbError> {
-        macro_rules! items {
-            ($params:ident, [$($column:ident)*]) => {
-                statement_rows(sql, $params)?
-                    .into_iter()
-                    .map(|row| {
-                        let key = key_of!(row, $($column)*);
-                        Ok((stored_item!(row)?, key))
-                    })
-                    .collect::<Result<Vec<_>, DbError>>()?
-            };
+    /// The read of the rows the statement reads.
+    fn reads(self) -> WindowItems {
+        match self {
+            Self::NewestFirstTop(params) => coven::ReadAs::new(params, WindowItemRow::NewestFirstTop),
+            Self::OldestFirstTop(params) => coven::ReadAs::new(params, WindowItemRow::OldestFirstTop),
+            Self::PathAscendingTop(params) => coven::ReadAs::new(params, WindowItemRow::PathAscendingTop),
+            Self::PathDescendingTop(params) => coven::ReadAs::new(params, WindowItemRow::PathDescendingTop),
+            Self::NewestFirst(params) => coven::ReadAs::new(params, WindowItemRow::NewestFirst),
+            Self::OldestFirst(params) => coven::ReadAs::new(params, WindowItemRow::OldestFirst),
+            Self::PathAscending(params) => coven::ReadAs::new(params, WindowItemRow::PathAscending),
+            Self::PathDescending(params) => coven::ReadAs::new(params, WindowItemRow::PathDescending),
         }
-        Ok(match self {
-            Self::NewestFirstTop(params) => items!(params, [
+    }
+}
+
+impl WindowItemRow {
+    /// The item the row shows, with its key.
+    fn item(self) -> Result<(StoredItem, OrderKey), DbError> {
+        macro_rules! item {
+            ($row:ident, [$($column:ident)*]) => {{
+                let key = key_of!($row, $($column)*);
+                Ok((stored_item!($row)?, key))
+            }};
+        }
+        match self {
+            Self::NewestFirstTop(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
                 order_key_10 order_key_11 order_key_12 order_key_13
             ]),
-            Self::OldestFirstTop(params) => items!(params, [
+            Self::OldestFirstTop(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
                 order_key_10 order_key_11 order_key_12 order_key_13
             ]),
-            Self::PathAscendingTop(params) => items!(params, [
+            Self::PathAscendingTop(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
             ]),
-            Self::PathDescendingTop(params) => items!(params, [
+            Self::PathDescendingTop(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
             ]),
-            Self::NewestFirst(params) => items!(params, [
-                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
-                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
-                order_key_10 order_key_11 order_key_12 order_key_13
-            ]),
-            Self::OldestFirst(params) => items!(params, [
+            Self::NewestFirst(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
                 order_key_10 order_key_11 order_key_12 order_key_13
             ]),
-            Self::PathAscending(params) => items!(params, [
+            Self::OldestFirst(row) => item!(row, [
+                order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
+                order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
+                order_key_10 order_key_11 order_key_12 order_key_13
+            ]),
+            Self::PathAscending(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
             ]),
-            Self::PathDescending(params) => items!(params, [
+            Self::PathDescending(row) => item!(row, [
                 order_key_0 order_key_1 order_key_2 order_key_3 order_key_4
                 order_key_5 order_key_6 order_key_7 order_key_8 order_key_9
             ]),
-        })
+        }
     }
 }
 
@@ -300,11 +340,11 @@ impl WindowStatement {
 /// holds each order to its indexes with.
 #[cfg(test)]
 pub(super) fn window_plans(
-    sql: &impl bae_store::WriterRead,
+    sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
 ) -> Result<Vec<Vec<String>>, DbError> {
     let top = bae_store::ListWindow::top(50);
-    let first = WindowStatement::of(request, &top)?.read(sql)?.into_iter().next();
+    let first = read_window(sql, request, &top)?.rows.into_iter().next();
     let mut windows = vec![top];
     if let Some((_, key)) = first {
         windows.push(ListWindow { from: Some(key), limit: 50 });

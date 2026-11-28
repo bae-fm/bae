@@ -18,7 +18,7 @@ async fn delete_album_removes_release_covers() {
     .await;
     store_test_cover(manager, &release.id, b"image").await;
 
-    wait_for_published_file(manager, "covers", &release.id).await;
+    wait_for_published_cover(manager, &release.id).await;
 
     manager.delete_album(&release.album_id).await.unwrap();
 

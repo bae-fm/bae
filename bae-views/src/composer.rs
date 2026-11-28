@@ -8,15 +8,17 @@ use crate::album_detail::{WorkChild, WorkDetail, WorkReleaseSummary};
 use bae_records::records::browse_fragments::{WorkReleaseRow, WorkSummary};
 use bae_records::records::files::ArtistImageVersion;
 use bae_records::records::files::CoverVersion;
-use bae_store::{statement_optional, statement_row, statement_rows};
+use bae_store::statement_optional;
 
 mod list;
 mod top_reads;
 mod window_reads;
 pub(crate) use list::{
-    composer_key_at_on, composer_list_length_on, composer_page_on, composer_sort,
-    composer_window_on, composers_before_on,
+    composer_key_at_on, composer_page_read, composer_sort, composer_window_of,
+    composer_window_read, composers_before_read, ComposerListLengthParams,
 };
+#[cfg(test)]
+pub(crate) use list::{composer_page_on, composer_window_on, composers_before_on};
 
 impl LibraryViews {
     /// The composer list's rows at the places from `offset`, at most `limit`.
@@ -41,9 +43,9 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbComposerSummary>, bae_store::DbError>
     {
         let sort = composer_sort(sort);
-        self.store.subscribe_reconfigurable(initial, move |window, sql| {
-            composer_window_on(&sql, &sort, window)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |window| composer_window_read(&sort, window))
+            .process(composer_window_of)
     }
 
     /// Follow one page of the composer list under `sort`: the composers at the
@@ -54,16 +56,17 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let sort = composer_sort(sort);
-        self.store
-            .subscribe(move |sql| composer_page_on(&sql, &sort, page))
-            .process(|rows| Ok(crate::ListRows::Composers(rows)))
+        self.store.subscribe(composer_page_read(&sort, page)).process(|rows| {
+            let rows = rows.into_iter().map(ListedComposer::into_summary);
+            Ok(crate::ListRows::Composers(rows.collect::<Result<_, DbError>>()?))
+        })
     }
 
     /// Follow how many composers the list has. The count runs as a separate
     /// query from the windows, because every composer added or removed changes
     /// it.
     pub fn subscribe_composer_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
-        self.store.subscribe(|sql| composer_list_length_on(&sql))
+        self.store.subscribe_row(ComposerListLengthParams {}).process(|row| list_count(row.entries))
     }
 
     /// Follow how many composers come before the row at a key; the caller
@@ -74,9 +77,9 @@ impl LibraryViews {
         initial: OrderKey,
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let sort = composer_sort(sort);
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            composers_before_on(&sql, &sort, key)
-        })
+        self.store
+            .subscribe_reconfigurable(initial, move |key| composers_before_read(&sort, key))
+            .process(|_, entries| list_count(exactly_one::<coven::ReadAs<i64>, _>(entries)?))
     }
 
     /// The key of the composer at `position`, or of the last one when the list
@@ -126,8 +129,7 @@ impl LibraryViews {
     ) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
         self.store
-            .read(move |sql| find_work_detail_on(&sql, &work_id))
-            .process(WorkDetailRows::process)
+            .read(move |sql| work_detail_rows_of(sql.reads(&work_detail_read(&work_id))?))
             .await
     }
 
@@ -145,11 +147,11 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |work_id, sql| {
-                work_id.as_deref().map(|work_id| find_work_detail_on(&sql, work_id)).transpose()
+            .subscribe_reconfigurable(initial, |work_id| {
+                Ok(coven::Maybe(work_id.as_deref().map(work_detail_read)))
             })
-            .process(|rows| {
-                let detail = rows.map(WorkDetailRows::process).transpose()?.flatten();
+            .process(|_, rows| {
+                let detail = rows.map(work_detail_rows_of).transpose()?.flatten();
                 Ok(WorkDetailProjection { detail })
             })
     }
@@ -163,9 +165,9 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let work_id = work_id.to_string();
-        self.store
-            .subscribe(move |sql| work_child_page_on(&sql, &work_id, page))
-            .process(|rows| Ok(work_child_rows(rows)))
+        self.store.subscribe(work_child_page_read(&work_id, page)).process(|rows| {
+            Ok(work_child_rows(rows.into_iter().map(work_child_of).collect::<Result<_, _>>()?))
+        })
     }
 
     /// Follow how many children the work `work_id` has. The count runs as a
@@ -175,10 +177,9 @@ impl LibraryViews {
         work_id: &str,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
         let work_id = work_id.to_string();
-        self.store.subscribe(move |sql| {
-            let statement = WorkChildCountParams { work: work_id.clone() };
-            list_count(statement_row(&sql, &statement)?.children)
-        })
+        self.store
+            .subscribe_row(WorkChildCountParams { work: work_id })
+            .process(|row| list_count(row.children))
     }
 }
 
@@ -219,69 +220,54 @@ fn work_detail_of(raw: DbWorkDetail) -> WorkDetail {
     }
 }
 
-/// What the work page's statements read of the work `work_id`, in one
-/// snapshot: its row, its parts, the releases that perform it and the tracks
-/// that do.
-fn find_work_detail_on(sql: &SqlReadContext<'_>, work_id: &str) -> Result<WorkDetailRows, DbError> {
-    let work = || work_id.to_string();
-    Ok(WorkDetailRows {
-        head: statement_optional(sql, &WorkByIdParams { work: work() })?,
-        parts: statement_rows(sql, &WorkPartRowsParams { work: work() })?,
-        releases: statement_rows(sql, &WorkReleaseRowsParams { work: work() })?,
-        tracks: statement_rows(sql, &WorkTrackRowsParams { work: work() })?,
-    })
+/// The reads of the work `work_id`'s page: the work beside the tracks that
+/// perform it, and its children (its parts, then the releases that perform
+/// it).
+fn work_detail_read(work_id: &str) -> coven::Both<WorkPageParams, WorkChildRowsParams> {
+    let work = work_id.to_string();
+    coven::Both(
+        WorkPageParams { work: work.clone() },
+        WorkChildRowsParams { work, offset: 0, limit: -1 },
+    )
 }
 
-#[derive(Clone, PartialEq)]
-struct WorkDetailRows {
-    head: Option<WorkByIdRow>,
-    parts: Vec<WorkPartRowsRow>,
-    releases: Vec<WorkReleaseRowsRow>,
-    tracks: Vec<WorkTrackRowsRow>,
-}
-
-impl WorkDetailRows {
-    /// The work's page; `None` for an unknown work.
-    fn process(self) -> Result<Option<DbWorkDetail>, DbError> {
-        let Some(found) = self.head else {
-            return Ok(None);
-        };
-        // Each section's statement counts its own rows beside them; a section
-        // with no rows counts zero.
-        let child_work_count = list_count(self.parts.first().map_or(0, |part| part.children))?;
-        let child_works = self
-            .parts
-            .into_iter()
-            .map(|row| work_summary(row.part, row.cover))
-            .collect::<Result<_, _>>()?;
-        let release_count = list_count(self.releases.first().map_or(0, |row| row.children))?;
-        let releases = self
-            .releases
-            .into_iter()
-            .map(|row| work_release(row.release, row.cover))
-            .collect::<Result<_, _>>()?;
-        let track_count = list_count(self.tracks.first().map_or(0, |track| track.listed))?;
-        let tracks = self
-            .tracks
-            .into_iter()
-            .map(|row| {
-                Ok(DbWorkTrackSummary {
-                    link: row.link.into_link()?,
-                    track: row.track.into_track()?,
-                    album: row.album.into_album()?,
-                })
-            })
-            .collect::<Result<_, DbError>>()?;
-        Ok(Some(DbWorkDetail {
-            work: work_summary(found.work, found.cover)?,
-            child_works,
-            releases,
-            tracks,
-            child_work_count,
-            release_count,
-            track_count,
-        }))
+/// The work's page from the rows of [`work_detail_read`]; `None` for an
+/// unknown work.
+fn work_detail_rows_of(
+    (page, children): (Vec<WorkPageRow>, Vec<WorkChildRowsRow>),
+) -> Result<Option<DbWorkDetail>, DbError> {
+    let Some(found) = page.first() else {
+        return Ok(None);
+    };
+    let work = work_summary(found.work.clone(), found.cover.clone())?;
+    let mut child_works = Vec::new();
+    let mut releases = Vec::new();
+    for child in children {
+        match work_child_of(child)? {
+            DbWorkChild::Part(part) => child_works.push(part),
+            DbWorkChild::Release(release) => releases.push(release),
+        }
     }
+    let tracks = page
+        .into_iter()
+        .filter_map(|row| row.performed)
+        .map(|performed| {
+            Ok(DbWorkTrackSummary {
+                link: performed.link.into_link()?,
+                track: performed.track.into_track()?,
+                album: performed.album.into_album()?,
+            })
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    Ok(Some(DbWorkDetail {
+        work,
+        child_work_count: child_works.len() as u64,
+        release_count: releases.len() as u64,
+        track_count: tracks.len() as u64,
+        child_works,
+        releases,
+        tracks,
+    }))
 }
 
 // Each artist the composer list shows (`composer_listing`), with how many
@@ -355,45 +341,14 @@ sqlive_compose::read!(
 "#
 );
 
-// The works that are parts of the work `work`, in its page's order, each
-// beside how many there are.
-sqlive_compose::read!(
-    writer WorkPartRows(work: String) { children: i64 },
+// Each track that performs a work, with its link to the work, the track and
+// its album, and the columns the work's page orders its tracks by.
+sqlive_compose::fragment!(
+    WorkPerformedTrack { performed_work_id: String, title_key: Vec<u8> },
     r#"
-    SELECT part.*, cover.*, COUNT(*) OVER () AS children
-    FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
-    JOIN @bae_records::records::browse_fragments::WorkSummary AS part
-      ON part.work_id = child.item_id
-    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
-           ON cover.id = part.representative_release_id
-    WHERE child.section = 0
-    ORDER BY child.place, child.title_key, child.item_id
-"#
-);
-
-// The releases that perform the work `work`, in its page's order, each beside
-// how many there are.
-sqlive_compose::read!(
-    writer WorkReleaseRows(work: String) { children: i64 },
-    r#"
-    SELECT release.*, cover.*, COUNT(*) OVER () AS children
-    FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
-    JOIN @bae_records::records::browse_fragments::WorkReleaseRow AS release
-      ON release.release_id = child.item_id
-    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
-           ON cover.id = release.release_id
-    WHERE child.section = 1
-    ORDER BY child.title_key, child.album_id, child.album_order, child.item_id
-"#
-);
-
-// The tracks that perform the work `work`, each beside how many there are:
-// release by release in its page's order, each release's tracks in playing
-// order.
-sqlive_compose::read!(
-    writer WorkTrackRows(work: String) { listed: i64 },
-    r#"
-    SELECT link.*, track.*, album.*, COUNT(*) OVER () AS listed
+    SELECT shown.work_id AS performed_work_id, shown.title_key, shown.album_id AS order_album,
+           shown.album_order, shown.release_id AS order_release,
+           link.*, track.*, album.*
     FROM @bae_records::records::browse_fragments::WorkPerformances AS shown
     JOIN @bae_records::records::browse_fragments::TrackWorkLink AS link
       ON link.link_id = shown.link_id
@@ -401,9 +356,25 @@ sqlive_compose::read!(
       ON track.track_id = link.track_id
     JOIN @bae_records::records::browse_fragments::AlbumRecord AS album
       ON album.album_id = shown.album_id
-    WHERE shown.work_id = :work
-    ORDER BY shown.title_key, shown.album_id, shown.album_order, shown.release_id,
-             link.track_position, link.position
+"#
+);
+
+// The work `work` as its page shows it, with its cover, beside each track that
+// performs it: release by release in its page's order, each release's tracks
+// in playing order. A work no track performs gives one row with no track, and
+// a work the library does not hold gives none.
+sqlive_compose::read!(
+    writer WorkPage(work: String),
+    r#"
+    SELECT work.*, cover.*, performed.*
+    FROM @bae_records::records::browse_fragments::WorkSummary AS work
+    LEFT JOIN @bae_records::records::files::CoverVersion AS cover
+           ON cover.id = work.representative_release_id
+    LEFT JOIN @crate::composer::WorkPerformedTrack AS performed
+           ON performed.performed_work_id = work.work_id
+    WHERE work.work_id = :work
+    ORDER BY performed.title_key, performed.order_album, performed.album_order,
+             performed.order_release, performed.track_position, performed.position
 "#
 );
 
@@ -476,30 +447,24 @@ fn work_release(
 }
 
 /// The children of the work `work_id` at `page`'s places.
-fn work_child_page_on(
-    sql: &SqlReadContext<'_>,
-    work_id: &str,
-    page: ListPage,
-) -> Result<Vec<DbWorkChild>, DbError> {
-    let statement = WorkChildRowsParams {
+fn work_child_page_read(work_id: &str, page: ListPage) -> WorkChildRowsParams {
+    WorkChildRowsParams {
         work: work_id.to_string(),
         offset: bae_store::list_windows::sql_bound(page.offset),
         limit: bae_store::list_windows::sql_bound(page.limit),
-    };
-    statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| {
-            let missing =
-                || DbError::unreadable("a work child with nothing to show", row.child.clone());
-            Ok(if row.child.is_part()? {
-                let part = row.part.ok_or_else(missing)?;
-                DbWorkChild::Part(work_summary(part, row.part_cover)?)
-            } else {
-                let release = row.release.ok_or_else(missing)?;
-                DbWorkChild::Release(work_release(release, row.release_cover)?)
-            })
-        })
-        .collect()
+    }
+}
+
+/// The work child a [`WorkChildRows`] row shows.
+fn work_child_of(row: WorkChildRowsRow) -> Result<DbWorkChild, DbError> {
+    let missing = || DbError::unreadable("a work child with nothing to show", row.child.clone());
+    Ok(if row.child.is_part()? {
+        let part = row.part.clone().ok_or_else(missing)?;
+        DbWorkChild::Part(work_summary(part, row.part_cover)?)
+    } else {
+        let release = row.release.clone().ok_or_else(missing)?;
+        DbWorkChild::Release(work_release(release, row.release_cover)?)
+    })
 }
 
 #[derive(Debug, Clone, PartialEq)]

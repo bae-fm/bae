@@ -11,7 +11,7 @@ use super::import_list::artist_field_of_json;
 use super::*;
 use crate::{ReleaseEditDraft, ReleaseEditForm, ReleaseEditLoadError, ReleaseEditSeed};
 use bae_records::records::{editor_release_on, release_edit_rows::EditorRelease};
-pub(crate) use draft::{release_edit_draft_rows_on, ReleaseEditDraftRows};
+pub(crate) use draft::{release_edit_draft_read, release_edit_draft_rows_of, ReleaseEditDraftRows};
 pub use layout::{release_edit_layout_on, store_release_edit_sheet_decisions_on};
 pub use save_inputs::{release_save_inputs_unchanged_on, ReleaseSaveInputs};
 use seed::release_edit_seed;
@@ -152,12 +152,15 @@ impl ImportTables {
         DbError,
     > {
         self.store
-            .subscribe_reconfigurable(None, |form, sql| match form {
-                None => Ok(None),
-                Some(form) => Ok(Some(release_edit_draft_rows_on(&sql, form)?)),
+            .subscribe_reconfigurable(None, |form| {
+                Ok(coven::Maybe(form.as_ref().map(release_edit_draft_read).transpose()?))
             })
-            .process(|rows| {
-                rows.map(|rows| rows.map(ReleaseEditDraftRows::draft).transpose()).transpose()
+            .process(|form, reads| {
+                let (Some(form), Some(reads)) = (form, reads) else {
+                    return Ok(None);
+                };
+                let rows = release_edit_draft_rows_of(form, reads)?;
+                Ok(Some(rows.map(ReleaseEditDraftRows::draft).transpose()?))
             })
     }
 

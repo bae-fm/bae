@@ -163,11 +163,18 @@ sqlive_compose::read!(
 
 /// Every entry of Found's filter, in the menu's order, with how many of
 /// Found's releases it holds.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn filter_entries(
     sql: &impl bae_store::WriterRead,
 ) -> Result<Vec<PendingFilterEntry>, DbError> {
-    statement_rows(sql, &filter_entries_params())?
-        .into_iter()
+    filter_entries_of(statement_rows(sql, &filter_entries_params())?)
+}
+
+/// Found's filter entries as their read returns them.
+pub(super) fn filter_entries_of(
+    rows: Vec<FilterEntriesRow>,
+) -> Result<Vec<PendingFilterEntry>, DbError> {
+    rows.into_iter()
         .map(|row| {
             let entry = row
                 .entry
@@ -196,12 +203,14 @@ fn entry_list(filters: &[PendingFilter]) -> String {
 
 /// The summary a surface shows beside the list's rows: whether bae watches
 /// any folder, and whether Found has any group.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn summary(sql: &impl bae_store::WriterRead) -> Result<ImportQueueSummary, DbError> {
-    let row = statement_row(sql, &SummaryParams {})?;
-    Ok(ImportQueueSummary {
-        has_watched_folders: row.has_watched_folders,
-        has_groups: row.has_groups,
-    })
+    Ok(summary_of(statement_row(sql, &SummaryParams {})?))
+}
+
+/// The summary as its row holds it.
+pub(super) fn summary_of(row: SummaryRow) -> ImportQueueSummary {
+    ImportQueueSummary { has_watched_folders: row.has_watched_folders, has_groups: row.has_groups }
 }
 
 /// The statement counting a list: the read of its search's rows while it
@@ -233,21 +242,48 @@ impl CountStatement {
 /// entries its narrowing keeps, and every tab's count, in one statement: the
 /// tab counts beside the list's own counts, so a narrowed list's total is the
 /// tab bar's count of its tab.
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn count(
     sql: &impl bae_store::WriterRead,
     request: &ImportListRequest,
 ) -> Result<ImportListCount, DbError> {
-    let (tabs, rows, shown) = match CountStatement::of(request) {
+    match CountStatement::of(request) {
         CountStatement::Kept(params) => {
             let row = statement_row(sql, &params)?;
-            (row.tabs, row.rows, row.shown)
+            count_of(request, row.tabs.counts()?, row.rows, row.shown)
         }
         CountStatement::Search(params) => {
             let row = statement_row(sql, &params)?;
-            (row.tabs, row.rows, Some(row.shown))
+            count_of(request, row.tabs.counts()?, row.rows, Some(row.shown))
         }
-    };
-    let tabs = tabs.counts()?;
+    }
+}
+
+/// How many items the list `request` shows holds and how many its narrowing
+/// keeps, live.
+pub(super) fn subscribe_count(
+    store: &Store,
+    request: ImportListRequest,
+) -> coven::LiveQuery<ImportListCount, DbError> {
+    match CountStatement::of(&request) {
+        CountStatement::Kept(params) => store
+            .subscribe_row(params)
+            .process(move |row| count_of(&request, row.tabs.counts()?, row.rows, row.shown)),
+        CountStatement::Search(params) => store
+            .subscribe_row(params)
+            .process(move |row| count_of(&request, row.tabs.counts()?, row.rows, Some(row.shown))),
+    }
+}
+
+/// The count of the list `request` shows from its count statement's row: the
+/// counts of the tabs, the list's rows and, while it narrows, the rows it
+/// shows.
+fn count_of(
+    request: &ImportListRequest,
+    tabs: TriageTabCounts,
+    rows: i64,
+    shown: Option<i64>,
+) -> Result<ImportListCount, DbError> {
     let narrowed = match shown {
         Some(shown) => Some(NarrowedCount {
             shown: to_u32(shown, "a list's narrowed count")?,
@@ -440,7 +476,7 @@ impl ImportTables {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_tab_counts(&self) -> coven::LiveQuery<TriageTabCounts, bae_store::DbError> {
         let request = ImportListRequest::of(Default::default());
-        self.store.subscribe(move |sql| Ok(count(&sql, &request)?.tabs))
+        subscribe_count(&self.store, request).process(|count| Ok(count.tabs))
     }
 
     /// What revealing the candidate at `candidate_key` from the list

@@ -213,8 +213,10 @@ async fn a_statement_that_fails_to_read_a_row_fails_the_read() {
 #[tokio::test]
 async fn two_statements_answer_one_snapshot_and_rerun_for_a_write_to_what_either_read() {
     let (store, _tmp) = notes_store().await;
-    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> =
-        store.subscribe_reconfigurable_statements::<_, Bodies, Count, _>(topic("a"));
+    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> = store
+        .subscribe_reconfigurable(topic("a"), |topic| {
+            Ok(coven::Both(Bodies::from(topic), Count::from(topic)))
+        });
 
     let first = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap();
     assert_eq!(first.result.unwrap(), (Vec::<String>::new(), vec![0]));
@@ -229,8 +231,10 @@ async fn two_statements_answer_each_request_they_are_given() {
     let (store, _tmp) = notes_store().await;
     add_note(&store, "a", "one").await;
     add_note(&store, "b", "two").await;
-    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> =
-        store.subscribe_reconfigurable_statements::<_, Bodies, Count, _>(topic("a"));
+    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> = store
+        .subscribe_reconfigurable(topic("a"), |topic| {
+            Ok(coven::Both(Bodies::from(topic), Count::from(topic)))
+        });
     let first = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap();
     assert_eq!(first.result.unwrap(), (vec!["one".to_owned()], vec![1]));
 
@@ -243,7 +247,7 @@ async fn two_statements_answer_each_request_they_are_given() {
 async fn a_live_statement_that_fails_to_read_a_row_fails_the_run() {
     let (store, _tmp) = notes_store().await;
     let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> =
-        store.subscribe_reconfigurable_statements::<_, Failing, Failing, _>(topic("a"));
+        store.subscribe_reconfigurable(topic("a"), |_| Ok(coven::Both(Failing, Failing)));
     let first = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap();
     assert!(matches!(first.result, Err(DbError::Sqlite(_))));
 }

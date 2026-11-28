@@ -90,9 +90,10 @@ async fn a_failed_read_is_reported_as_a_bug() {
     let (heard, mut reports) = tokio::sync::mpsc::unbounded_channel();
     let diagnostics = bae_diagnostics::Diagnostics::noop()
         .reporting_bugs_to(std::sync::Arc::new(HeardBugs(heard)));
-    let query = db.subscribe_reconfigurable(Vec::<String>::new(), |_, sql| {
-        sql.query_row("SELECT id FROM no_such_table", [], |row| row.get::<_, String>(0))
-            .map_err(bae_store::DbError::from)
+    // The request's reads fail as they are made, so the query's run fails.
+    let query = db.subscribe_reconfigurable(Vec::<String>::new(), |_| {
+        let failed = bae_store::DbError::unreadable("the test's request", "no_such_table");
+        Err::<coven::Maybe<coven::CovenRead<(), ()>>, _>(failed)
     });
     let _follow = LibraryFollow::new(query, Vec::new(), "the missing table", &diagnostics);
 

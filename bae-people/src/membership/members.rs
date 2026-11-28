@@ -2,18 +2,18 @@
 //! (`coven_members`, `coven_devices`): each member with their devices that
 //! can sync and those that lost access, each list in device-id order.
 
-use super::fragments::{CurrentMembersParams, Member};
+use super::fragments::{CurrentMembersParams, CurrentMembersRow, Member};
 use super::*;
 use crate::membership::{ActiveDevice, FormerDevice, Members, MembershipMember};
 use bae_store::{statement_rows, FormerDeviceState};
 
 impl Membership {
     pub async fn members(&self) -> Result<Members, DbError> {
-        self.store.read(|sql| membership_on(&sql)).await
+        self.store.read(|sql| membership_of(statement_rows(&sql, &CurrentMembersParams {})?)).await
     }
 
     pub fn subscribe_members(&self) -> coven::LiveQuery<Members, bae_store::DbError> {
-        self.store.subscribe(|sql| membership_on(&sql))
+        self.store.subscribe(CurrentMembersParams {}).process(membership_of)
     }
 
     /// This device's name, as Your devices lists it.
@@ -32,8 +32,8 @@ sqlive_compose::read!(
 "#
 );
 
-fn membership_on(sql: &SqlReadContext<'_>) -> Result<Members, DbError> {
-    let rows = statement_rows(sql, &CurrentMembersParams {})?;
+/// The library's members as their read returns them.
+fn membership_of(rows: Vec<CurrentMembersRow>) -> Result<Members, DbError> {
     // Each row says whether this device's member is an admin. An admin is a
     // current member, so a read that returns no row has none.
     let self_is_admin = rows.first().is_some_and(|row| row.member.viewer.self_is_admin);

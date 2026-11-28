@@ -209,7 +209,7 @@ async fn delete_release_removes_its_cover_image() {
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
     store_test_cover(manager, &release1.id, b"image").await;
 
-    wait_for_published_file(manager, "covers", &release1.id).await;
+    wait_for_published_cover(manager, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 

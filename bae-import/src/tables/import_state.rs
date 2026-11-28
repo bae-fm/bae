@@ -122,7 +122,7 @@ pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]
 pub(crate) use standing_rows::StandingColumn;
 pub(crate) use standing_rows::{load_standing_on, standing_of};
-pub(crate) use stored_verdict_read::{current_state_and_cards_of, load_current_state_and_cards_on};
+pub(crate) use stored_verdict_read::current_state_and_cards_of;
 pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.
 #[cfg(test)]
@@ -158,7 +158,7 @@ impl ImportTables {
     pub(crate) fn subscribe_import_candidate_states(
         &self,
     ) -> coven::LiveQuery<HashMap<String, DbImportCandidateState>, bae_store::DbError> {
-        self.store.subscribe(|sql| rows::load_states_on(&sql, CandidateRows::All))
+        self.store.subscribe(rows::EveryStateParams {}).process(rows::every_state_of)
     }
 
     pub async fn load_import_candidate_state(

@@ -6,7 +6,6 @@
 use super::*;
 use crate::album_detail::AlbumSearchResult;
 use bae_records::records::fragments::AlbumSummary;
-use bae_store::{statement_row, statement_rows};
 
 // The albums that hold the search pattern `pattern`, each with its title's
 // sort key, which its listing row holds. A read that takes them in title
@@ -100,16 +99,13 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
-        self.store
-            .subscribe(move |sql| match &pattern {
-                Some(pattern) => search_albums_on(&sql, pattern, LISTED, page),
-                None => Ok(Vec::new()),
-            })
-            .process(|albums| {
-                Ok(crate::ListRows::SearchAlbums(
-                    album_summaries(albums)?.into_iter().map(AlbumSearchResult::from_raw).collect(),
-                ))
-            })
+        let read = pattern.map(|pattern| search_albums_read(pattern, LISTED, page));
+        self.store.subscribe(coven::Maybe(read)).process(|rows| {
+            let albums = rows.unwrap_or_default().into_iter().map(|row| row.shown).collect();
+            Ok(crate::ListRows::SearchAlbums(
+                album_summaries(albums)?.into_iter().map(AlbumSearchResult::from_raw).collect(),
+            ))
+        })
     }
 
     /// Follow how many albums a search for `query` lists: the albums it
@@ -120,34 +116,26 @@ impl LibraryViews {
         query: Option<crate::LibrarySearchQuery>,
     ) -> coven::LiveQuery<u64, DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
-        self.store.subscribe(move |sql| match &pattern {
-            Some(pattern) => {
-                let statement = SearchAlbumCountParams {
-                    pattern: Some(pattern.clone()),
-                    cap: bae_store::list_windows::sql_bound(LISTED),
-                };
-                Ok(statement_row(&sql, &statement)?.albums)
-            }
+        let read = pattern.map(|pattern| SearchAlbumCountParams {
+            pattern: Some(pattern),
+            cap: bae_store::list_windows::sql_bound(LISTED),
+        });
+        self.store.subscribe(coven::Maybe(read)).process(|rows| match rows {
+            Some(rows) => Ok(bae_store::exactly_one::<SearchAlbumCountParams, _>(rows)?.albums),
             None => Ok(0),
         })
     }
 }
 
-/// The albums of the first `cap` a search for `pattern` lists that are at
-/// `page`'s places, as read.
-fn search_albums_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    cap: u64,
-    page: ListPage,
-) -> Result<Vec<AlbumSummary>, DbError> {
-    let statement = SearchAlbumsParams {
-        pattern: Some(pattern.to_string()),
+/// The read of the albums of the first `cap` a search for `pattern` lists
+/// that are at `page`'s places.
+fn search_albums_read(pattern: String, cap: u64, page: ListPage) -> SearchAlbumsParams {
+    SearchAlbumsParams {
+        pattern: Some(pattern),
         cap: bae_store::list_windows::sql_bound(cap),
         offset: bae_store::list_windows::sql_bound(page.offset),
         limit: bae_store::list_windows::sql_bound(page.limit),
-    };
-    Ok(statement_rows(sql, &statement)?.into_iter().map(|row| row.shown).collect())
+    }
 }
 
 /// The albums as read, each made into its summary.

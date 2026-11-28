@@ -1,7 +1,7 @@
 use super::*;
 use crate::people::fragments::Profile;
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
-use bae_store::{statement_optional, statement_row, statement_rows, WriteStatements};
+use bae_store::{exactly_one, statement_optional, WriteStatements};
 
 // A member with their profile, none until a device of theirs has written it.
 sqlive_compose::fragment!(
@@ -13,28 +13,20 @@ sqlive_compose::fragment!(
 "#
 );
 
-// The current member using this device, which coven marks as this device's own.
+// The current members: first the one using this device, which coven marks as
+// this device's own, then the others. Of the others, those with a profile come
+// first, by its name in the device's language; the read reads `name_sort`, so
+// coven reruns it when the device's language changes. Those with no profile
+// yet follow, and member id orders the rest.
 sqlive_compose::read!(
-    writer OwnPerson,
-    r#"
-    SELECT person.*
-    FROM @crate::people::profiles::MemberWithProfile AS person
-    WHERE person.is_self AND NOT person.removed
-"#
-);
-
-// The other current members. Those with a profile come first, by its name in
-// the device's language; the read reads `name_sort`, so coven reruns it when
-// the device's language changes. Those with no profile yet follow, and member
-// id orders the rest.
-sqlive_compose::read!(
-    writer OtherPeople,
+    writer CurrentPeople,
     r#"
     SELECT person.*
     FROM @crate::people::profiles::MemberWithProfile AS person
     JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
-    WHERE NOT person.is_self AND NOT person.removed
-    ORDER BY person.id IS NULL, bae_name_key(person.name, sort.language), person.member_id
+    WHERE NOT person.removed
+    ORDER BY NOT person.is_self, person.id IS NULL, bae_name_key(person.name, sort.language),
+             person.member_id
 "#
 );
 
@@ -145,15 +137,17 @@ impl People {
     /// their membership, and their profile, which the same registration wrote.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        self.inner.store.read(|sql| own_person_on(&sql)).await
+        let view = self.inner.store.read(|sql| people_view_of(sql.reads(&PEOPLE)?)).await?;
+        Ok(view.own)
     }
 
     /// The person using this device, the other people, and how many people and
-    /// devices the library has, live: a statement for each, over one snapshot
-    /// of coven's members and devices and the profiles, so a screen draws its
-    /// sections and its counts from the same moment.
+    /// devices the library has, live: a statement for the people and one for
+    /// the counts, over one snapshot of coven's members and devices and the
+    /// profiles, so a screen draws its sections and its counts from the same
+    /// moment.
     pub fn subscribe_people(&self) -> coven::LiveQuery<PeopleView, bae_store::DbError> {
-        self.inner.store.subscribe(|sql| people_view_on(&sql))
+        self.inner.store.subscribe(PEOPLE).process(people_view_of)
     }
 
     /// The person with member id `member`, live: none once they have left the
@@ -162,11 +156,10 @@ impl People {
         &self,
         member: coven::MemberId,
     ) -> coven::LiveQuery<Option<Person>, bae_store::DbError> {
-        self.inner.store.subscribe(move |sql| {
-            statement_optional(&sql, &CurrentPersonParams { member })?
-                .map(|row| row.person.into_person())
-                .transpose()
-        })
+        self.inner
+            .store
+            .subscribe_optional(CurrentPersonParams { member })
+            .process(|row| row.map(|row| row.person.into_person()).transpose())
     }
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
@@ -304,18 +297,26 @@ pub(crate) fn name_this_person_goes_by(
         .map(|row| row.profile.into_profile().name))
 }
 
-fn people_view_on(sql: &SqlReadContext<'_>) -> Result<PeopleView, DbError> {
-    let own = own_person_on(sql)?;
-    let others = statement_rows(sql, &OtherPeopleParams {})?
-        .into_iter()
-        .map(|row| row.person.into_person())
-        .collect::<Result<_, _>>()?;
-    let counts = statement_row(sql, &PeopleCountsParams {})?;
-    Ok(PeopleView { own, others, people: counts.people.into(), devices: counts.devices.into() })
-}
+/// The reads of the people screen: the current people and their counts.
+const PEOPLE: coven::Both<CurrentPeopleParams, PeopleCountsParams> =
+    coven::Both(CurrentPeopleParams {}, PeopleCountsParams {});
 
-fn own_person_on(sql: &SqlReadContext<'_>) -> Result<Option<Person>, DbError> {
-    statement_optional(sql, &OwnPersonParams {})?.map(|row| row.person.into_person()).transpose()
+/// The people screen as its reads return it.
+fn people_view_of(
+    (people, counts): (Vec<CurrentPeopleRow>, Vec<PeopleCountsRow>),
+) -> Result<PeopleView, DbError> {
+    let counts = exactly_one::<PeopleCountsParams, _>(counts)?;
+    let mut own = None;
+    let mut others = Vec::new();
+    for row in people {
+        let is_self = row.person.member.is_self;
+        let person = row.person.into_person()?;
+        match is_self {
+            true => own = Some(person),
+            false => others.push(person),
+        }
+    }
+    Ok(PeopleView { own, others, people: counts.people.into(), devices: counts.devices.into() })
 }
 
 impl MemberWithProfile {

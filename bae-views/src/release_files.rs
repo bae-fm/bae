@@ -4,7 +4,6 @@
 
 use super::*;
 use bae_records::records::file_fragments::ReleaseFileRecord;
-use bae_store::statement_rows;
 
 /// What a release's files can be ordered by: their names in natural order,
 /// their sizes, or their kinds (content types).
@@ -119,51 +118,29 @@ sqlive_compose::read!(
 "#
 );
 
-/// The rows of the statement that reads the files `request` names in its
-/// order: the file of each row.
-fn release_files_on(
-    sql: &SqlReadContext<'_>,
-    request: &ReleaseFilesRequest,
-) -> Result<Vec<Option<ReleaseFileRecord>>, DbError> {
+/// The read of the files `request` names in its order: the file of each row.
+fn release_files_read(request: &ReleaseFilesRequest) -> coven::ReadAs<Option<ReleaseFileRecord>> {
     let release = request.release_id.clone();
-    Ok(match (request.order.column, request.order.descending) {
+    match (request.order.column, request.order.descending) {
         (ReleaseFileColumn::Name, false) => {
-            statement_rows(sql, &ReleaseFilesByNameParams { release })?
-                .into_iter()
-                .map(|row| row.file)
-                .collect()
+            coven::ReadAs::new(ReleaseFilesByNameParams { release }, |row| row.file)
         }
         (ReleaseFileColumn::Name, true) => {
-            statement_rows(sql, &ReleaseFilesByNameBackwardParams { release })?
-                .into_iter()
-                .map(|row| row.file)
-                .collect()
+            coven::ReadAs::new(ReleaseFilesByNameBackwardParams { release }, |row| row.file)
         }
         (ReleaseFileColumn::Size, false) => {
-            statement_rows(sql, &ReleaseFilesBySizeParams { release })?
-                .into_iter()
-                .map(|row| row.file)
-                .collect()
+            coven::ReadAs::new(ReleaseFilesBySizeParams { release }, |row| row.file)
         }
         (ReleaseFileColumn::Size, true) => {
-            statement_rows(sql, &ReleaseFilesBySizeBackwardParams { release })?
-                .into_iter()
-                .map(|row| row.file)
-                .collect()
+            coven::ReadAs::new(ReleaseFilesBySizeBackwardParams { release }, |row| row.file)
         }
         (ReleaseFileColumn::Kind, false) => {
-            statement_rows(sql, &ReleaseFilesByKindParams { release })?
-                .into_iter()
-                .map(|row| row.file)
-                .collect()
+            coven::ReadAs::new(ReleaseFilesByKindParams { release }, |row| row.file)
         }
         (ReleaseFileColumn::Kind, true) => {
-            statement_rows(sql, &ReleaseFilesByKindBackwardParams { release })?
-                .into_iter()
-                .map(|row| row.file)
-                .collect()
+            coven::ReadAs::new(ReleaseFilesByKindBackwardParams { release }, |row| row.file)
         }
-    })
+    }
 }
 
 /// The files `rows` hold; `None` when there are none, as the library holds no
@@ -200,10 +177,10 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         self.store
-            .subscribe_reconfigurable(initial, |request, sql| {
-                request.as_ref().map(|request| release_files_on(&sql, request)).transpose()
+            .subscribe_reconfigurable(initial, |request| {
+                Ok(coven::Maybe(request.as_ref().map(release_files_read)))
             })
-            .process(|rows| Ok(rows.map(release_files).transpose()?.flatten()))
+            .process(|_, rows| Ok(rows.map(release_files).transpose()?.flatten()))
     }
 }
 

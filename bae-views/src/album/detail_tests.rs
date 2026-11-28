@@ -22,8 +22,11 @@ async fn album_detail_reads_every_release_in_one_statement() {
         .expect("the album has releases");
     assert_eq!(detail.releases.len(), 3, "the album has three releases");
     assert!(detail.shows_release_choices, "an album of three releases offers a choice");
-    let statements = log.take();
-    assert_eq!(statements.len(), 2, "{} statements", statements.len());
+    // coven reads its own tables on the same connection as it starts up; the
+    // page's statements are the ones that read the library's.
+    let statements: Vec<_> =
+        log.take().into_iter().filter(|statement| !statement.contains("_coven_")).collect();
+    assert_eq!(statements.len(), 2, "{statements:?}");
 }
 
 /// An album of one release offers no choice between releases.

@@ -2,7 +2,7 @@
 //! membership, as db reads them from coven's views.
 
 use bae_store::{DbError, Store};
-use coven::{CovenWrite, SqlReadContext};
+use coven::CovenWrite;
 
 mod admin_operations;
 pub use admin_operations::{InviteError, RefusedInviteDismissError};

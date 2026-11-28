@@ -52,6 +52,9 @@ pub trait QueuedPayload: QueueWrites + Clone + PartialEq + Send + Sync + 'static
     /// release.
     #[cfg(any(desktop, test, feature = "test-utils"))]
     fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError>;
+    /// Follow every entry of the queue and its counts, read on one snapshot.
+    #[cfg(any(test, feature = "test-utils"))]
+    fn subscribe_queue(store: &Store) -> coven::LiveQuery<ReleaseQueueSnapshot<Self, ()>, DbError>;
     /// What cancelling `release_id`'s entry does in the write that takes it
     /// out of the queue, before it goes.
     fn cancelling_in(_sql: &CovenWrite<'_>, _release_id: &str) -> Result<(), DbError> {
@@ -85,6 +88,25 @@ impl QueuedPayload for DownloadRequest {
         let every = bae_store::ListWindow::top(u64::MAX);
         let read = super::download_list::download_window_on(sql, &every)?;
         Ok(read.rows.into_iter().map(|(row, _key)| row).collect())
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    fn subscribe_queue(store: &Store) -> coven::LiveQuery<ReleaseQueueSnapshot<Self, ()>, DbError> {
+        use super::download_list::{download_window_of, DownloadTopParams};
+        let every = bae_store::ListWindow::top(u64::MAX);
+        let entries = DownloadTopParams { limit: bae_store::list_windows::sql_bound(every.limit) };
+        store.subscribe(coven::Both(entries, rows::DownloadQueueTotalsParams {})).process(
+            move |(entries, counts)| {
+                let entries = entries
+                    .into_iter()
+                    .map(|row| (row.position, row.entry, row.release, row.album))
+                    .collect();
+                let read = download_window_of(&every, entries)?;
+                let rows = read.rows.into_iter().map(|(row, _key)| row).collect();
+                let counts = bae_store::exactly_one::<rows::DownloadQueueTotalsParams, _>(counts)?;
+                Ok(queue_snapshot(rows, counts.counts.into_counts()))
+            },
+        )
     }
 
     /// Cancelling a pin removes what it downloaded: the release's files
@@ -130,6 +152,16 @@ impl QueuedPayload for OutputRequest {
     #[cfg(any(desktop, test, feature = "test-utils"))]
     fn rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<ReleaseQueueRow<Self, ()>>, DbError> {
         rows::output_rows_on(sql)
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    fn subscribe_queue(store: &Store) -> coven::LiveQuery<ReleaseQueueSnapshot<Self, ()>, DbError> {
+        let reads =
+            coven::Both(rows::OutputQueueEntriesParams {}, rows::OutputQueueTotalsParams {});
+        store.subscribe(reads).process(|(entries, counts)| {
+            let counts = bae_store::exactly_one::<rows::OutputQueueTotalsParams, _>(counts)?;
+            Ok(queue_snapshot(rows::output_rows_of(entries)?, rows::output_counts_of(counts)))
+        })
     }
 }
 
@@ -187,10 +219,17 @@ pub(super) fn output_request(
 pub(crate) fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
-    let rows = P::rows_on(sql)?;
-    let counts = P::counts_on(sql)?;
+    Ok(queue_snapshot(P::rows_on(sql)?, P::counts_on(sql)?))
+}
+
+/// The queue that holds `rows` and whose counts are `counts`.
+#[cfg(any(desktop, test, feature = "test-utils"))]
+fn queue_snapshot<P>(
+    rows: Vec<ReleaseQueueRow<P, ()>>,
+    counts: ReleaseQueueCounts,
+) -> ReleaseQueueSnapshot<P, ()> {
     let paused = counts.paused();
-    Ok(ReleaseQueueSnapshot { rows, total: counts.total, paused })
+    ReleaseQueueSnapshot { rows, total: counts.total, paused }
 }
 
 /// Queue `entries` in order, passing over a release already in the queue or

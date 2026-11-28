@@ -57,13 +57,12 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         self.store
-            .subscribe_reconfigurable(initial, move |request, sql| {
-                let Some(query) = request else {
-                    return Ok(None);
-                };
-                Ok(Some(statement_rows(&sql, &library_search(query.as_str(), limit))?))
+            .subscribe_reconfigurable(initial, move |request| {
+                Ok(coven::Maybe(
+                    request.as_ref().map(|query| library_search(query.as_str(), limit)),
+                ))
             })
-            .process(|rows| {
+            .process(|_, rows| {
                 let results = rows.map(search_results).transpose()?.unwrap_or_default();
                 Ok(LibrarySearchProjection { results })
             })

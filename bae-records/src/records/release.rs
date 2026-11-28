@@ -512,8 +512,8 @@ impl Records {
 // form's `records`, a JSON array, once the form replaced the release's, and
 // else the release's own) and its cover's version; no row when the library
 // holds no such release.
-sqlive_compose::read!(
-    writer EditedReleaseHead(release: String, relinked: bool, records: String) {
+sqlive_compose::fragment!(
+    EditedHead(release: String, relinked: bool, records: String) {
         has_tracks: bool,
         shows_records: bool
     },
@@ -544,29 +544,14 @@ pub struct EditedRelease {
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
 }
 
-/// The release `release_id` as its editor's draft shows it; `None` when the
-/// library holds no such release. `form_records` is the JSON array of the
-/// records the form replaced the release's with, where it replaced them.
-pub fn edited_release_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-    form_records: Option<&str>,
-) -> Result<Option<EditedRelease>, DbError> {
-    let params = EditedReleaseHeadParams {
-        release: release_id.to_string(),
-        relinked: form_records.is_some(),
-        records: form_records.unwrap_or("[]").to_string(),
-    };
-    bae_store::statement_optional(sql, &params)?
-        .map(|row| {
-            Ok(EditedRelease {
-                cover_version: row.cover.and_then(super::files::CoverVersion::into_version),
-                has_tracks: row.has_tracks,
-                shows_records: row.shows_records,
-                records: super::read::records_of_json(row.described.records_json())?,
-            })
-        })
-        .transpose()
+/// The release as its editor's draft shows it, from its [`EditedHead`] row.
+pub fn edited_release_of(head: EditedHead) -> Result<EditedRelease, DbError> {
+    Ok(EditedRelease {
+        cover_version: head.cover.and_then(super::files::CoverVersion::into_version),
+        has_tracks: head.has_tracks,
+        shows_records: head.shows_records,
+        records: super::read::records_of_json(head.described.records_json())?,
+    })
 }
 
 #[cfg(test)]

@@ -7,8 +7,8 @@ mod pending_item;
 pub use pending_item::{FileProblem, PendingItem, PendingSubjectName, PendingWait};
 pub mod sync_status;
 pub use sync_status::{
-    copy_behind, sync_status_on, CopyResetNotice, SetupDismissError, StartFailureRecordError,
-    StorageSetupState, SyncRetryOutcome, SyncStatus, SyncStatusSnapshot,
+    copy_behind, subscribe_sync_status, sync_status_on, CopyResetNotice, SetupDismissError,
+    StartFailureRecordError, StorageSetupState, SyncRetryOutcome, SyncStatus, SyncStatusSnapshot,
 };
 mod sync_shown;
 pub use sync_shown::{SyncCauseLine, SyncFix, SyncShown, SyncStatusWord, SyncTone};

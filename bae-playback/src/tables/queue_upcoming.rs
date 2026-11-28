@@ -216,28 +216,40 @@ fn keyed_item(
     Ok((item, key_of(place)))
 }
 
-/// `window`'s rows of the upcoming list in the `shuffled` order.
-fn upcoming_window_on(
-    sql: &SqlReadContext<'_>,
+/// A row of the upcoming list as its window's read returns it: its place in
+/// the order read, its entry of the context lane, and its track.
+type UpcomingRow = (i64, i64, bae_records::records::track_display::DisplayedTrack);
+
+/// The read of `window`'s rows of the upcoming list in the `shuffled` order.
+fn upcoming_window_read(
     shuffled: bool,
     window: &ListWindow,
-) -> Result<WindowRead<QueueItem>, DbError> {
+) -> Result<coven::ReadAs<UpcomingRow>, DbError> {
     let limit = sql_bound(window.limit);
     let from = window.from.as_ref().map(place_of).transpose()?;
     macro_rules! rows {
         ($statement:expr, $column:ident) => {
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|row| keyed_item(row.$column, row.entry, row.track))
-                .collect::<Result<Vec<_>, DbError>>()?
+            coven::ReadAs::new($statement, |row| (row.$column, row.entry, row.track))
         };
     }
-    let rows = match (shuffled, from) {
+    Ok(match (shuffled, from) {
         (false, None) => rows!(WindowTopOrderedParams { limit }, ordered),
         (false, Some(from)) => rows!(WindowFromOrderedParams { from, limit }, ordered),
         (true, None) => rows!(WindowTopShuffledParams { limit }, shuffled),
         (true, Some(from)) => rows!(WindowFromShuffledParams { from, limit }, shuffled),
-    };
+    })
+}
+
+/// `window`'s rows of the upcoming list as its read returned them, as the
+/// queue rows show them.
+fn upcoming_window_of(
+    window: &ListWindow,
+    rows: Vec<UpcomingRow>,
+) -> Result<WindowRead<QueueItem>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(place, entry, track)| keyed_item(place, entry, track))
+        .collect::<Result<_, DbError>>()?;
     Ok(WindowRead { window: window.clone(), rows })
 }
 
@@ -248,7 +260,9 @@ pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
     store
         .read(|sql| {
             let shuffled = super::queue_reads::queue_value_on(&sql)?.shuffled;
-            let window = upcoming_window_on(&sql, shuffled, &ListWindow::top(u64::MAX))?;
+            let top = ListWindow::top(u64::MAX);
+            let window =
+                upcoming_window_of(&top, sql.reads(&upcoming_window_read(shuffled, &top)?)?)?;
             Ok(window.rows.into_iter().map(|(item, _key)| item).collect())
         })
         .await
@@ -262,9 +276,9 @@ pub fn subscribe_upcoming_window(
     shuffled: bool,
     initial: ListWindow,
 ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<QueueItem>, bae_store::DbError> {
-    store.subscribe_reconfigurable(initial, move |window, sql| {
-        upcoming_window_on(&sql, shuffled, window)
-    })
+    store
+        .subscribe_reconfigurable(initial, move |window| upcoming_window_read(shuffled, window))
+        .process(upcoming_window_of)
 }
 
 /// Follow how many tracks come after the playing one. The count runs as its
@@ -273,13 +287,10 @@ pub fn subscribe_upcoming_count(
     store: &Store,
     shuffled: bool,
 ) -> coven::LiveQuery<u64, bae_store::DbError> {
-    store.subscribe(move |sql| {
-        Ok(if shuffled {
-            statement_row(&sql, &CountShuffledParams {})?.count
-        } else {
-            statement_row(&sql, &CountOrderedParams {})?.count
-        })
-    })
+    match shuffled {
+        true => store.subscribe_row(CountShuffledParams {}).process(|row| Ok(row.count)),
+        false => store.subscribe_row(CountOrderedParams {}).process(|row| Ok(row.count)),
+    }
 }
 
 /// Follow how many upcoming tracks come before the row at `initial`, a count
@@ -290,14 +301,15 @@ pub fn subscribe_upcoming_position(
     shuffled: bool,
     initial: OrderKey,
 ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-    store.subscribe_reconfigurable(initial, move |key, sql| {
-        let place = place_of(key)?;
-        Ok(if shuffled {
-            statement_row(&sql, &CountBeforeShuffledParams { place })?.count
-        } else {
-            statement_row(&sql, &CountBeforeOrderedParams { place })?.count
+    store
+        .subscribe_reconfigurable(initial, move |key| {
+            let place = place_of(key)?;
+            Ok(match shuffled {
+                true => coven::ReadAs::new(CountBeforeShuffledParams { place }, |row| row.count),
+                false => coven::ReadAs::new(CountBeforeOrderedParams { place }, |row| row.count),
+            })
         })
-    })
+        .process(|_, counts| bae_store::exactly_one::<coven::ReadAs<u64>, _>(counts))
 }
 
 /// The key of the upcoming track at `position`, or of the last one when the

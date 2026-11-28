@@ -493,7 +493,7 @@ mod window_cost {
                     n,
                     move |sql, position| crate::album::album_key_at_on(sql, &order, position),
                     move |sql, window| {
-                        Ok(crate::album::album_window_on(sql, &order, window)?.rows.len())
+                        Ok(sql.reads(&crate::album::album_window_read(&order, window)?)?.len())
                     },
                     move |sql, key| crate::album::albums_before_on(sql, &order, key),
                 )

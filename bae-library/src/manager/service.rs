@@ -412,7 +412,7 @@ impl LibraryManager {
     ) -> bae_store::live_results::LiveResults<
         coven::LiveQuery<bae_sync_status::SyncStatusSnapshot, bae_store::DbError>,
     > {
-        self.store.results(self.store.subscribe(|sql| bae_sync_status::sync_status_on(&sql)))
+        self.store.results(bae_sync_status::subscribe_sync_status(&self.store))
     }
 
     /// How far and how fast each release with files being sent goes, and
@@ -435,7 +435,7 @@ impl LibraryManager {
     pub fn watch_activity_bars(&self) -> crate::ActivityBarsWatch {
         crate::ActivityBarsWatch::of(
             bae_store::live_results::LiveResults::new(
-                self.store.subscribe(|sql| bae_views::activity_bars_on(&sql)),
+                bae_views::subscribe_activity_bars(&self.store),
                 self.bugs(),
             ),
             self.store.subscribe_upload_transfers(),

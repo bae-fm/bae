@@ -34,17 +34,19 @@ pub struct PlaylistDetail {
 }
 
 // The playlists this device holds, by name in the device's language, then id,
-// each row beside how many there are: every one, or with `own_only` the
-// person's own, where Add to playlist can put a track. The read reads
-// `name_sort`, so coven reruns it when the device's language changes.
+// twice: every one, then the person's own, where Add to playlist can put a
+// track (`add_target`). Each row is beside how many its list holds. The read
+// reads `name_sort`, so coven reruns it when the device's language changes.
 sqlive_compose::read!(
-    writer PlaylistList(own_only: bool) { total: u64 },
+    writer PlaylistLists { add_target: bool, total: u64 },
     r#"
-    SELECT playlist.*, COUNT(*) OVER () AS total
+    SELECT playlist.*, lists.value IS 1 AS add_target,
+           COUNT(*) OVER (PARTITION BY lists.value) AS total
     FROM @bae_people::people::playlist_fragments::ListedPlaylist AS playlist
+    JOIN json_each('[0, 1]') AS lists ON lists.value = 0 OR playlist.yours
     JOIN @bae_records::records::name_sort::NameSortLanguage AS sort ON 1
-    WHERE playlist.yours OR NOT :own_only
-    ORDER BY bae_name_key(playlist.playlist_name, sort.language), playlist.playlist_id
+    ORDER BY lists.value, bae_name_key(playlist.playlist_name, sort.language),
+             playlist.playlist_id
 "#
 );
 
@@ -70,49 +72,45 @@ sqlive_compose::read!(
 "#
 );
 
-/// The playlists [`PlaylistList`] lists, every one or the person's own, with
-/// how many they are: zero for a read with no row.
-fn playlists_on(
-    sql: &SqlReadContext<'_>,
-    own_only: bool,
-) -> Result<(Vec<PlaylistSummary>, u64), DbError> {
-    let mut count = 0;
-    let playlists = bae_store::statement_rows(sql, &PlaylistListParams { own_only })?
-        .into_iter()
-        .map(|row| {
-            count = row.total;
-            row.playlist.into_summary()
-        })
-        .collect::<Result<_, _>>()?;
-    Ok((playlists, count))
-}
-
-fn playlist_listing_on(sql: &SqlReadContext<'_>) -> Result<PlaylistListing, DbError> {
-    let (listed, total) = playlists_on(sql, false)?;
-    let (add_targets, add_target_count) = playlists_on(sql, true)?;
-    let can_create =
-        bae_store::statement_row(sql, &CanCreatePlaylistParams {})?.viewer.has_profile();
+/// The playlists this device holds as [`PlaylistLists`] and
+/// [`CanCreatePlaylist`] return them.
+fn playlist_listing_of(
+    (lists, viewer): (Vec<PlaylistListsRow>, Vec<CanCreatePlaylistRow>),
+) -> Result<PlaylistListing, DbError> {
+    let can_create = exactly_one::<CanCreatePlaylistParams, _>(viewer)?.viewer.has_profile();
+    let (mut listed, mut add_targets) = (Vec::new(), Vec::new());
+    let (mut total, mut add_target_count) = (0, 0);
+    for row in lists {
+        let summary = row.playlist.into_summary()?;
+        match row.add_target {
+            false => {
+                total = row.total;
+                listed.push(summary);
+            }
+            true => {
+                add_target_count = row.total;
+                add_targets.push(summary);
+            }
+        }
+    }
     Ok(PlaylistListing { listed, add_targets, total, add_target_count, can_create })
 }
 
-fn playlist_detail_on(
-    sql: &SqlReadContext<'_>,
-    id: &Option<String>,
-) -> Result<Option<PlaylistDetail>, DbError> {
-    let statement = PlaylistPageParams { playlist: id.clone() };
-    bae_store::statement_optional(sql, &statement)?
-        .map(|row| {
-            let summary = row.playlist.into_summary()?;
-            let empty = summary.track_count.count == 0;
-            Ok(PlaylistDetail { summary, entries: row.paged.into_rows()?, empty })
-        })
-        .transpose()
+/// A playlist's page as [`PlaylistPage`] returns it.
+fn playlist_detail_of(row: Option<PlaylistPageRow>) -> Result<Option<PlaylistDetail>, DbError> {
+    row.map(|row| {
+        let summary = row.playlist.into_summary()?;
+        let empty = summary.track_count.count == 0;
+        Ok(PlaylistDetail { summary, entries: row.paged.into_rows()?, empty })
+    })
+    .transpose()
 }
 
 impl LibraryViews {
     /// Every playlist this device holds, live.
     pub fn subscribe_playlists(&self) -> coven::LiveQuery<PlaylistListing, bae_store::DbError> {
-        self.store.subscribe(|sql| playlist_listing_on(&sql))
+        let reads = coven::Both(PlaylistListsParams {}, CanCreatePlaylistParams {});
+        self.store.subscribe(reads).process(playlist_listing_of)
     }
 
     /// Follow the playlist `initial` names, or none; the page moves to
@@ -123,7 +121,9 @@ impl LibraryViews {
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<PlaylistDetail>, bae_store::DbError>
     {
-        self.store.subscribe_reconfigurable(initial, |id, sql| playlist_detail_on(&sql, id))
+        self.store
+            .subscribe_reconfigurable(initial, |id| Ok(PlaylistPageParams { playlist: id.clone() }))
+            .process(|_, rows| playlist_detail_of(at_most_one::<PlaylistPageParams, _>(rows)?))
     }
 }
 

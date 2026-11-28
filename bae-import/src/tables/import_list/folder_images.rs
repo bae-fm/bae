@@ -5,7 +5,6 @@
 use super::*;
 use crate::folder_scanner::FileVersion;
 use crate::{MappingImage, Neighbors};
-use bae_store::statement_row;
 
 /// Which candidate's folder images a lightbox shows, and the file id of the
 /// image the person moved to last.
@@ -90,15 +89,13 @@ impl LightboxImage {
     }
 }
 
-/// The folder images `request`'s lightbox shows, as one read.
-fn folder_images_on(
-    sql: &impl bae_store::WriterRead,
-    request: &FolderImagesRequest,
-) -> Result<FolderImages, DbError> {
-    let row = statement_row(
-        sql,
-        &LightboxImagesParams { key: request.candidate.clone(), focus: request.focus.clone() },
-    )?;
+/// The read of the folder images `request`'s lightbox shows.
+fn folder_images_read(request: &FolderImagesRequest) -> LightboxImagesParams {
+    LightboxImagesParams { key: request.candidate.clone(), focus: request.focus.clone() }
+}
+
+/// The images of the lightbox as their row holds them.
+fn folder_images_of(row: LightboxImagesRow) -> Result<FolderImages, DbError> {
     Ok(FolderImages {
         images: row.images.into_iter().map(LightboxImage::image).collect::<Result<_, _>>()?,
         focus: row
@@ -124,10 +121,17 @@ impl ImportTables {
         initial: Option<FolderImagesRequest>,
     ) -> coven::ReconfigurableLiveQuery<Option<FolderImagesRequest>, Option<FolderImages>, DbError>
     {
-        self.store.subscribe_reconfigurable(initial, |request, sql| match request {
-            None => Ok(None),
-            Some(request) => Ok(Some(folder_images_on(&sql, request)?)),
-        })
+        self.store
+            .subscribe_reconfigurable(initial, |request| {
+                Ok(coven::Maybe(request.as_ref().map(folder_images_read)))
+            })
+            .process(|_, rows| {
+                let Some(rows) = rows else {
+                    return Ok(None);
+                };
+                let row = bae_store::exactly_one::<LightboxImagesParams, _>(rows)?;
+                Ok(Some(folder_images_of(row)?))
+            })
     }
 }
 

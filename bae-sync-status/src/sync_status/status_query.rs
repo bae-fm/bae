@@ -17,6 +17,14 @@ pub fn sync_status_on(sql: &SqlReadContext<'_>) -> Result<SyncStatusSnapshot, Db
     bae_store::statement_row(sql, &LibrarySyncStatusParams {})?.current.into_snapshot()
 }
 
+/// Follow the sync status: one live query that joins coven's sync state to
+/// the library's rows.
+pub fn subscribe_sync_status(
+    store: &bae_store::Store,
+) -> coven::LiveQuery<SyncStatusSnapshot, DbError> {
+    store.subscribe_row(LibrarySyncStatusParams {}).process(|row| row.current.into_snapshot())
+}
+
 impl CurrentSyncStatus {
     /// The sync status the fragment's row gives.
     pub fn into_snapshot(self) -> Result<SyncStatusSnapshot, DbError> {

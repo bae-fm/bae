@@ -15,7 +15,7 @@ mod status_query;
 mod storage_setup;
 pub use copy_reset_notice::CopyResetNotice;
 pub use start_failure::StartFailureRecordError;
-pub use status_query::sync_status_on;
+pub use status_query::{subscribe_sync_status, sync_status_on};
 pub use storage_setup::{SetupDismissError, StorageSetupState};
 
 /// The library's sync status rows over the store.

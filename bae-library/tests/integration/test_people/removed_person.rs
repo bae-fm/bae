@@ -70,8 +70,7 @@ fn a_removed_person_s_device_keeps_recording_their_private_plays() {
             })
         })
         .await;
-        let mut status =
-            guest.subscribe(|sql| Ok::<_, coven::CovenError>(coven::SyncStatus::read(sql)?));
+        let mut status = guest.subscribe::<_, coven::CovenError>(coven::SyncStatus::live());
         guest.sync_now();
         query_matching(&mut status, |status| {
             matches!(

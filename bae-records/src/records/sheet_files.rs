@@ -8,7 +8,6 @@
 //! which writes each file's layout from them.
 
 use super::*;
-use bae_store::statement_row;
 #[cfg(desktop)]
 use bae_store::WriteStatements as _;
 
@@ -55,8 +54,8 @@ pub const NO_SHEET_EDITS: &str = "{}";
 // The names of the files the picks of `edits` move lines of the release
 // `release`'s sheets onto, each once, as a JSON array in name order; NULL when
 // the picks move no line.
-sqlive_compose::read!(
-    writer SheetFilesToRead(release: String, edits: String) { names: Option<String> },
+sqlive_compose::fragment!(
+    SheetFilesToRead(release: String, edits: String) { names: Option<String> },
     r#"
     WITH moved AS (
         SELECT lines.*
@@ -72,18 +71,10 @@ sqlive_compose::read!(
 "#
 );
 
-/// The names of the files the picks of `edits` move lines of the release
-/// `release_id`'s sheets onto, which a save reads before it writes, in name
-/// order; `None` when the picks move no line.
-pub fn sheet_files_to_read_on(
-    sql: &impl bae_store::WriterRead,
-    release_id: &str,
-    edits: &str,
-) -> Result<Option<Vec<String>>, DbError> {
-    let params =
-        SheetFilesToReadParams { release: release_id.to_string(), edits: edits.to_string() };
-    statement_row(sql, &params)?
-        .names
+/// The names of the files a save reads before it writes, in name order, from
+/// a [`SheetFilesToRead`] row; `None` when the picks move no line.
+pub fn sheet_files_to_read_of(read: SheetFilesToRead) -> Result<Option<Vec<String>>, DbError> {
+    read.names
         .map(|names| {
             serde_json::from_str(&names).map_err(|error| {
                 DbError::unreadable_json("the files a save reads first", names.clone(), error)
@@ -171,7 +162,7 @@ pub fn sheet_track_changes_on(
     edits: &SheetEdits,
 ) -> Result<SheetTrackChanges, DbError> {
     let statement = OneSheetChangesParams { release: release_id.to_string(), edits: edits.json()? };
-    let changes = statement_row(sql, &statement)?.changes;
+    let changes = bae_store::statement_row(sql, &statement)?.changes;
     track_changes_of(
         &super::read::rows_of(&changes.dropped, "the tracks a save deletes")?,
         &super::read::rows_of(&changes.added, "the files a save adds tracks for")?,

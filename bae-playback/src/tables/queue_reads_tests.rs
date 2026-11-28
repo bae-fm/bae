@@ -53,7 +53,8 @@ async fn up_next_with_both_lanes(db: &Store, tracks: &[String], shuffled: bool) 
 }
 
 async fn session_up_next(db: &Store, limit: u64) -> Vec<String> {
-    let items = db.read(move |sql| session_up_next_on(&sql, limit)).await.unwrap();
+    let items =
+        session_up_next_of(db.read_rows(session_up_next_read(limit)).await.unwrap()).unwrap();
     items.into_iter().map(|item| item.track_id).collect()
 }
 

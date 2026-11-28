@@ -166,15 +166,23 @@ impl ReleaseAlbumFacts {
     }
 }
 
-/// The release editor's Files rows and their CUE placement choices
-/// ([`super::editor_files::EditorReleaseFiles`]).
+/// The release editor's Files rows and their CUE placement choices, from an
+/// [`EditorFiles`](super::editor_files::EditorFiles) row.
 #[cfg(desktop)]
+pub fn release_files_of(
+    listed: super::editor_files::EditorFiles,
+) -> Result<DbReleaseFiles, DbError> {
+    release_files_of_json(&listed.files.release_files)
+}
+
+/// The release editor's Files rows and their CUE placement choices, read
+/// once.
+#[cfg(all(desktop, test))]
 pub fn release_files_on(
     sql: &impl bae_store::WriterRead,
     form: super::editor_files::EditorReleaseFilesParams,
 ) -> Result<DbReleaseFiles, DbError> {
-    let row = bae_store::statement_row(sql, &form)?;
-    release_files_of_json(&row.files.release_files)
+    release_files_of(bae_store::statement_row(sql, &form)?.listed)
 }
 
 /// One entry of the `carried` list of

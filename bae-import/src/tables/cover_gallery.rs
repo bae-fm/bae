@@ -12,7 +12,7 @@ use super::*;
 use crate::{CoverImageSource, CoverSelection};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::{CoverLabel, RemoteCover};
-use bae_store::{statement_row, WriteStatements};
+use bae_store::WriteStatements;
 
 mod candidate;
 mod walk;
@@ -227,38 +227,30 @@ pub struct CoverGallerySnapshot {
     pub gallery: CoverGallery,
 }
 
-/// The covers `request`'s picker offers, as one read of the library's tables.
-fn cover_gallery_on(
-    sql: &impl bae_store::WriterRead,
-    request: &CoverGalleryRequest,
-) -> Result<CoverGallery, DbError> {
+/// What a gallery read returns: the picker's walk of its covers, and the
+/// `linked` column of the owner's last fetch.
+type GalleryRow = (walk::PickerWalk, Option<bool>);
+
+/// The read of the covers `request`'s picker offers, one statement of the
+/// library's tables for a release's picker and one for a candidate's.
+fn cover_gallery_read(request: &CoverGalleryRequest) -> coven::ReadAs<GalleryRow> {
     let (focus_kind, focus_key) = request.focus.as_ref().map(CoverKey::columns).unzip();
     let focus_key = focus_key.flatten().map(str::to_string);
     let filter = request.filter.column();
     match &request.owner {
         CoverGalleryOwner::Release(release_id) => {
-            let row = statement_row(
-                sql,
-                &ReleaseGalleryParams {
-                    release: release_id.clone(),
-                    filter,
-                    focus_kind,
-                    focus_key,
-                },
-            )?;
-            row.walk.gallery(row.fetched, Some(release_id))
+            let statement =
+                ReleaseGalleryParams { release: release_id.clone(), filter, focus_kind, focus_key };
+            coven::ReadAs::new(statement, |row| (row.walk, row.fetched))
         }
         CoverGalleryOwner::Candidate(key) => {
-            let row = statement_row(
-                sql,
-                &candidate::CandidateGalleryParams {
-                    key: key.clone(),
-                    filter,
-                    focus_kind,
-                    focus_key,
-                },
-            )?;
-            row.walk.gallery(row.fetched, None)
+            let statement = candidate::CandidateGalleryParams {
+                key: key.clone(),
+                filter,
+                focus_kind,
+                focus_key,
+            };
+            coven::ReadAs::new(statement, |row| (row.walk, row.fetched))
         }
     }
 }
@@ -277,13 +269,23 @@ impl ImportTables {
         Option<CoverGallerySnapshot>,
         DbError,
     > {
-        self.store.subscribe_reconfigurable(initial, |request, sql| match request {
-            None => Ok(None),
-            Some(request) => Ok(Some(CoverGallerySnapshot {
-                request: request.clone(),
-                gallery: cover_gallery_on(&sql, request)?,
-            })),
-        })
+        self.store
+            .subscribe_reconfigurable(initial, |request| {
+                Ok(coven::Maybe(request.as_ref().map(cover_gallery_read)))
+            })
+            .process(|request, galleries| {
+                let (Some(request), Some(galleries)) = (request, galleries) else {
+                    return Ok(None);
+                };
+                let (walk, fetched) =
+                    bae_store::exactly_one::<coven::ReadAs<GalleryRow>, _>(galleries)?;
+                let release_id = match &request.owner {
+                    CoverGalleryOwner::Release(release_id) => Some(release_id.as_str()),
+                    CoverGalleryOwner::Candidate(_) => None,
+                };
+                let gallery = walk.gallery(fetched, release_id)?;
+                Ok(Some(CoverGallerySnapshot { request: request.clone(), gallery }))
+            })
     }
 
     /// Store what the catalogs offered `release_id`'s picker, in the order

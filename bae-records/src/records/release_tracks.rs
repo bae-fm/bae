@@ -172,7 +172,8 @@ sqlive_compose::read!(
 );
 
 /// Where `place`'s track sits, as playback reads it.
-fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackPlace, DbError> {
+/// Where the track `place` names sits, as a track place.
+pub fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackPlace, DbError> {
     let track = place.track_id;
     let unreadable =
         |reason: String| DbError::unreadable(format!("the place of track {track}"), reason);
@@ -189,15 +190,20 @@ fn track_place_of(place: super::place_fragments::TrackPlaces) -> Result<DbTrackP
 
 /// Where each of `track_ids` sits, in their order, each track the library
 /// holds.
-pub fn track_places_on(
-    sql: &impl bae_store::WriterRead,
+pub(crate) fn track_places_on(
+    sql: &coven::SqlReadContext<'_>,
     track_ids: &[String],
 ) -> Result<Vec<DbTrackPlace>, DbError> {
+    sql.reads(&track_places_read(track_ids))?.into_iter().map(track_place_of).collect()
+}
+
+/// The read of where each of `track_ids` sits, in their order, each track
+/// the library holds.
+pub fn track_places_read(
+    track_ids: &[String],
+) -> coven::ReadAs<super::place_fragments::TrackPlaces> {
     let statement = NamedTrackPlacesParams { tracks: serde_json::json!(track_ids).to_string() };
-    bae_store::statement_rows(sql, &statement)?
-        .into_iter()
-        .map(|row| track_place_of(row.place))
-        .collect()
+    coven::ReadAs::new(statement, |row| row.place)
 }
 
 /// The side a placed track's `side_kind` and `side_ordinal` name.

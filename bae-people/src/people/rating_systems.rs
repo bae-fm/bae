@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::collections::Stars;
-use bae_store::{statement_row, WriteStatements};
+use bae_store::WriteStatements;
 
 /// How the library shows the ratings of albums, or of tracks. Each person's
 /// rating stays one to five stars, or none, under every system.
@@ -188,8 +188,7 @@ impl People {
     /// How the library shows ratings, live: the first value at once, then
     /// one after each change, with the permission to change either system.
     pub fn subscribe_rating_systems(&self) -> coven::LiveQuery<RatingSystemsSettings, DbError> {
-        self.inner.store.subscribe(|sql| {
-            let row = statement_row(&sql, &RatingSystemsToChangeParams {})?;
+        self.inner.store.subscribe_row(RatingSystemsToChangeParams {}).process(|row| {
             Ok(RatingSystemsSettings {
                 systems: row.library.systems()?,
                 can_change: row.viewer.self_is_admin,

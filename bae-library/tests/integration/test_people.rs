@@ -46,7 +46,7 @@ async fn the_creator_changes_the_profile_the_library_was_created_with() {
 
 /// The code of the owner's invite `id`, once its sync has granted its access.
 async fn granted_code(owner: &coven::CovenHandle, id: coven::InviteId) -> String {
-    let mut invites = owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
+    let mut invites = owner.subscribe::<_, coven::CovenError>(coven::Invite::live());
     let granted = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
         bae_library::people::InviteShown::Code { code, .. } if invite.id == id => Some(code),
         bae_library::people::InviteShown::Code { .. }
@@ -322,8 +322,7 @@ impl Household {
         ))
         .await
         .unwrap();
-        let mut invites =
-            self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
+        let mut invites = self.owner.subscribe::<_, coven::CovenError>(coven::Invite::live());
         let granted = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
             bae_library::people::InviteShown::Code { code, .. } if invite.id == id => Some(code),
             bae_library::people::InviteShown::Code { .. }
@@ -397,8 +396,7 @@ impl Household {
 
     /// Approve the first request among the owner's open invites.
     pub(super) async fn approve(&self) {
-        let mut invites =
-            self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
+        let mut invites = self.owner.subscribe::<_, coven::CovenError>(coven::Invite::live());
         let deciding = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
             bae_library::people::InviteShown::Code {
                 progress: bae_library::people::InviteProgress::Deciding(request),

@@ -30,7 +30,6 @@ use crate::triage::TriageRuntimeFacts;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles, SaveFailure};
 use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
-use bae_store::statement_row;
 use bae_store::WriteStatements as _;
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
@@ -283,13 +282,18 @@ sqlive_compose::read!(
 "#
 );
 
+#[cfg(any(test, feature = "test-utils"))]
 fn load_import_counts_on(sql: &impl bae_store::WriterRead) -> Result<ImportCounts, DbError> {
-    let row = statement_row(sql, &ImportCountsReadParams {})?;
-    Ok(ImportCounts {
+    Ok(import_counts_of(bae_store::statement_row(sql, &ImportCountsReadParams {})?))
+}
+
+/// The import counts as their row holds them.
+fn import_counts_of(row: ImportCountsReadRow) -> ImportCounts {
+    ImportCounts {
         identified: row.identified,
         admitted: row.admitted,
         imports_in_flight: row.imports_in_flight,
-    })
+    }
 }
 
 /// End, inside the caller's write, `candidate_key`'s identification and its
@@ -587,7 +591,7 @@ impl ImportTables {
     pub(crate) fn subscribe_import_counts(
         &self,
     ) -> coven::LiveQuery<ImportCounts, bae_store::DbError> {
-        self.store.subscribe(|sql| load_import_counts_on(&sql))
+        self.store.subscribe_row(ImportCountsReadParams {}).process(|row| Ok(import_counts_of(row)))
     }
 
     /// Apply each change to its candidate's identification, in one write.
@@ -772,6 +776,17 @@ impl ImportTables {
         .await;
     }
 }
+
+// Where every candidate something is running for stands.
+#[cfg(test)]
+sqlive_compose::read!(
+    writer EveryStanding,
+    r#"
+    SELECT standing.*
+    FROM @crate::tables::import_state::fragments::Standing(
+        keys: (SELECT every.candidate_key FROM import_candidate_standing AS every)) AS standing
+"#
+);
 
 #[cfg(test)]
 #[path = "standing_rows_tests.rs"]

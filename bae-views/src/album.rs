@@ -7,12 +7,14 @@ use super::*;
 use bae_records::records::track_display::DisplayedTrack;
 #[cfg(test)]
 pub(crate) use card::ArtistAlbums;
-pub(crate) use card::{artist_albums_on, AlbumAppearanceRow};
+pub(crate) use card::{artist_albums_of, AlbumAppearanceRow, ArtistAlbumsParams, ArtistAlbumsRow};
 #[cfg(any(test, feature = "test-utils"))]
-pub(crate) use listing::every_album_on;
+pub(crate) use listing::{album_counts_on, every_album_on};
+#[cfg(test)]
+pub(crate) use listing::albums_before_on;
 pub(crate) use listing::{
-    album_counts_on, album_key_at_on, album_page_on, album_sections_on, album_window_on,
-    albums_before_on, albums_in_order_on, unshown_albums_on,
+    album_key_at_on, album_page_read, album_window_of, album_window_read, albums_before_read,
+    albums_in_order_on, subscribe_album_counts, subscribe_album_sections, unshown_albums_read,
 };
 use order::grouped_artist_direction;
 pub(crate) use order::AlbumOrder;
@@ -40,14 +42,16 @@ impl LibraryViews {
         album_id: &str,
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
-        let album_id = album_id.to_string();
-        self.store.subscribe(move |sql| album_track_page_on(&sql, &album_id, page)).process(
-            |tracks| {
-                Ok(crate::ListRows::AlbumTracks(
-                    tracks.into_iter().map(release_track).collect::<Result<_, _>>()?,
-                ))
-            },
-        )
+        let statement = AlbumTrackPageParams {
+            album: album_id.to_string(),
+            offset: bae_store::list_windows::sql_bound(page.offset),
+            limit: bae_store::list_windows::sql_bound(page.limit),
+        };
+        self.store.subscribe(statement).process(|rows| {
+            Ok(crate::ListRows::AlbumTracks(
+                rows.into_iter().map(|row| release_track(row.shown)).collect::<Result<_, _>>()?,
+            ))
+        })
     }
 
     /// Follow how many tracks the album `album_id` lists. The count runs as a
@@ -57,7 +61,7 @@ impl LibraryViews {
         album_id: &str,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
         let statement = AlbumTrackCountParams { album: album_id.to_string() };
-        self.store.subscribe(move |sql| Ok(bae_store::statement_row(&sql, &statement)?.tracks))
+        self.store.subscribe_row(statement).process(|row| Ok(row.tracks))
     }
 
     /// The track `track_id` of the release `release_id` as a browse item shows
@@ -92,13 +96,14 @@ impl LibraryViews {
         limit: u64,
     ) -> Result<Vec<crate::album_detail::AlbumSummary>, DbError> {
         let (first, order) = AlbumOrder::flat(sort);
+        let page = album_page_read(first, &order, ListPage { offset, limit });
         let rows: Vec<DbAlbumSummary> = self
             .store
             .read(move |sql| {
-                Ok(album_page_on(&sql, first, &order, ListPage { offset, limit })?
+                sql.reads(&page)?
                     .into_iter()
-                    .map(|appearance| appearance.row)
-                    .collect::<Vec<_>>())
+                    .map(|card| Ok(AlbumAppearanceRow::of(card, None)?.row))
+                    .collect::<Result<Vec<_>, DbError>>()
             })
             .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
             .await?;
@@ -116,10 +121,8 @@ impl LibraryViews {
     {
         let order = AlbumOrder::new(sort, group_by_artist);
         self.store
-            .subscribe_reconfigurable(initial, move |window, sql| {
-                album_window_on(&sql, &order, window)
-            })
-            .process(move |window| window.try_map_rows(|row| row.process(group_by_artist)))
+            .subscribe_reconfigurable(initial, move |window| album_window_read(&order, window))
+            .process(move |window, rows| album_window_of(window, rows, group_by_artist))
     }
 
     /// Follow one page of the flat album list under `sort`: the albums from
@@ -130,9 +133,12 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let (first, order) = AlbumOrder::flat(sort);
-        self.store.subscribe(move |sql| album_page_on(&sql, first, &order, page)).process(|rows| {
+        self.store.subscribe(album_page_read(first, &order, page)).process(|cards| {
             Ok(album_rows(
-                rows.into_iter().map(|row| row.process(false)).collect::<Result<_, _>>()?,
+                cards
+                    .into_iter()
+                    .map(|card| AlbumAppearanceRow::of(card, None)?.process(false))
+                    .collect::<Result<_, _>>()?,
             ))
         })
     }
@@ -145,7 +151,7 @@ impl LibraryViews {
         &self,
         group_by_artist: bool,
     ) -> coven::LiveQuery<AlbumCounts, bae_store::DbError> {
-        self.store.subscribe(move |sql| album_counts_on(&sql, group_by_artist))
+        subscribe_album_counts(&self.store, group_by_artist)
     }
 
     /// Follow how many rows of the album grid come before the row at a key,
@@ -159,7 +165,8 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let order = AlbumOrder::new(sort, group_by_artist);
         self.store
-            .subscribe_reconfigurable(initial, move |key, sql| albums_before_on(&sql, &order, key))
+            .subscribe_reconfigurable(initial, move |key| albums_before_read(&order, key))
+            .process(|_, before| bae_store::exactly_one::<coven::ReadAs<u64>, _>(before))
     }
 
     /// The key of the row at `position` of the album grid, or of its last row
@@ -182,7 +189,7 @@ impl LibraryViews {
         sort: &[AlbumSortCriterion],
     ) -> coven::LiveQuery<Vec<crate::LibraryBrowseSection>, bae_store::DbError> {
         let direction = grouped_artist_direction(sort);
-        self.store.subscribe(move |sql| album_sections_on(&sql, direction))
+        subscribe_album_sections(&self.store, direction)
     }
 
     /// Follow which of the albums `initial` names — the grid's
@@ -194,7 +201,8 @@ impl LibraryViews {
         initial: BTreeSet<String>,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>, bae_store::DbError> {
         self.store
-            .subscribe_reconfigurable(initial, |requested, sql| unshown_albums_on(&sql, requested))
+            .subscribe_reconfigurable(initial, |requested| Ok(unshown_albums_read(requested)))
+            .process(|_, rows| Ok(rows.into_iter().map(|row| row.album_id).collect()))
     }
 
     /// The albums of `album_ids` the browse lists, each once at its first
@@ -229,7 +237,7 @@ impl LibraryViews {
         let album_id = album_id.to_string();
         Ok(self
             .store
-            .read(move |sql| find_album_detail_on(&sql, &album_id, None))
+            .read(move |sql| album_detail_of(sql.reads(&album_detail_read(&album_id))?, None))
             .process(AlbumDetailRows::process)
             .await?
             .map(resolve_album_detail))
@@ -247,19 +255,14 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         self.store
-            .subscribe_reconfigurable(initial, |request, sql| {
-                request
-                    .as_ref()
-                    .map(|request| {
-                        find_album_detail_on(
-                            &sql,
-                            &request.album_id,
-                            request.chosen_release_id.as_deref(),
-                        )
-                    })
-                    .transpose()
+            .subscribe_reconfigurable(initial, |request| {
+                Ok(coven::Maybe(
+                    request.as_ref().map(|request| album_detail_read(&request.album_id)),
+                ))
             })
-            .process(|rows| {
+            .process(|request, reads| {
+                let chosen = request.as_ref().and_then(|request| request.chosen_release_id.clone());
+                let rows = reads.map(|reads| album_detail_of(reads, chosen)).transpose()?;
                 let detail = rows.map(AlbumDetailRows::process).transpose()?.flatten();
                 Ok(AlbumDetailProjection { detail })
             })
@@ -377,16 +380,25 @@ sqlive_compose::read!(
 /// What [`AlbumDetailHead`] and the album's releases read of the album
 /// `album_id`, in one snapshot, for a page showing the release
 /// `chosen_release_id`.
-fn find_album_detail_on(
-    sql: &SqlReadContext<'_>,
+fn album_detail_read(
     album_id: &str,
-    chosen_release_id: Option<&str>,
+) -> coven::Both<AlbumDetailHeadParams, crate::release::ViewedAlbumReleasesParams> {
+    coven::Both(
+        AlbumDetailHeadParams { album: album_id.to_string() },
+        album_releases_read(album_id),
+    )
+}
+
+/// The album's rows as [`album_detail_read`] returned them, with the release
+/// the view chose.
+fn album_detail_of(
+    (head, releases): (Vec<AlbumDetailHeadRow>, Vec<crate::release::ViewedAlbumReleasesRow>),
+    chosen_release_id: Option<String>,
 ) -> Result<AlbumDetailRows, DbError> {
-    let head = AlbumDetailHeadParams { album: album_id.to_string() };
     Ok(AlbumDetailRows {
-        head: bae_store::statement_optional(sql, &head)?,
-        releases: build_album_release_details_on(sql, album_id)?,
-        chosen_release_id: chosen_release_id.map(str::to_string),
+        head: bae_store::at_most_one::<AlbumDetailHeadParams, _>(head)?,
+        releases: album_releases_of(releases),
+        chosen_release_id,
     })
 }
 
@@ -491,19 +503,6 @@ sqlive_compose::read!(
 );
 
 /// The album `album_id`'s tracks at `page`'s places.
-fn album_track_page_on(
-    sql: &SqlReadContext<'_>,
-    album_id: &str,
-    page: ListPage,
-) -> Result<Vec<DisplayedTrack>, DbError> {
-    let statement = AlbumTrackPageParams {
-        album: album_id.to_string(),
-        offset: bae_store::list_windows::sql_bound(page.offset),
-        limit: bae_store::list_windows::sql_bound(page.limit),
-    };
-    Ok(bae_store::statement_rows(sql, &statement)?.into_iter().map(|row| row.shown).collect())
-}
-
 #[cfg(test)]
 mod item_tests;
 

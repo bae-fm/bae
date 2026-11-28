@@ -100,6 +100,7 @@ fn check_crate(
         let source_reader = |path: &str| read_text(&crate_dir.join(path));
         let compiled = compile_crate(Input {
             crate_name: crate_name.to_owned(),
+            macros_crate: "sqlive_compose".to_owned(),
             source_reader: &source_reader,
             manifests: manifests.to_vec(),
             setup,

@@ -852,16 +852,20 @@ impl PositionStatement {
         })
     }
 
-    /// How many items sit before the statement's key.
-    pub(super) fn read(&self, sql: &impl bae_store::WriterRead) -> Result<u64, DbError> {
-        let before = match self {
-            Self::NewestFirst(params) => statement_row(sql, params)?.before,
-            Self::OldestFirst(params) => statement_row(sql, params)?.before,
-            Self::PathAscending(params) => statement_row(sql, params)?.before,
-            Self::PathDescending(params) => statement_row(sql, params)?.before,
-        };
-        to_u64(before, "an import list position")
+    /// The read of how many items sit before the statement's key.
+    pub(super) fn reads(self) -> coven::ReadAs<i64> {
+        match self {
+            Self::NewestFirst(params) => coven::ReadAs::new(params, |row| row.before),
+            Self::OldestFirst(params) => coven::ReadAs::new(params, |row| row.before),
+            Self::PathAscending(params) => coven::ReadAs::new(params, |row| row.before),
+            Self::PathDescending(params) => coven::ReadAs::new(params, |row| row.before),
+        }
     }
+}
+
+/// How many items sit before a key, as a position statement's row holds it.
+pub(super) fn position_of(before: i64) -> Result<u64, DbError> {
+    to_u64(before, "an import list position")
 }
 
 /// The statement reading the key at a position: the read of the list's order,

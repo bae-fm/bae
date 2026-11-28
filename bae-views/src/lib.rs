@@ -48,7 +48,9 @@ mod storage_totals;
 mod sync_activity;
 mod uploads;
 
-pub use activity_bars::{activity_bars_on, ActivityBarRows, BatchBar, MovingShare};
+pub use activity_bars::{
+    activity_bars_on, subscribe_activity_bars, ActivityBarRows, BatchBar, MovingShare,
+};
 pub use browse::*;
 #[cfg(desktop)]
 pub use release_files::{
@@ -77,7 +79,7 @@ pub use release::ReleaseDetailProjection;
 pub use storage::StorageCounts;
 
 use composer::work_summary;
-use release::{build_album_release_details_on, ReleaseDetailRows};
+use release::{album_releases_of, album_releases_read, ReleaseDetailRows};
 
 use bae_records::records::query::*;
 use bae_records::*;

@@ -1,21 +1,44 @@
 use super::*;
 use coven::SqlReadContext;
 
+// Whether the cover of the release `:release` waits in this device's upload
+// queue.
+sqlive_compose::read!(
+    writer CoverQueued(release: String) { queued: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM covers AS cover
+                   JOIN coven_uploads AS upload ON upload.file = cover.browse_file
+                   WHERE cover.id = :release) AS queued
+"#
+);
+
+// The labels of the release `:release`, each with the label it shows as.
+#[cfg(test)]
+sqlive_compose::read!(
+    writer ShownLabels(release: String),
+    r#"
+    SELECT @crate::records::pressing_columns::ReleaseLabels(parent: rel) AS labels
+    FROM releases AS rel
+    WHERE rel.id = :release
+"#
+);
+
+// The title of the album `:album`.
+#[cfg(test)]
+sqlive_compose::read!(
+    writer TitleOfAlbum(album: String),
+    "SELECT album.title FROM albums AS album WHERE album.id = :album"
+);
+
 impl Records {
-    /// Whether the coven file `table`'s row `row_id` references waits in
-    /// this device's upload queue, live.
-    pub fn subscribe_row_file_queued_for_test(
+    /// Whether the cover of the release `release_id` waits in this device's
+    /// upload queue, live.
+    pub fn subscribe_cover_queued_for_test(
         &self,
-        table: &str,
-        row_id: &str,
+        release_id: &str,
     ) -> coven::LiveQuery<bool, DbError> {
-        let statement = format!(
-            "SELECT EXISTS (SELECT 1 FROM {table} AS t \
-             JOIN coven_uploads AS upload ON upload.file = t.{column} WHERE t.id = ?1)",
-            column = file_column_for_test(table),
-        );
-        let row_id = row_id.to_string();
-        self.store.subscribe(move |sql| Ok(sql.query_row(&statement, [&row_id], |row| row.get(0))?))
+        let statement = CoverQueuedParams { release: release_id.to_string() };
+        self.store.subscribe_row(statement).process(|row| Ok(row.queued))
     }
 
     /// How many of the files waiting in this device's upload queue `table`'s

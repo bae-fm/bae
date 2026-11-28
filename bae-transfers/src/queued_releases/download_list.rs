@@ -6,7 +6,7 @@
 use crate::download_snapshot::DownloadRow;
 use bae_store::list_windows::{sql_bound, OrderKey, SortValue};
 use bae_store::{
-    statement_optional, statement_row, statement_rows, DbError, ListWindow, WindowRead,
+    statement_optional, statement_row, DbError, ListWindow, WindowRead,
 };
 use coven::SqlReadContext;
 
@@ -112,33 +112,56 @@ pub fn download_window_on(
     sql: &SqlReadContext<'_>,
     window: &ListWindow,
 ) -> Result<WindowRead<DownloadRow>, DbError> {
+    download_window_of(window, sql.reads(&download_window_read(window)?)?)
+}
+
+/// An entry of the downloads list as its window's read returns it: its place,
+/// the entry, its release and its album's title.
+pub type ListedDownload = (
+    i64,
+    crate::queued_releases::rows::DownloadQueueRow,
+    Option<bae_records::records::fragments::ReleaseAlbum>,
+    Option<bae_records::records::fragments::AlbumTitle>,
+);
+
+/// The read of the downloads list's entries in `window`: from the list's top
+/// with a statement of its own, else from the window's key.
+pub fn download_window_read(window: &ListWindow) -> Result<coven::ReadAs<ListedDownload>, DbError> {
     let limit = sql_bound(window.limit);
     macro_rules! rows {
         ($statement:expr) => {
-            statement_rows(sql, &$statement)?
-                .into_iter()
-                .map(|row| {
-                    let key = key_of(row.position);
-                    Ok((row.entry.into_row(row.release, row.album)?, key))
-                })
-                .collect::<Result<_, DbError>>()?
+            coven::ReadAs::new($statement, |row| (row.position, row.entry, row.release, row.album))
         };
     }
-    let rows = match &window.from {
+    Ok(match &window.from {
         None => rows!(DownloadTopParams { limit }),
         Some(from) => rows!(DownloadWindowParams { from: place_of(from)?, limit }),
-    };
-    Ok(WindowRead { window: window.clone(), rows })
+    })
 }
 
-/// How many entries the downloads list has.
-pub(crate) fn download_list_length_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    Ok(statement_row(sql, &DownloadListLengthParams {})?.entries)
+/// The entries of `window` as their read returned them.
+pub fn download_window_of(
+    window: &ListWindow,
+    rows: Vec<ListedDownload>,
+) -> Result<WindowRead<DownloadRow>, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|(position, entry, release, album)| {
+            Ok((entry.into_row(release, album)?, key_of(position)))
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(WindowRead { window: window.clone(), rows })
 }
 
 /// How many entries of the downloads list come before the entry at `key`.
 pub fn downloads_before_on(sql: &SqlReadContext<'_>, key: &OrderKey) -> Result<u64, DbError> {
-    Ok(statement_row(sql, &DownloadsBeforeParams { position: place_of(key)? })?.entries)
+    Ok(statement_row(sql, &downloads_before_read(key)?)?.entries)
+}
+
+/// The read of how many entries of the downloads list come before the entry
+/// at `key`.
+pub fn downloads_before_read(key: &OrderKey) -> Result<DownloadsBeforeParams, DbError> {
+    Ok(DownloadsBeforeParams { position: place_of(key)? })
 }
 
 /// The key of the entry at `index`, or of the last one when the list ends

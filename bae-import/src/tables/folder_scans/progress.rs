@@ -16,30 +16,46 @@ use crate::folder_scan_status::{
     WatchedFolderScanStatus,
 };
 
-/// Each watched folder's status, in the order the folders are listed (their
-/// `position`, by its index).
-const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, \
-            unwatched_directory, unwatched_cause, volume \
-     FROM folder_scan_status ORDER BY position";
+// Each watched folder's status, in the order the folders are listed (their
+// `position`, by its index), and whether it is a problem owed an alert: a
+// failed or not-watched folder that is not among the raised alerts `raised`
+// names, a JSON array of each one's folder path in hex, kind and detail.
+sqlive_compose::read!(
+    writer FolderScanStatuses(raised: String) {
+        watched_folder_path: Vec<u8>,
+        status: String,
+        detail: Option<String>,
+        unwatched_directory: Option<Vec<u8>>,
+        unwatched_cause: Option<String>,
+        volume: Option<String>,
+        owed: bool
+    },
+    r#"
+    SELECT folder.watched_folder_path, folder.status, folder.detail, folder.unwatched_directory,
+           folder.unwatched_cause, folder.volume,
+           folder.status IN ('failed', 'unwatched')
+               AND NOT EXISTS (SELECT 1 FROM json_each(:raised) AS alert
+                               WHERE unhex(alert.value ->> 0) = folder.watched_folder_path
+                                 AND alert.value ->> 1 = folder.status
+                                 AND alert.value ->> 2 = folder.detail) AS owed
+    FROM folder_scan_status AS folder
+    ORDER BY folder.position
+"#
+);
 
-/// Whether any folder's scan failed or left it not watched, and whether any
-/// folder is being scanned.
-const FOLDER_SCAN_FLAGS: &str = "SELECT \
-     EXISTS (SELECT 1 FROM folder_scan_status WHERE status IN ('failed', 'unwatched')), \
-     EXISTS (SELECT 1 FROM folder_scan_status WHERE status = 'scanning')";
+// Whether any folder's scan failed or left it not watched, and whether any
+// folder is being scanned.
+sqlive_compose::read!(
+    writer FolderScanFlags { has_problem: bool, scanning: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM folder_scan_status AS folder
+                   WHERE folder.status IN ('failed', 'unwatched')) AS has_problem,
+           EXISTS (SELECT 1 FROM folder_scan_status AS folder
+                   WHERE folder.status = 'scanning') AS scanning
+"#
+);
 
-/// Each folder's problem that is not among the raised alerts `?1` names, as a
-/// JSON array of each one's folder path in hex, kind and detail, in the order
-/// the folders are listed.
-const OWED_FOLDER_SCAN_ALERTS: &str = "SELECT folder.watched_folder_path, folder.status, \
-            folder.detail, folder.unwatched_directory, folder.unwatched_cause, folder.volume \
-     FROM folder_scan_status AS folder \
-     WHERE folder.status IN ('failed', 'unwatched') \
-       AND (folder.watched_folder_path, folder.status, folder.detail) NOT IN \
-           (SELECT unhex(value ->> 0), value ->> 1, value ->> 2 FROM json_each(?1)) \
-     ORDER BY folder.position";
-
-/// `raised` as the JSON array [`OWED_FOLDER_SCAN_ALERTS`] binds.
+/// `raised` as the JSON array [`FolderScanStatuses`] binds.
 fn raised_alerts_json(raised: &RaisedScanAlerts) -> String {
     serde_json::to_string(
         &raised
@@ -102,54 +118,78 @@ fn folder_scan_status(
 fn load_folder_scan_statuses_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
-    sql.query(FOLDER_SCAN_STATUSES, [], read_folder_scan_status)?.into_iter().collect()
+    let statuses =
+        FolderScanStatusesParams { raised: raised_alerts_json(&RaisedScanAlerts::new()) };
+    let rows = bae_store::statement_rows(sql, &statuses)?;
+    Ok(folder_scan_statuses_of(rows)?.into_iter().map(|(status, _owed)| status).collect())
 }
 
-/// A watched folder's status from a row of `folder_scan_status`:
-/// `watched_folder_path`, `status`, `detail`, `unwatched_directory`,
-/// `unwatched_cause` and `volume`.
-fn read_folder_scan_status(
-    row: &rusqlite::Row<'_>,
-) -> rusqlite::Result<Result<WatchedFolderScanStatus, DbError>> {
-    let watched_folder_path = path_column::get(row, 0)?;
-    let status: String = row.get(1)?;
-    let detail: Option<String> = row.get(2)?;
-    let directory = path_column::get_optional(row, 3)?;
-    let cause: Option<String> = row.get(4)?;
-    let volume: Option<String> = row.get(5)?;
-    Ok(folder_scan_status(&watched_folder_path, status, detail, directory.zip(cause), volume).map(
-        |status| WatchedFolderScanStatus {
-            status,
-            folder: crate::WatchedFolder::from_path(watched_folder_path),
-        },
-    ))
+/// Each watched folder's status from its row of [`FolderScanStatuses`],
+/// beside whether it is owed an alert.
+fn folder_scan_statuses_of(
+    rows: Vec<FolderScanStatusesRow>,
+) -> Result<Vec<(WatchedFolderScanStatus, bool)>, DbError> {
+    rows.into_iter()
+        .map(|row| {
+            let watched_folder_path = path_column::decode(row.watched_folder_path)?;
+            let directory = row.unwatched_directory.map(path_column::decode).transpose()?;
+            let status = folder_scan_status(
+                &watched_folder_path,
+                row.status,
+                row.detail,
+                directory.zip(row.unwatched_cause),
+                row.volume,
+            )?;
+            let folder = crate::WatchedFolder::from_path(watched_folder_path);
+            Ok((WatchedFolderScanStatus { status, folder }, row.owed))
+        })
+        .collect()
 }
 
-fn load_folder_scan_progress_on(
-    sql: &SqlReadContext<'_>,
+/// The reads of where each watched folder's scan stands, with an alert for
+/// each problem not among `raised`.
+fn folder_scan_progress_read(
     raised: &RaisedScanAlerts,
+) -> coven::Both<FolderScanStatusesParams, FolderScanFlagsParams> {
+    coven::Both(
+        FolderScanStatusesParams { raised: raised_alerts_json(raised) },
+        FolderScanFlagsParams {},
+    )
+}
+
+/// Where each watched folder's scan stands, as its reads return it.
+fn folder_scan_progress_of(
+    (statuses, flags): (Vec<FolderScanStatusesRow>, Vec<FolderScanFlagsRow>),
 ) -> Result<FolderScanProgress, DbError> {
-    let statuses = load_folder_scan_statuses_on(sql)?;
-    let (has_problem, scanning) =
-        sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get(1)?)))?;
+    let flags = bae_store::exactly_one::<FolderScanFlagsParams, _>(flags)?;
     let mut alerts = Vec::new();
-    for owed in sql.query(OWED_FOLDER_SCAN_ALERTS, [raised_alerts_json(raised)], |row| {
-        read_folder_scan_status(row)
-    })? {
-        let WatchedFolderScanStatus { folder, status } = owed?;
-        let problem = match status {
-            FolderScanStatus::Failed { error, .. } => FolderScanProblem::Failed { error },
-            FolderScanStatus::NotWatched { reason, .. } => FolderScanProblem::NotWatched { reason },
-            other => {
-                return Err(DbError::unreadable(
-                    "folder_scan_status of an owed alert",
-                    format!("{other:?}"),
-                ))
-            }
-        };
-        alerts.push(FolderScanAlert { folder, problem });
+    let mut listed = Vec::new();
+    for (status, owed) in folder_scan_statuses_of(statuses)? {
+        if owed {
+            let problem = match &status.status {
+                FolderScanStatus::Failed { error, .. } => {
+                    FolderScanProblem::Failed { error: error.clone() }
+                }
+                FolderScanStatus::NotWatched { reason, .. } => {
+                    FolderScanProblem::NotWatched { reason: reason.clone() }
+                }
+                other => {
+                    return Err(DbError::unreadable(
+                        "folder_scan_status of an owed alert",
+                        format!("{other:?}"),
+                    ))
+                }
+            };
+            alerts.push(FolderScanAlert { folder: status.folder.clone(), problem });
+        }
+        listed.push(status);
     }
-    Ok(FolderScanProgress { statuses, has_problem, scanning, alerts })
+    Ok(FolderScanProgress {
+        statuses: listed,
+        has_problem: flags.has_problem,
+        scanning: flags.scanning,
+        alerts,
+    })
 }
 
 sqlive_compose::write!(
@@ -206,22 +246,31 @@ fn hold_root_scan_on(
     Ok(())
 }
 
-/// What the folder scan coordinator holds of each root's scan, as its rows
-/// store it.
+// What the folder scan coordinator holds of each root's scan.
 #[cfg(test)]
-fn load_held_root_scans_on(sql: &SqlReadContext<'_>) -> Result<HeldRootScans, DbError> {
-    let rows = sql.query(
-        "SELECT watched_folder_path, state, error, volume FROM folder_scan_held",
-        [],
-        |row| {
-            Ok((
-                path_column::get(row, 0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-            ))
-        },
-    )?;
+sqlive_compose::read!(
+    writer HeldRootScanRows {
+        watched_folder_path: Vec<u8>,
+        state: String,
+        error: Option<String>,
+        volume: Option<String>
+    },
+    r#"
+    SELECT held.watched_folder_path, held.state, held.error, held.volume
+    FROM folder_scan_held AS held
+"#
+);
+
+/// What the folder scan coordinator holds of each root's scan, as its rows
+/// hold it.
+#[cfg(test)]
+fn held_root_scans_of(rows: Vec<HeldRootScanRowsRow>) -> Result<HeldRootScans, DbError> {
+    let rows = rows
+        .into_iter()
+        .map(|row| {
+            Ok((path_column::decode(row.watched_folder_path)?, row.state, row.error, row.volume))
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
     let mut held = HeldRootScans::new();
     for (path, state, error, volume) in rows {
         let root = match (state.as_str(), error, volume) {
@@ -309,29 +358,36 @@ pub(super) fn stored_outcome(
     })
 }
 
-/// The folders bae is scanning, in the order the folders are listed, each
-/// with how many folders its scan's current generation has stored, which
-/// the query counts through the index on `scan_candidate`.
-const SCANNING_FOLDERS: &str = "SELECT folder.watched_folder_path, \
-            (SELECT COUNT(*) FROM scan_candidate AS candidate \
-             WHERE candidate.watched_folder_path = roots.watched_folder_path \
-               AND candidate.generation = roots.generation \
-               AND candidate.source_kind = 'folder') \
-     FROM folder_scan_status AS folder \
-     JOIN folder_scan_roots AS roots ON roots.watched_folder_path = folder.watched_folder_path \
-     WHERE folder.status = 'scanning' ORDER BY folder.position";
+// The folders bae is scanning, in the order the folders are listed, each
+// with how many folders its scan's current generation has stored, which the
+// query counts through the index on `scan_candidate`.
+sqlive_compose::read!(
+    writer ScanningFolders { watched_folder_path: Vec<u8>, found: i64 },
+    r#"
+    SELECT folder.watched_folder_path,
+           (SELECT COUNT(*) FROM scan_candidate AS candidate
+            WHERE candidate.watched_folder_path = roots.watched_folder_path
+              AND candidate.generation = roots.generation
+              AND candidate.source_kind = 'folder') AS found
+    FROM folder_scan_status AS folder
+    JOIN folder_scan_roots AS roots ON roots.watched_folder_path = folder.watched_folder_path
+    WHERE folder.status = 'scanning'
+    ORDER BY folder.position
+"#
+);
 
-fn load_scanning_folders_on(sql: &SqlReadContext<'_>) -> Result<Vec<ScanningFolder>, DbError> {
-    let mut folders = Vec::new();
-    for (path, found) in sql
-        .query(SCANNING_FOLDERS, [], |row| Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?)))?
-    {
-        folders.push(ScanningFolder {
-            folder: crate::WatchedFolder::from_path(path),
-            found: to_u64(found, "a folder scan's found count")?,
-        });
-    }
-    Ok(folders)
+/// The folders bae is scanning, as their rows hold them.
+fn scanning_folders_of(rows: Vec<ScanningFoldersRow>) -> Result<Vec<ScanningFolder>, DbError> {
+    rows.into_iter()
+        .map(|row| {
+            Ok(ScanningFolder {
+                folder: crate::WatchedFolder::from_path(path_column::decode(
+                    row.watched_folder_path,
+                )?),
+                found: to_u64(row.found, "a folder scan's found count")?,
+            })
+        })
+        .collect()
 }
 
 impl ImportTables {
@@ -339,7 +395,7 @@ impl ImportTables {
     /// has stored.
     #[cfg(test)]
     pub(crate) async fn load_scanning_folders(&self) -> Result<Vec<ScanningFolder>, DbError> {
-        self.store.read(move |sql| load_scanning_folders_on(&sql)).await
+        scanning_folders_of(self.store.read_rows(ScanningFoldersParams {}).await?)
     }
 
     /// The folders bae is scanning, each with how many folders its scan has
@@ -347,7 +403,7 @@ impl ImportTables {
     pub fn subscribe_scanning_folders(
         &self,
     ) -> coven::LiveQuery<Vec<ScanningFolder>, bae_store::DbError> {
-        self.store.subscribe(move |sql| load_scanning_folders_on(&sql))
+        self.store.subscribe(ScanningFoldersParams {}).process(scanning_folders_of)
     }
 
     /// What each watched folder's scan has stored now.
@@ -367,7 +423,8 @@ impl ImportTables {
         &self,
         raised: RaisedScanAlerts,
     ) -> Result<FolderScanProgress, DbError> {
-        self.store.read(move |sql| load_folder_scan_progress_on(&sql, &raised)).await
+        let reads = folder_scan_progress_read(&raised);
+        self.store.read(move |sql| folder_scan_progress_of(sql.reads(&reads)?)).await
     }
 
     /// Where each watched folder's scan stands, live, with an alert for each
@@ -376,9 +433,11 @@ impl ImportTables {
     pub fn subscribe_folder_scan_progress(
         &self,
     ) -> coven::ReconfigurableLiveQuery<RaisedScanAlerts, FolderScanProgress, DbError> {
-        self.store.subscribe_reconfigurable(RaisedScanAlerts::new(), |raised, sql| {
-            load_folder_scan_progress_on(&sql, raised)
-        })
+        self.store
+            .subscribe_reconfigurable(RaisedScanAlerts::new(), |raised| {
+                Ok(folder_scan_progress_read(raised))
+            })
+            .process(|_, read| folder_scan_progress_of(read))
     }
 
     /// Hold `root`'s scan as running, as the folder scan coordinator holds a
@@ -393,7 +452,7 @@ impl ImportTables {
     /// What the folder scan coordinator holds of each root's scan now.
     #[cfg(test)]
     pub(crate) async fn load_held_root_scans(&self) -> Result<HeldRootScans, DbError> {
-        self.store.read(move |sql| load_held_root_scans_on(&sql)).await
+        held_root_scans_of(self.store.read_rows(HeldRootScanRowsParams {}).await?)
     }
 
     /// What the folder scan coordinator holds of each root's scan, live.
@@ -401,7 +460,7 @@ impl ImportTables {
     pub(crate) fn subscribe_held_root_scans(
         &self,
     ) -> coven::LiveQuery<HeldRootScans, bae_store::DbError> {
-        self.store.subscribe(move |sql| load_held_root_scans_on(&sql))
+        self.store.subscribe(HeldRootScanRowsParams {}).process(held_root_scans_of)
     }
 
     /// Plant damage for a test: every write to what the folder scan

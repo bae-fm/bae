@@ -128,7 +128,7 @@ pub(super) fn resume_stored_on(sql: &impl bae_store::WriterRead) -> Result<bool,
 /// Read the device-local `playback_state` row, `None` when none is stored.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeRow>, DbError> {
-    store.read(|sql| playback_state_on(&sql)).await
+    playback_state_of(store.read_rows(StoredResumeParams {}).await?)
 }
 
 /// Follow the device-local `playback_state` row as `load_playback_state`
@@ -137,13 +137,15 @@ pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeR
 pub fn subscribe_playback_state(
     store: &Store,
 ) -> coven::LiveQuery<Option<PlaybackResumeRow>, bae_store::DbError> {
-    store.subscribe(|sql| playback_state_on(&sql))
+    store.subscribe(StoredResumeParams {}).process(playback_state_of)
 }
 
-/// The `playback_state` row `sql` reads, `None` when none is stored.
+/// The `playback_state` row among `rows`, `None` when none is stored.
 #[cfg(any(test, feature = "test-utils"))]
-fn playback_state_on(sql: &SqlReadContext<'_>) -> Result<Option<PlaybackResumeRow>, DbError> {
-    statement_optional(sql, &StoredResumeParams {})?.map(|row| row.saved.into_row()).transpose()
+fn playback_state_of(rows: Vec<StoredResumeRow>) -> Result<Option<PlaybackResumeRow>, DbError> {
+    bae_store::at_most_one::<StoredResumeParams, _>(rows)?
+        .map(|row| row.saved.into_row())
+        .transpose()
 }
 
 /// Plant damage for a test: the resume row names an entry no queue entry id

@@ -2,10 +2,11 @@
 //! that move the position on themselves, written only as playback leaves the
 //! line it holds, and read by their live query. Its table is `timeline.sql`.
 
-use super::preview_target::{preview_target_from_row, preview_target_values};
+use super::preview_target::preview_target_values;
 use super::*;
 use crate::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use bae_store::WriteStatements;
+use bae_track_audio::PreviewTarget;
 
 /// The `playback_timeline` row, as playback writes it.
 #[derive(Clone)]
@@ -25,13 +26,13 @@ impl PlaybackTimelineRow {
 pub fn subscribe_playback_timeline(
     store: &Store,
 ) -> coven::LiveQuery<PlaybackTimeline, bae_store::DbError> {
-    store.subscribe(|sql| playback_timeline_on(&sql))
+    store.subscribe_row(TimelineLinesParams {}).process(playback_timeline_of)
 }
 
 /// Where playback is now, as `subscribe_playback_timeline` reads it.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn playback_timeline(store: &Store) -> Result<PlaybackTimeline, DbError> {
-    store.read(|sql| playback_timeline_on(&sql)).await
+    playback_timeline_of(store.read_row(TimelineLinesParams {}).await?)
 }
 
 sqlive_compose::write!(
@@ -105,30 +106,61 @@ pub(super) fn reset_playback_timeline_on(sql: &coven::BulkSqlContext<'_>) -> rus
     Ok(())
 }
 
-fn playback_timeline_on(sql: &SqlReadContext<'_>) -> Result<PlaybackTimeline, DbError> {
-    Ok(sql.query_row("SELECT * FROM playback_timeline", [], |row| {
-        // The table's CHECKs keep each line's columns set together.
-        let library = match row.get::<_, Option<String>>("track_id")? {
-            None => None,
-            Some(track_id) => Some(TimelinePoint {
-                track_id,
-                position_ms: row.get("position_ms")?,
-                duration_ms: row.get("duration_ms")?,
-                moving: row.get("moving")?,
-                started_at_seek: row.get("started_at_seek")?,
-            }),
-        };
-        let preview = match preview_target_from_row(row)? {
-            None => None,
-            Some(target) => Some(PreviewTimelinePoint {
-                target,
-                position_ms: row.get("preview_position_ms")?,
-                duration_ms: row.get("preview_duration_ms")?,
-                moving: row.get("preview_moving")?,
-            }),
-        };
-        Ok(PlaybackTimeline { library, preview })
-    })?)
+// Where playback is: the playing track's line and the preview's.
+sqlive_compose::read!(
+    writer TimelineLines {
+        track_id: Option<String>,
+        position_ms: Option<u64>,
+        duration_ms: Option<u64>,
+        moving: Option<bool>,
+        started_at_seek: Option<bool>,
+        preview_path: Option<Vec<u8>>,
+        preview_start_sample: Option<u64>,
+        preview_end_sample: Option<u64>,
+        preview_position_ms: Option<u64>,
+        preview_duration_ms: Option<u64>,
+        preview_moving: Option<bool>
+    },
+    r#"
+    SELECT line.track_id, line.position_ms, line.duration_ms, line.moving, line.started_at_seek,
+           line.preview_path, line.preview_start_sample, line.preview_end_sample,
+           line.preview_position_ms, line.preview_duration_ms, line.preview_moving
+    FROM playback_timeline AS line
+"#
+);
+
+/// Where playback is, as the row's columns hold it. The table's CHECKs keep
+/// each line's columns set together.
+fn playback_timeline_of(row: TimelineLinesRow) -> Result<PlaybackTimeline, DbError> {
+    let library = match row.track_id {
+        None => None,
+        Some(track_id) => Some(TimelinePoint {
+            track_id,
+            position_ms: set(row.position_ms, "position_ms")?,
+            duration_ms: row.duration_ms,
+            moving: set(row.moving, "moving")?,
+            started_at_seek: set(row.started_at_seek, "started_at_seek")?,
+        }),
+    };
+    let preview = match row.preview_path {
+        None => None,
+        Some(path) => Some(PreviewTimelinePoint {
+            target: PreviewTarget::sample_range(
+                bae_store::path_column::decode(path)?,
+                set(row.preview_start_sample, "preview_start_sample")?,
+                row.preview_end_sample,
+            ),
+            position_ms: set(row.preview_position_ms, "preview_position_ms")?,
+            duration_ms: set(row.preview_duration_ms, "preview_duration_ms")?,
+            moving: set(row.preview_moving, "preview_moving")?,
+        }),
+    };
+    Ok(PlaybackTimeline { library, preview })
+}
+
+/// `value`, the column `column` of a line the row holds, which the line sets.
+fn set<T>(value: Option<T>, column: &str) -> Result<T, DbError> {
+    value.ok_or_else(|| DbError::unreadable(format!("playback_timeline.{column}"), None::<String>))
 }
 
 #[cfg(test)]

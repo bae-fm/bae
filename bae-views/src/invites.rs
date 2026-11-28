@@ -2,7 +2,6 @@
 //! refusal to share ended.
 
 use super::*;
-use bae_store::{statement_optional, statement_rows};
 use coven::types::{FromSql, ValueRef};
 
 /// One of this device's open invites, with the pending record of its
@@ -184,9 +183,9 @@ impl LibraryViews {
     /// `coven_invites`, `coven_pending` and `coven_operations` in one
     /// statement, in the order coven started their operations.
     pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<InviteEntry>, bae_store::DbError> {
-        self.store.subscribe(|sql| {
-            statement_rows(&sql, &ListedInvitesParams {})?.into_iter().map(invite_entry).collect()
-        })
+        self.store
+            .subscribe(ListedInvitesParams {})
+            .process(|rows| rows.into_iter().map(invite_entry).collect())
     }
 
     /// The open invite `invite`, live: none once it has ended, by approval,
@@ -196,11 +195,9 @@ impl LibraryViews {
         invite: coven::InviteId,
     ) -> coven::LiveQuery<Option<OpenInvite>, bae_store::DbError> {
         let invite = invite.0.to_string();
-        self.store.subscribe(move |sql| {
-            statement_optional(&sql, &InviteOfIdParams { invite: invite.clone() })?
-                .map(|row| row.open.open_invite())
-                .transpose()
-        })
+        self.store
+            .subscribe_optional(InviteOfIdParams { invite })
+            .process(|row| row.map(|row| row.open.open_invite()).transpose())
     }
 
     /// The first of this device's open invites, in the order coven started
@@ -215,11 +212,9 @@ impl LibraryViews {
             closed.iter().map(|invite| invite.0.to_string()).collect::<Vec<_>>(),
         )
         .to_string();
-        self.store.subscribe(move |sql| {
-            statement_optional(&sql, &FirstWaitingRequestParams { closed: closed.clone() })?
-                .map(|row| row.open.open_invite())
-                .transpose()
-        })
+        self.store
+            .subscribe_optional(FirstWaitingRequestParams { closed })
+            .process(|row| row.map(|row| row.open.open_invite()).transpose())
     }
 }
 

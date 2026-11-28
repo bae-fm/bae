@@ -147,20 +147,18 @@ fn published_of(
     Ok(Some((IdentifyRunId::of_number(number), PublishedRun { outcome, signals, cards })))
 }
 
-/// `key`'s stored verdict as its pane shows it, read and converted as the
-/// pane's read does: the verdict of its current state with the cards its rows
-/// hold, and the sample rate its stored signals say rules out a CD.
-fn load_stored_verdict_on(
-    sql: &impl bae_store::WriterRead,
-    key: &CandidateKey,
-) -> Result<Option<StoredVerdict>, DbError> {
-    let (current, cards) = super::load_current_state_and_cards_on(sql, key)?;
+/// The verdict stored for a candidate whose current state and cards are
+/// `current` and `cards`.
+fn stored_verdict_of(
+    current: Option<DbImportCandidateState<bae_identify::signals::PaneSignals>>,
+    cards: bae_identify::VerdictCards,
+) -> Option<StoredVerdict> {
     let not_cd_rate = current
         .as_ref()
         .and_then(|state| state.signals.as_ref())
         .and_then(|signals| signals.origin.not_cd_rate);
-    Ok(super::stored_verdict_view(current.as_ref(), cards)
-        .map(|view| StoredVerdict { view, not_cd_rate }))
+    super::stored_verdict_view(current.as_ref(), cards)
+        .map(|view| StoredVerdict { view, not_cd_rate })
 }
 
 /// The typed search a runtime read returned.
@@ -184,18 +182,6 @@ fn runtime_of(row: RuntimeRows) -> Result<(CandidateKey, StoredRuntime), DbError
     let standing = super::standing_of(row.standing.clone(), &key)?;
     let search = search_of(row.search.clone())?;
     Ok((key.clone(), StoredRuntime { standing, run: published_of(&key, row)?, search }))
-}
-
-/// Where `key` stands, what the run its runtime shows last published, and
-/// its typed search. The runtime shows the run its identification standing
-/// names or, for a key with no identification standing (a library release's
-/// re-identify session), its latest run in flight, else its latest answer.
-pub(crate) fn load_stored_runtime_on(
-    sql: &impl bae_store::WriterRead,
-    key: &CandidateKey,
-) -> Result<StoredRuntime, DbError> {
-    let request = RuntimeOfParams { key: key.clone() };
-    runtime_in(statement_row(sql, &request)?)
 }
 
 /// The runtime of the one key the row of a [`RuntimeOf`] read holds.
@@ -377,10 +363,22 @@ impl ImportTables {
         &self,
         key: &CandidateKey,
     ) -> coven::LiveQuery<crate::CandidateRuntimeView, bae_store::DbError> {
+        let reads = coven::Both(
+            RuntimeOfParams { key: key.clone() },
+            super::stored_verdict_read::StoredVerdictParams { key: key.clone() },
+        );
         let key = key.clone();
-        self.store.subscribe(move |sql| {
-            let stored = load_stored_runtime_on(&sql, &key)?;
-            let stored_verdict = load_stored_verdict_on(&sql, &key)?;
+        self.store.subscribe(reads).process(move |(runtime, verdict)| {
+            let stored = runtime_in(bae_store::exactly_one::<RuntimeOfParams, _>(runtime)?)?;
+            let verdict = bae_store::exactly_one::<
+                super::stored_verdict_read::StoredVerdictParams,
+                _,
+            >(verdict)?;
+            let (current, cards) = super::stored_verdict_read::current_state_and_cards_of(
+                verdict.state,
+                verdict.cards,
+            )?;
+            let stored_verdict = stored_verdict_of(current, cards);
             Ok(crate::candidate_runtime::compose_view(&key, &stored, stored_verdict))
         })
     }
