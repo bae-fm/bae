@@ -426,15 +426,26 @@ fn invalid_item(
     release: StoredRelease,
     columns: ReleaseColumns,
 ) -> Result<ImportListItem, DbError> {
+    let row = invalid_row_of(release.watched_folder_path, release.key, columns)?;
+    Ok(ImportListItem::Invalid { row })
+}
+
+/// The row of the folder at `key`, under the watched folder whose stored path
+/// is `watched_folder_path`, that failed validation, from the columns of its
+/// `ListedRow` document.
+pub(super) fn invalid_row_of(
+    watched_folder_path: Vec<u8>,
+    key: CandidateKey,
+    columns: ReleaseColumns,
+) -> Result<crate::triage::InvalidRow, DbError> {
     let Some(invalid) = columns.invalid else {
         return Err(DbError::unreadable(
-            format!("the scan item of {}, listed as failing validation", release.key),
+            format!("the scan item of {key}, listed as failing validation"),
             columns.name,
         ));
     };
-    let root = path_column::decode(release.watched_folder_path)?;
-    let row = invalid.row(release.key, columns.name, root)?;
-    Ok(ImportListItem::Invalid { row })
+    let root = path_column::decode(watched_folder_path)?;
+    invalid.row(key, columns.name, root)
 }
 
 /// A candidate's row: its placement and what the row fragments read beside

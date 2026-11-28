@@ -473,6 +473,7 @@ impl ImportTables {
     }
 
     /// One candidate as the pane reads it, once.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn load_import_candidate(
         &self,
         key: &crate::CandidateKey,

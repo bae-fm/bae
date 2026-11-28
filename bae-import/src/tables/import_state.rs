@@ -70,7 +70,7 @@ mod preparation_rows;
 mod release_link_rows;
 pub mod row_fragments;
 mod rows;
-mod run_rows;
+pub(crate) mod run_rows;
 mod search_rows;
 mod seed_rows;
 mod signal_rows;

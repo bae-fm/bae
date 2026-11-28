@@ -172,3 +172,45 @@ coven::fragment!(
     ) AS verdict_cards
     FROM owner
 "#);
+
+// The library statuses of the releases each owner's verdict offers or sets
+// aside, as one document under the owner's row: for each such release, its
+// catalog, its id there and the albums [`LibraryStatusRows`] finds for it.
+//
+// [`LibraryStatusRows`]: bae_records::records::fragments::LibraryStatusRows
+coven::fragment!(
+    VerdictLibraryStatuses with owner(content_hash TEXT, identify_run INTEGER) {
+        statuses_row: String,
+        library_statuses: String
+    },
+    r#"
+    WITH checked AS (
+        SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS owner_row,
+               found.match_id AS position, found.release_id, found.source,
+               found.source_group_id
+        FROM owner
+        JOIN import_candidate_verdict AS verdict
+            ON verdict.content_hash IS owner.content_hash
+            AND verdict.identify_run IS owner.identify_run
+        JOIN import_candidate_match AS found
+            ON found.verdict_id = verdict.verdict_id
+            AND found.listing IN ('offered', 'narrowed_out')
+    ), statuses AS MATERIALIZED (
+        SELECT checked.owner_row, checked.source, status.release_id, status.albums
+        FROM checked
+        JOIN @bae_records::records::fragments::LibraryStatusRows(checks: (
+            SELECT checked.position, checked.release_id, checked.source,
+                   checked.source_group_id
+            FROM checked)) AS status
+            ON status.position = checked.position
+    )
+    SELECT COALESCE(owner.content_hash, 'run ' || owner.identify_run) AS statuses_row,
+           COALESCE((
+               SELECT json_group_array(json_object(
+                   'source', statuses.source, 'release_id', statuses.release_id,
+                   'albums', json(statuses.albums)))
+               FROM statuses
+               WHERE statuses.owner_row = COALESCE(owner.content_hash,
+                   'run ' || owner.identify_run)), '[]') AS library_statuses
+    FROM owner
+"#);

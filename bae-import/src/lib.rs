@@ -331,7 +331,8 @@ include!(concat!(env!("OUT_DIR"), "/schema.rs"));
 pub use tables::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
     CoverGallerySnapshot, CoverKey, CoverSection, FolderImageFocus, FolderImages,
-    FolderImagesRequest, FolderImagesSnapshot, GalleryCover, GalleryFocus, GalleryLabel, Neighbors,
+    FolderImagesRequest, FolderImagesSnapshot, GalleryCover, GalleryFocus, GalleryLabel,
+    ListedCandidate, ListedFolder, Neighbors, VerdictStatuses,
 };
 
 /// The schema this crate's tests open their stores on: the catalogs' part,

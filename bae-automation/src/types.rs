@@ -117,6 +117,7 @@ pub enum AutomationSourceAudioDifference {
     Channels { channels: Vec<i64> },
 }
 
+#[cfg(test)]
 impl AutomationCandidate {
     pub(super) fn common(&self) -> &AutomationCandidateCommon {
         match self {

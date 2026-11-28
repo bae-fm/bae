@@ -39,7 +39,10 @@ pub(crate) use folder_scans::{
     FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemReadings, ScanItemSeed,
     ScanItemToWrite, ScanWriteError,
 };
-pub use import_list::{FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot};
+pub use import_list::{
+    FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot, ListedCandidate,
+    ListedFolder, VerdictStatuses,
+};
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub use import_state::DbCandidatePaneRows;
 #[cfg(any(test, feature = "test-utils"))]

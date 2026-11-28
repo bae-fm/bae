@@ -107,7 +107,7 @@ impl AppServices {
     delegate_async!(import, import_reveal_candidate => reveal_candidate(request: ImportListRequest, candidate_key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportListReveal>, bae_import::ImportError>);
     delegate_async!(import, import_candidate_position => candidate_position(request: ImportListRequest, candidate_key: &bae_import::CandidateKey) -> Result<Option<u64>, bae_import::ImportError>);
     delegate_async!(import, import_first_identifying_candidate => first_identifying_candidate(order: bae_import::ImportListOrder) -> Result<Option<bae_import::CandidateKey>, bae_import::ImportError>);
-    delegate_async!(import, load_import_items => load_list(request: ImportListRequest) -> Result<Vec<bae_import::ImportListItem>, bae_import::ImportError>);
+    delegate_async!(#[cfg(any(test, feature = "test-utils"))] import, load_import_items => load_list(request: ImportListRequest) -> Result<Vec<bae_import::ImportListItem>, bae_import::ImportError>);
 
     delegate_sync!(#[cfg(any(test, feature = "test-utils"))] import, import_list_window_for_test => subscribe_list_window(request: ImportListRequest, initial: bae_store::ListWindow) -> bae_store::live_query::CancellableLiveQuery<bae_store::ListWindow, bae_import::ImportWindow, bae_store::DbError>);
     delegate_sync!(#[cfg(any(test, feature = "test-utils"))] import, import_list_count_for_test => subscribe_list_count(request: ImportListRequest) -> coven::LiveQuery<bae_import::ImportListCount, bae_store::DbError>);

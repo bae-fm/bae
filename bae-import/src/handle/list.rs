@@ -199,6 +199,7 @@ impl ImportServiceHandle {
 
     /// Every item of the list `request` shows, once, for a caller with no
     /// list open.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_list(
         &self,
         request: crate::ImportListRequest,
@@ -278,11 +279,28 @@ impl ImportServiceHandle {
 
     /// One candidate as the pane reads it, once, with its standing among
     /// the candidates.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_candidate(
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<crate::ImportCandidateDetail>, crate::ImportError> {
         self.services.tables.load_import_candidate(key).await
+    }
+
+    /// Every release the import list lists, in key order, each candidate
+    /// with what is in flight for it and the library statuses of its
+    /// verdicts.
+    pub async fn load_listed(&self) -> Result<Vec<crate::ListedCandidate>, crate::ImportError> {
+        self.services.tables.load_listed_candidates().await
+    }
+
+    /// The release the import list lists at `key`, read as
+    /// [`Self::load_listed`] reads each; `None` when it lists none there.
+    pub async fn load_listed_candidate(
+        &self,
+        key: &crate::CandidateKey,
+    ) -> Result<Option<crate::ListedCandidate>, crate::ImportError> {
+        self.services.tables.load_listed_candidate(key).await
     }
 
     /// The pane's live read of the candidate the request names; `None` for

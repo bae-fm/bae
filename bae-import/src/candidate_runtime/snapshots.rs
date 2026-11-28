@@ -113,6 +113,7 @@ impl CandidateRuntime {
     }
 
     /// Every key with something in flight right now, read from the tables.
+    #[cfg(test)]
     pub(crate) async fn snapshots(
         &self,
     ) -> Result<HashMap<CandidateKey, CandidateRuntimeSnapshot>, crate::ImportError> {

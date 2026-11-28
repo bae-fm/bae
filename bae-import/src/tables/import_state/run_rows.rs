@@ -31,6 +31,29 @@ use bae_identify::signals::Signals;
 use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
 use bae_store::WriteStatements as _;
 
+// The run in flight each key of `keys` shows: the one its standing names,
+// else a release's running run before its others, newest first; NULL for a
+// key with none.
+coven::fragment!(
+    ChosenRun with keys(candidate_key TEXT) {
+        chosen_key: crate::CandidateKey,
+        identify_run: Option<i64>
+    },
+    r#"
+    SELECT keys.candidate_key AS chosen_key, (
+        SELECT run.identify_run
+        FROM import_identify_run AS run
+        JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run
+        LEFT JOIN import_candidate_standing AS standing
+            ON standing.candidate_key = run.candidate_key
+        WHERE run.candidate_key = keys.candidate_key
+            AND (standing.identification IS NULL OR run.identify_run = standing.identify_run)
+        ORDER BY verdict.kind = 'running' DESC, run.identify_run DESC
+        LIMIT 1
+    ) AS identify_run
+    FROM keys
+"#);
+
 coven::fragment!(
     RuntimeRows with keys(candidate_key TEXT) {
         runtime_key: crate::CandidateKey,
@@ -38,18 +61,8 @@ coven::fragment!(
     },
     r#"
     WITH chosen AS (
-        SELECT keys.candidate_key AS candidate_key, (
-            SELECT run.identify_run
-            FROM import_identify_run AS run
-            JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run
-            LEFT JOIN import_candidate_standing AS standing
-                ON standing.candidate_key = run.candidate_key
-            WHERE run.candidate_key = keys.candidate_key
-                AND (standing.identification IS NULL OR run.identify_run = standing.identify_run)
-            ORDER BY verdict.kind = 'running' DESC, run.identify_run DESC
-            LIMIT 1
-        ) AS identify_run
-        FROM keys
+        SELECT run.chosen_key AS candidate_key, run.identify_run AS identify_run
+        FROM @crate::tables::import_state::run_rows::ChosenRun(keys: (SELECT * FROM keys)) AS run
     ), owners AS (
         SELECT NULL AS content_hash, chosen.identify_run AS identify_run
         FROM chosen
@@ -79,6 +92,7 @@ coven::read!(
 "#
 );
 
+#[cfg(test)]
 coven::read!(
     writer EveryRuntime,
     r#"
@@ -177,7 +191,7 @@ fn search_of(
 
 /// What one row of a runtime read holds, as the runtime shows it: where its key
 /// stands, what the run it names last published, and its typed search.
-fn runtime_of(row: RuntimeRows) -> Result<(CandidateKey, StoredRuntime), DbError> {
+pub(crate) fn runtime_of(row: RuntimeRows) -> Result<(CandidateKey, StoredRuntime), DbError> {
     let key = row.runtime_key.clone();
     let standing = super::standing_of(row.standing.clone(), &key)?;
     let search = search_of(row.search.clone())?;
@@ -314,6 +328,7 @@ impl ImportTables {
 
     /// Every key something is running for, as [`Self::load_candidate_runtime`]
     /// reads each.
+    #[cfg(test)]
     pub(crate) async fn load_candidate_runtimes(
         &self,
     ) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {

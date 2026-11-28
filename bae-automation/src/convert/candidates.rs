@@ -9,33 +9,44 @@ use super::*;
 use bae_util::timestamp::StoredTimestamp as _;
 use std::collections::HashMap;
 
+/// A release the import list lists, as the automation surface shows it.
+pub(crate) fn automation_candidate(
+    listed: &bae_import::ListedCandidate,
+    percents: &HashMap<CandidateKey, u32>,
+) -> Result<AutomationCandidate, AutomationError> {
+    match listed {
+        bae_import::ListedCandidate::Folder(folder) => {
+            automation_candidate_from_folder(folder, percents)
+        }
+        bae_import::ListedCandidate::Invalid(row) => Ok(automation_candidate_from_invalid(row)),
+    }
+}
+
 /// A folder candidate with what is happening to it right now — its standing
 /// in the standings table, with what the runtime holds beside it — joined onto
 /// what the tables say: the identify state is the run in flight or the answer being
 /// written where there is one, else — waiting on the queue included — the
 /// state its stored verdict stands back up as, and the import status
-/// is the detail's with the running attempt's progress filled in.
-pub(crate) async fn automation_candidate_from_folder(
-    folder: &ImportCandidateDetail,
-    runtime: &HashMap<CandidateKey, CandidateRuntimeSnapshot>,
+/// is the detail's with the running attempt's progress filled in. Whether each
+/// release the state names is in the library is what the read found beside
+/// the verdict the state comes from.
+fn automation_candidate_from_folder(
+    listed: &bae_import::ListedFolder,
     percents: &HashMap<CandidateKey, u32>,
-    services: &bae_app::AppServices,
 ) -> Result<AutomationCandidate, AutomationError> {
+    let folder = &listed.detail;
     let candidate = &folder.candidate;
     let draft = folder.draft();
-    let live = runtime.get(&candidate.key());
-    let view = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
-        Some(bae_import::IdentificationInFlight::Run(published)) => published.view(),
+    let live = listed.runtime.as_ref();
+    let (view, statuses) = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
+        Some(bae_import::IdentificationInFlight::Run(published)) => {
+            (published.view(), &listed.run_statuses)
+        }
         Some(bae_import::IdentificationInFlight::Queued) | None => {
-            folder.resumed_identify_state.clone()
+            (folder.resumed_identify_state.clone(), &listed.stored_statuses)
         }
     };
-    // Whether each release the state names is in the library is read now,
-    // live: the state itself carries no snapshot of it.
-    let library_statuses = services
-        .check_releases_in_library(&library_checks(&view))
-        .await
-        .map_err(AutomationError::from)?;
+    let library_statuses = statuses.of(&library_checks(&view))?;
     Ok(AutomationCandidate::Valid {
         common: automation_candidate_common(
             &candidate.key(),

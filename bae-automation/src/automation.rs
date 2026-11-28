@@ -97,45 +97,12 @@ impl Automation {
         })
     }
 
-    /// Every candidate the import tab holds, in candidate-key order.
-    ///
-    /// The tab's own order is per watched folder and per tab; automation
-    /// presents one flat list across both, so it walks all three tabs and
-    /// sorts by the key callers name candidates by.
+    /// Every candidate the import list lists, in candidate-key order, read
+    /// with one statement for the candidates and one for their drafts.
     pub async fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
-        let runtime = self.services.candidate_runtimes().await.map_err(AutomationError::from)?;
+        let listed = self.services.load_listed_candidates().await?;
         let percents = self.services.import_percents();
-        let mut candidates = Vec::new();
-        for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-            let request =
-                ImportListRequest::of(ImportListView { tab, ..ImportListView::default() });
-            let items =
-                self.services.load_import_items(request).await.map_err(AutomationError::from)?;
-            for item in items {
-                let candidate_key = match item {
-                    ImportListItem::Candidate { row, .. } => row.candidate_key,
-                    ImportListItem::Invalid { row, .. } => {
-                        candidates.push(automation_candidate_from_invalid(&row));
-                        continue;
-                    }
-                    ImportListItem::GroupHeader(_) => continue,
-                };
-                let Some(detail) = self
-                    .services
-                    .load_import_candidate(&candidate_key)
-                    .await
-                    .map_err(AutomationError::from)?
-                else {
-                    continue;
-                };
-                candidates.push(
-                    automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
-                        .await?,
-                );
-            }
-        }
-        candidates.sort_by(|left, right| left.key().cmp(right.key()));
-        Ok(candidates)
+        listed.iter().map(|listed| automation_candidate(listed, &percents)).collect()
     }
 
     /// One candidate by key, or `NotFound`. A request naming a key the import
@@ -148,21 +115,10 @@ impl Automation {
         candidate_key: String,
     ) -> Result<AutomationCandidate, AutomationError> {
         let key = candidate_key_named(&candidate_key)?;
-        if let Some(detail) =
-            self.services.load_import_candidate(&key).await.map_err(AutomationError::from)?
-        {
-            let runtime =
-                self.services.candidate_runtimes().await.map_err(AutomationError::from)?;
-            let percents = self.services.import_percents();
-            return automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
-                .await;
-        }
-        if let Some(bae_import::ImportCandidateSnapshot::Invalid(row)) =
-            self.services.import_get_candidate(&key).await.map_err(AutomationError::from)?
-        {
-            return Ok(automation_candidate_from_invalid(&row));
-        }
-        Err(unknown_candidate(&candidate_key))
+        let Some(listed) = self.services.load_listed_candidate(&key).await? else {
+            return Err(unknown_candidate(&candidate_key));
+        };
+        automation_candidate(&listed, &self.services.import_percents())
     }
 
     /// The key `candidate_key` names, refused unless the import tables hold

@@ -39,6 +39,7 @@ mod follows_scans;
 mod groups;
 pub mod list_items;
 mod listed;
+mod listed_candidates;
 mod mapping_rows;
 mod pane;
 pub(crate) mod pane_files;
@@ -57,6 +58,7 @@ use bae_store::{statement_optional, statement_row, statement_rows};
 pub use folder_images::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
 };
+pub use listed_candidates::{ListedCandidate, ListedFolder, VerdictStatuses};
 
 fn pending_filter_column(filter: PendingFilter) -> &'static str {
     match filter {

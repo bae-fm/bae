@@ -7,14 +7,6 @@ use super::*;
 use crate::tables::ScannedEntry;
 
 impl ImportServiceHandle {
-    /// Every key with something in flight right now, read from the standings
-    /// table and the runtime.
-    pub async fn candidate_runtimes(
-        &self,
-    ) -> Result<HashMap<crate::CandidateKey, CandidateRuntimeSnapshot>, crate::ImportError> {
-        self.runtime.snapshots().await
-    }
-
     /// What is in flight for one key right now, read from the standings table
     /// and the runtime.
     pub async fn candidate_runtime(
@@ -82,6 +74,7 @@ impl ImportServiceHandle {
     /// One candidate by key, read from the tables with its runtime joined. A
     /// key with runtime but no scanned folder (a library release being
     /// re-identified) answers with its runtime alone.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_candidate(
         &self,
         key: &crate::CandidateKey,

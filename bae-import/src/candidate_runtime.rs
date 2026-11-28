@@ -45,7 +45,7 @@ mod snapshots;
 mod standing_writes;
 mod stored_standing;
 mod work;
-pub(crate) use snapshots::compose_view;
+pub(crate) use snapshots::{compose, compose_view};
 pub use snapshots::{
     CandidateRuntimeSnapshot, CandidateRuntimeView, IdentificationInFlight, IdentificationRuntime,
     ImportInFlight, ImportPercentsWatch, SavingAnswer, ShownIdentifyState,

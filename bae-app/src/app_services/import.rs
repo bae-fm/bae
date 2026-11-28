@@ -16,7 +16,7 @@ impl AppServices {
     delegate_async!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_watched_folders => watched_folders() -> Result<Vec<bae_import::WatchedFolder>, bae_import::ImportError>);
     delegate_sync!(#[cfg(any(test, feature = "test-utils"))] import, import_emit_event_for_test => emit_event_for_test(event: bae_import::ImportEvent) -> ());
-    delegate_async!(import, import_get_candidate => get_candidate(key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportCandidateSnapshot>, bae_import::ImportError>);
+    delegate_async!(#[cfg(any(test, feature = "test-utils"))] import, import_get_candidate => get_candidate(key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportCandidateSnapshot>, bae_import::ImportError>);
     delegate_async!(import, import_holds_candidate => holds_candidate(key: &bae_import::CandidateKey) -> Result<bool, bae_import::ImportError>);
     delegate_async!(import, import_read_watched_folders => read_watched_folders() -> Result<Vec<bae_import::WatchedFolderScanStatus>, bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(candidate_key: bae_import::CandidateKey, skipped: bool) -> Result<(), bae_import::ImportError>);
@@ -44,7 +44,8 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &bae_import::CandidateKey, assignments: Vec<bae_import::Credited>) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &bae_import::CandidateKey, track: bae_import::RawTrackEdit) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &bae_import::CandidateKey, track_ids: Vec<String>, assignments: bae_import::TrackArtistAssignments) -> Result<(), bae_import::ImportError>);
-    delegate_async!(import, load_import_candidate => load_candidate(key: &bae_import::CandidateKey) -> Result<Option<ImportCandidateDetail>, bae_import::ImportError>);
+    delegate_async!(import, load_listed_candidates => load_listed() -> Result<Vec<bae_import::ListedCandidate>, bae_import::ImportError>);
+    delegate_async!(import, load_listed_candidate => load_listed_candidate(key: &bae_import::CandidateKey) -> Result<Option<bae_import::ListedCandidate>, bae_import::ImportError>);
     delegate_sync!(import, subscribe_scanning_folders => subscribe_scanning_folders() -> bae_store::live_query::LiveValues<Vec<bae_import::ScanningFolder>>);
     delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> bae_store::live_query::LiveValues<bae_import::ImportCounts>);
     delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &bae_import::CandidateKey) -> bae_store::live_query::LiveValues<bae_import::CandidateRuntimeView>);
@@ -107,17 +108,6 @@ impl AppServices {
     /// Take every candidate off the identification queue.
     pub async fn cancel_all_identification(&self) -> Result<(), bae_import::ImportError> {
         self.inner.identification.cancel_all().await
-    }
-
-    /// Every key with something in flight right now, read from the
-    /// standings table and the runtime.
-    pub async fn candidate_runtimes(
-        &self,
-    ) -> Result<
-        std::collections::HashMap<bae_import::CandidateKey, bae_import::CandidateRuntimeSnapshot>,
-        bae_import::ImportError,
-    > {
-        self.inner.import.candidate_runtimes().await
     }
 
     /// What is in flight for one key right now, read from the standings table
