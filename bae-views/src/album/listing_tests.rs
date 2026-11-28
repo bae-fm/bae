@@ -13,7 +13,7 @@ use bae_records::test_fixtures::{
     credit, delete_release, test_records, ARTIST_A, ARTIST_B, ARTIST_C,
 };
 use bae_records::DbArtist;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_store::{ListWindow, WindowRead};
 use bae_util::test_channels::HANG_GUARD;
@@ -779,7 +779,7 @@ async fn every_first_sort_seeks_its_window_through_its_index() {
         (plan_steps::<GroupedTopArtistBackParams>, "SCAN", "idx_album_artist_link_artists_back"),
     ];
     for &(plan_of, read, index) in windows {
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         let own: Vec<&str> =
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         assert_eq!(

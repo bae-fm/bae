@@ -9,7 +9,7 @@ use bae_records::test_fixtures::album_listing::listed_db;
 use bae_records::test_fixtures::bulk_library;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::storage_listing::*;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf, PlanStep};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 use bae_store::test_fixtures::trigger_order::{
     count_refreshes, first_insert, run_trigger_first, watch_first_insert, RefreshCount,
 };
@@ -118,11 +118,6 @@ const FIELDS: [StorageSortField; 7] = [
     StorageSortField::DateAdded,
 ];
 
-/// The plan of the compiled `statement`, whose parameters stay unbound.
-async fn compiled_plan(db: &Store, plan_of: PlanOf) -> Vec<PlanStep> {
-    db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap()
-}
-
 /// Whatever the list sorts by, whole or filtered, its window from a key or
 /// from the top reads the index of that sort in order: the statement sorts
 /// nothing.
@@ -189,7 +184,7 @@ async fn every_storage_sort_seeks_its_window_through_its_index() {
         (plan_steps::<KeptTopAddedBackParams>, "stored_added_back"),
     ];
     for &(plan_of, name) in windows {
-        let steps = compiled_plan(&db, plan_of).await;
+        let steps = unbound_plan_steps(&db, plan_of).await;
         let own: Vec<&str> =
             steps.iter().filter(|step| step.own).map(|step| step.detail.as_str()).collect();
         let first = own.first().expect("the statement has a plan");
@@ -217,7 +212,7 @@ async fn a_searched_storage_read_never_scans_the_listing() {
         plan_steps::<FoundTotalsParams>,
     ];
     for plan_of in found {
-        let steps = compiled_plan(&db, plan_of).await;
+        let steps = unbound_plan_steps(&db, plan_of).await;
         assert!(
             !steps.iter().any(|step| ["entry", "sorted", "counted", "kept"].iter().any(|alias| {
                 step.detail == format!("SCAN {alias}")

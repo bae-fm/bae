@@ -6,7 +6,7 @@
 use super::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -144,7 +144,7 @@ async fn a_search_reads_its_albums_in_order_from_the_title_index() {
     ];
     for (what, statement, plan_of) in reads {
         assert!(!statement.contains("bae_name_key"), "{what}: {statement}");
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         if what != "count" {
             assert!(
                 steps.iter().any(|step| step

@@ -2,14 +2,7 @@
 //! from the top or from a key, with or without a person, and each finds a day's newest play by its day.
 
 use super::*;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
-
-/// The detail of each step of the plan SQLite chooses for the statement
-/// `plan_of` names, whose parameters stay unbound.
-async fn plan(store: &Store, plan_of: PlanOf) -> Vec<String> {
-    let steps = store.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
-    steps.into_iter().map(|step| step.detail).collect()
-}
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan, PlanOf};
 
 #[tokio::test]
 async fn the_window_reads_follow_their_indexes_without_a_sort() {
@@ -21,7 +14,7 @@ async fn the_window_reads_follow_their_indexes_without_a_sort() {
         (plan_steps::<PersonHistoryTopParams>, "history_person_order", "history_person_day"),
     ];
     for &(plan_of, order_index, day_index) in windows {
-        let plan = plan(&db, plan_of).await;
+        let plan = unbound_plan(&db, plan_of).await;
         for index in [order_index, day_index] {
             assert!(
                 plan.iter().any(|step| step.split(' ').any(|word| word == index)),

@@ -3,7 +3,7 @@
 use crate::*;
 use bae_records::test_fixtures::aggregate_ordering::*;
 use bae_records::test_fixtures::*;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 
 /// A release's files come back in each order the Storage sheet sorts them
 /// by — name, size, or kind, each forward or backward, ties by name and then
@@ -108,7 +108,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             "{column:?} descending: {descending}"
         );
         let plan_of = plan_of_order(column, descending);
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         let plan: Vec<String> = steps.into_iter().map(|step| step.detail).collect();
         match index {
             Some(index) => assert!(

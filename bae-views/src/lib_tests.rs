@@ -6,7 +6,7 @@
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
-use bae_store::test_fixtures::query_plan::{PlanOf, PlanStep};
+use bae_store::test_fixtures::query_plan::{unbound_plan_steps, PlanOf, PlanStep};
 use bae_store::test_fixtures::temp_db;
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
@@ -130,7 +130,7 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
 pub(super) async fn assert_windows_seek_their_first_term(windows: &[(PlanOf, &str, &str)]) {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(super::TEST_SCHEMA).await;
     for &(plan_of, index, column) in windows {
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         let seek = format!("SEARCH listing USING INDEX {index} ({column}>?)");
         assert!(steps.iter().any(|step| step.detail == seek), "{index}: {steps:?}");
         assert_sorts_only_ties(index, &steps);
@@ -144,7 +144,7 @@ pub(super) async fn assert_windows_seek_their_first_term(windows: &[(PlanOf, &st
 pub(super) async fn assert_tops_read_their_first_term(tops: &[(PlanOf, &str)]) {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(super::TEST_SCHEMA).await;
     for &(plan_of, index) in tops {
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         let scan = format!("SCAN listing USING INDEX {index}");
         assert!(steps.iter().any(|step| step.detail == scan), "{index}: {steps:?}");
         assert_sorts_only_ties(index, &steps);

@@ -4,7 +4,7 @@
 use super::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::{delete_release, test_records};
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -97,7 +97,7 @@ async fn an_albums_tracks_are_read_in_order_from_the_position_index() {
     let reads: [PlanOf; 2] =
         [plan_steps::<AlbumTrackPageParams>, plan_steps::<AlbumTrackCountParams>];
     for plan_of in reads {
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         assert!(
             steps.iter().any(|step| step.detail.contains("tracks_release_position (release_id=?")),
             "{steps:?}"

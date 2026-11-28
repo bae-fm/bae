@@ -11,7 +11,7 @@ use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::live_query::write_artist_image;
 use bae_records::test_fixtures::{credit, test_records};
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf};
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -287,7 +287,7 @@ async fn artist_search_reads_scan_no_artists() {
         plan_steps::<ArtistSearchCountParams>,
     ];
     for plan_of in reads {
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         assert!(
             !steps.iter().any(|step| ["artist", "discogs", "musicbrainz"]
                 .iter()

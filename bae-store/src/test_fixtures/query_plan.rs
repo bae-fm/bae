@@ -77,6 +77,18 @@ pub fn plan_steps<Q: coven::Statement>(
     sql.query(&explain, unbound, plan_step)
 }
 
+/// The detail of each step of SQLite's plan for the statement `plan_of`
+/// names, on `store`, with its parameters unbound, in plan order.
+pub async fn unbound_plan(store: &crate::Store, plan_of: PlanOf) -> Vec<String> {
+    unbound_plan_steps(store, plan_of).await.into_iter().map(|step| step.detail).collect()
+}
+
+/// Each step of SQLite's plan for the statement `plan_of` names, on `store`,
+/// with its parameters unbound, in plan order.
+pub async fn unbound_plan_steps(store: &crate::Store, plan_of: PlanOf) -> Vec<PlanStep> {
+    store.read(move |sql| Ok(plan_of(&sql)?)).await.expect("SQLite plans the statement")
+}
+
 /// [`plan_steps`] of one statement type, as a list of statements of
 /// different types holds it.
 pub type PlanOf = for<'a, 'b> fn(&'a coven::SqlReadContext<'b>) -> rusqlite::Result<Vec<PlanStep>>;

@@ -11,7 +11,7 @@ use bae_records::test_fixtures::storage_listing::{
     insert_file, write_library, RELEASE_EARLY, RELEASE_LATE,
 };
 use bae_store::statement_row;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan};
 
 /// The count and size the list shows under All, Local and Remote, in that
 /// order.
@@ -128,16 +128,12 @@ fn the_stored_totals_match_a_count_of_the_storage_rows_after_each_write() {
 #[tokio::test]
 async fn the_totals_read_the_stored_totals_alone() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
-    let plan = |plan_of: PlanOf| {
-        let db = db.clone();
-        async move {
-            let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
-            steps.into_iter().map(|step| step.detail).collect::<Vec<_>>()
-        }
-    };
-    assert_eq!(plan(plan_steps::<AllStorageTotalsParams>).await, vec!["SCAN held".to_string()]);
     assert_eq!(
-        plan(plan_steps::<KeptStorageTotalsParams>).await,
+        unbound_plan(&db, plan_steps::<AllStorageTotalsParams>).await,
+        vec!["SCAN held".to_string()]
+    );
+    assert_eq!(
+        unbound_plan(&db, plan_steps::<KeptStorageTotalsParams>).await,
         vec!["SEARCH held USING INTEGER PRIMARY KEY (rowid=?)".to_string()]
     );
 }

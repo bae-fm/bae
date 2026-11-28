@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::tables::tests::*;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan, PlanOf};
 /// Play `RELEASE_A` from `start`, returning the entry playing.
 async fn play(db: &Store, start: ReleaseStart) -> crate::QueueEntry {
     match PlaybackQueueTables::new(db.clone())
@@ -345,8 +345,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
 
 /// The details of the plan of the statement `plan_of` names, joined.
 async fn plan(db: &Store, plan_of: PlanOf) -> String {
-    let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
-    steps.into_iter().map(|step| step.detail).collect::<Vec<_>>().join(" | ")
+    unbound_plan(db, plan_of).await.join(" | ")
 }
 
 /// The upcoming list's reads walk the index of the order they read in from

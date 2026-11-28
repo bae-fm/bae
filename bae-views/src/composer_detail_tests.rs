@@ -9,7 +9,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
 use bae_store::test_fixtures::live_query::top_window;
-use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf, PlanStep};
+use bae_store::test_fixtures::query_plan::{plan_steps, unbound_plan_steps, PlanOf, PlanStep};
 use bae_store::test_fixtures::temp_db;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
@@ -308,7 +308,7 @@ async fn a_composer_page_window_seeks_the_pages_index_and_builds_no_whole_table(
         plan_steps::<crate::composer_detail::ComposerPageTopParams>,
     ];
     for plan_of in reads {
-        let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+        let steps = unbound_plan_steps(&db, plan_of).await;
         assert_reads_the_page_index(&steps);
     }
 }
