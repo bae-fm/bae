@@ -27,10 +27,19 @@ coven::read!(
 );
 
 // Every release's id.
-coven::read!(writer EveryRelease, "SELECT release.id FROM releases AS release");
+coven::read!(
+    writer EveryRelease,
+    "SELECT release.id FROM releases AS release ORDER BY release.id"
+);
 
 // Every album's id.
-coven::read!(writer EveryAlbum, "SELECT album.id FROM albums AS album");
+coven::read!(writer EveryAlbum, "SELECT album.id FROM albums AS album ORDER BY album.id");
+
+// Every track's id, with its release.
+coven::read!(
+    writer EveryTrack,
+    "SELECT track.id, track.release_id FROM tracks AS track ORDER BY track.id"
+);
 
 // Every work's id.
 coven::read!(writer EveryWork, "SELECT work.id FROM works AS work");
@@ -62,7 +71,7 @@ coven::read!(
 // Every release file with its release and the coven file it names.
 coven::read!(
     writer EveryReleaseFile,
-    "SELECT file.id, file.release_id, file.file FROM release_files AS file"
+    "SELECT file.id, file.release_id, file.file FROM release_files AS file ORDER BY file.id"
 );
 
 // Each release file's coven file, and the hash and place coven records for
@@ -103,7 +112,10 @@ coven::read!(
 );
 
 // Each release's cover's browse copy.
-coven::read!(writer CoverBrowseFiles, "SELECT cover.id, cover.browse_file FROM covers AS cover");
+coven::read!(
+    writer CoverBrowseFiles,
+    "SELECT cover.id, cover.browse_file FROM covers AS cover ORDER BY cover.id"
+);
 
 // Each release's cover's browse copy, and the hash and place coven records
 // for it.
@@ -187,6 +199,28 @@ pub async fn coven_files_of_releases(store: &Store, releases: &[&str]) -> Vec<St
         files.extend(rows.into_iter().map(|row| row.file));
     }
     files
+}
+
+/// The rows a deletion of releases or albums removes from the records: the
+/// releases, albums and tracks, the release files and the covers.
+#[derive(Debug, PartialEq)]
+pub struct DeletableRows {
+    pub releases: Vec<EveryReleaseRow>,
+    pub albums: Vec<EveryAlbumRow>,
+    pub tracks: Vec<EveryTrackRow>,
+    pub release_files: Vec<EveryReleaseFileRow>,
+    pub covers: Vec<CoverBrowseFilesRow>,
+}
+
+/// The rows a deletion of releases or albums would remove from `store`.
+pub async fn deletable_rows(store: &Store) -> DeletableRows {
+    DeletableRows {
+        releases: store.read_rows(EveryReleaseParams {}).await.unwrap(),
+        albums: store.read_rows(EveryAlbumParams {}).await.unwrap(),
+        tracks: store.read_rows(EveryTrackParams {}).await.unwrap(),
+        release_files: store.read_rows(EveryReleaseFileParams {}).await.unwrap(),
+        covers: store.read_rows(CoverBrowseFilesParams {}).await.unwrap(),
+    }
 }
 
 /// How many pins coven holds on the file `file` in `store`.

@@ -155,15 +155,8 @@ fn already_imported<T: std::fmt::Debug>(answer: &Result<T, ImportError>, release
 async fn an_imported_candidate_s_pane_answers_that_its_files_are_imported() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let release_id = imported(&handle, &key).await;
-    let failures = || async {
-        handle
-            .services
-            .store
-            .every_row_for_test()
-            .await
-            .unwrap()
-            .remove("import_candidate_pane_failure")
-    };
+    let failures =
+        || crate::tables::import_state::test_reads::every_pane_failure(&handle.services.store);
     let before = failures().await;
 
     let automatic = handle.automatic_run_owed(&key).await;

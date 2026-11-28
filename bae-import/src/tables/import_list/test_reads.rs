@@ -145,3 +145,33 @@ coven::write!(
     CheckSearchIndex,
     r#"INSERT INTO import_list_search (import_list_search, rank) VALUES ('integrity-check', 1)"#
 );
+
+// Where every row of the list stands and what its commands are decided from,
+// by its number.
+#[cfg(test)]
+coven::read!(
+    writer EveryPlacementStanding { key: Vec<u8> },
+    r#"
+    SELECT placed.entry, placed.item, placed.key, placed.tab, placed.pending_state,
+        placed.pending_entry, placed.needs_you_reason, placed.error_detail, placed.own_date,
+        placed.group_date, placed.upload_position, placed.shown_title, placed.shown_artists,
+        placed.actionable, placed.import_failed, placed.draft_valid, placed.lookup,
+        placed.separable
+    FROM import_list_placement AS placed
+    ORDER BY placed.entry
+"#
+);
+
+/// Where every row of the list in `db` stands, by its number.
+#[cfg(test)]
+pub(crate) async fn every_placement_standing(
+    db: &bae_store::Store,
+) -> Vec<EveryPlacementStandingRow> {
+    db.read_rows(EveryPlacementStandingParams {}).await.unwrap()
+}
+
+/// The counts kept beside the placement in `db`, in order.
+#[cfg(test)]
+pub(crate) async fn stored_counts(db: &bae_store::Store) -> Vec<StoredCountsRow> {
+    db.read_rows(StoredCountsParams {}).await.unwrap()
+}

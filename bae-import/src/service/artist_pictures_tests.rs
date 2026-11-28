@@ -269,13 +269,18 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
     pick.import().await.expect_err("a picture that fails to download fails the import");
     let failed_requests = pick.images.requests(&pick.picture_path);
     assert!(failed_requests > 0, "the failed import asked for the picture");
-    let rows = pick.db.every_row_for_test().await.unwrap();
-    for table in ["releases", "albums", "artists", "artist_images", "release_files"] {
-        assert!(
-            rows.get(table).is_none_or(Vec::is_empty),
-            "the failed import wrote nothing to {table}"
-        );
-    }
+    let counts = crate::test_fixtures::library_rows::library_counts(&pick.db).await;
+    assert_eq!(
+        (
+            counts.releases,
+            counts.albums,
+            counts.artists,
+            counts.artist_images,
+            counts.release_files
+        ),
+        (0, 0, 0, 0, 0),
+        "the failed import wrote no release, album, artist, artist image or release file"
+    );
 
     pick.images.serve_image(&pick.picture_path, large_picture());
     let (release_id, _album_id) =

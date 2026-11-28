@@ -163,7 +163,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
     for delete_album in [false, true] {
         let (manager, _temp, album, release) = manager_with_release().await;
         store_test_cover(manager.library.manager(), &release.id, b"cover").await;
-        let before = manager.library.manager().store.every_row_for_test().await.unwrap();
+        let before = library_rows::deletable_rows(&manager.library.manager().store).await;
         let id = manager.library.manager().store.store_id();
         manager.library.manager().store.close().await.unwrap();
         let error = if delete_album {
@@ -181,7 +181,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
         .unwrap();
         let reopened =
             bae_store::test_devices::store_under(handle, manager.library.manager().clock.clone());
-        assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
+        assert_eq!(library_rows::deletable_rows(&reopened).await, before);
         reopened.close().await.unwrap();
     }
 }

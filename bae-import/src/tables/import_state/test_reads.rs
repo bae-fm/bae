@@ -393,3 +393,37 @@ coven::read!(
     writer MatchCount { held: i64 },
     "SELECT COUNT(*) AS held FROM import_candidate_match AS found"
 );
+
+// Every candidate's recorded import failure, by content hash.
+#[cfg(test)]
+coven::read!(
+    writer EveryImportFailure,
+    r#"
+    SELECT failure.content_hash, failure.error, failure.failed_at
+    FROM import_candidate_failure AS failure
+    ORDER BY failure.content_hash
+"#
+);
+
+/// Every candidate's recorded import failure in `db`, by content hash.
+#[cfg(test)]
+pub(crate) async fn every_import_failure(db: &bae_store::Store) -> Vec<EveryImportFailureRow> {
+    db.read_rows(EveryImportFailureParams {}).await.unwrap()
+}
+
+// Every candidate's failed pane command, by content hash.
+#[cfg(test)]
+coven::read!(
+    writer EveryPaneFailure,
+    r#"
+    SELECT failed.content_hash, failed.command, failed.category, failed.detail
+    FROM import_candidate_pane_failure AS failed
+    ORDER BY failed.content_hash
+"#
+);
+
+/// Every candidate's failed pane command in `db`, by content hash.
+#[cfg(test)]
+pub(crate) async fn every_pane_failure(db: &bae_store::Store) -> Vec<EveryPaneFailureRow> {
+    db.read_rows(EveryPaneFailureParams {}).await.unwrap()
+}

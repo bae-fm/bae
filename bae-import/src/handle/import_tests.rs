@@ -41,13 +41,12 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
         .await
         .expect_err("a file changed since its scan fails the import");
     assert!(error.contains("changed after its import candidate was scanned"), "{error}");
-    let rows = pick.db.every_row_for_test().await.unwrap();
-    for table in ["releases", "release_files"] {
-        assert!(
-            rows.get(table).is_none_or(Vec::is_empty),
-            "the failed import wrote nothing to {table}"
-        );
-    }
+    let counts = crate::test_fixtures::library_rows::library_counts(&pick.db).await;
+    assert_eq!(
+        (counts.releases, counts.release_files),
+        (0, 0),
+        "the failed import wrote no release and no release file"
+    );
     shut_down(pick.handle).await;
 }
 
@@ -593,9 +592,9 @@ async fn an_automatic_start_over_already_imported_files_records_no_failure() {
         .expect_err("files this device imported do not start a second import");
 
     assert!(matches!(error, crate::ImportError::FilesAlreadyImported { .. }), "{error:?}");
-    let rows = fixture.db.every_row_for_test().await.unwrap();
-    assert!(
-        rows.get("import_candidate_failure").is_none_or(Vec::is_empty),
+    assert_eq!(
+        crate::tables::import_state::test_reads::every_import_failure(&fixture.db).await,
+        Vec::new(),
         "the refused start records no failed import"
     );
     assert!(

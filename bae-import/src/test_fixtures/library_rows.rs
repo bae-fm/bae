@@ -72,19 +72,33 @@ coven::read!(
 "#
 );
 
-// How many albums and releases the library holds.
+// How many albums, releases, release files, artists and artist images the
+// library holds.
 #[cfg(test)]
 coven::read!(
-    writer LibraryCounts { albums: i64, releases: i64 },
+    writer LibraryCounts {
+        albums: i64,
+        releases: i64,
+        release_files: i64,
+        artists: i64,
+        artist_images: i64
+    },
     r#"
     SELECT (SELECT COUNT(*) FROM @bae_records::records::browse_fragments::AlbumRecord AS album)
             AS albums,
         (SELECT COUNT(*) FROM @bae_records::records::fragments::ReleaseAlbum AS release)
-            AS releases
+            AS releases,
+        (SELECT COUNT(*) FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file)
+            AS release_files,
+        (SELECT COUNT(*) FROM @bae_records::records::spread_fragments::ArtistRow AS artist)
+            AS artists,
+        (SELECT COUNT(*) FROM @bae_records::records::files::ArtistImageVersion AS image)
+            AS artist_images
 "#
 );
 
-/// How many albums and releases the library in `db` holds.
+/// How many albums, releases, release files, artists and artist images the
+/// library in `db` holds.
 #[cfg(test)]
 pub(crate) async fn library_counts(db: &bae_store::Store) -> LibraryCountsRow {
     db.read(|sql| bae_store::statement_row(&sql, &LibraryCountsParams {})).await.unwrap()

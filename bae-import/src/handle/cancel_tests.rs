@@ -157,23 +157,34 @@ async fn nothing_importing_is_nothing_to_cancel() {
     shut_down(handle).await;
 }
 
-/// Everything an import could leave behind: every row the library holds, and
-/// every file under its directory apart from the database's own.
+/// Everything an import could leave behind: the library's records, the
+/// candidates' recorded failures, where the import list places each row and
+/// what it counts, and every file under the library's directory apart from
+/// the database's own.
 #[derive(Debug, PartialEq)]
 struct StoreState {
-    rows: std::collections::BTreeMap<String, Vec<String>>,
+    library: crate::test_fixtures::library_rows::LibraryCountsRow,
+    failures: Vec<crate::tables::import_state::test_reads::EveryImportFailureRow>,
+    placements: Vec<crate::tables::import_list::test_reads::EveryPlacementStandingRow>,
+    counts: Vec<crate::tables::import_list::test_reads::StoredCountsRow>,
     files: Vec<PathBuf>,
 }
 
 async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreState {
+    let store = &handle.services.store;
     let files = coven::files_under(library_dir)
         .into_iter()
         .filter(|path| {
             !path.file_name().is_some_and(|name| name.to_string_lossy().starts_with("test.db"))
         })
         .collect();
-    let rows = handle.services.store.every_row_for_test().await.unwrap();
-    StoreState { rows, files }
+    StoreState {
+        library: crate::test_fixtures::library_rows::library_counts(store).await,
+        failures: crate::tables::import_state::test_reads::every_import_failure(store).await,
+        placements: crate::tables::import_list::test_reads::every_placement_standing(store).await,
+        counts: crate::tables::import_list::test_reads::stored_counts(store).await,
+        files,
+    }
 }
 
 /// The next `phase` percent `import_id` reports on the stream.
@@ -324,49 +335,42 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     drop(blocked);
 
     let mut after = store_state(&handle, &library_dir).await;
-    assert_eq!(before.rows.remove("import_candidate_failure"), Some(Vec::new()));
-    assert_eq!(
-        after.rows.remove("import_candidate_failure").map(|rows| rows.len()),
-        Some(1),
-        "the failure is recorded"
-    );
+    assert_eq!(std::mem::take(&mut before.failures), Vec::new());
+    assert_eq!(std::mem::take(&mut after.failures).len(), 1, "the failure is recorded");
     // The list places the release by its failure — Found's import error,
     // under Needs You, with its last import failed — and no other row moves.
-    let placement = |state: &mut StoreState| state.rows.remove("import_list_placement").unwrap();
-    let failed_row =
-        format!("| candidate | {:?} |", rusqlite::types::ValueRef::Blob(key.as_bytes()));
+    let expected = std::mem::take(&mut before.placements)
+        .into_iter()
+        .map(|placed| match placed.key.as_slice() == key.as_bytes() && placed.item == "candidate" {
+            true => crate::tables::import_list::test_reads::EveryPlacementStandingRow {
+                pending_state: Some("import_error".to_string()),
+                pending_entry: Some("needs_you".to_string()),
+                import_failed: Some(1),
+                ..placed
+            },
+            false => placed,
+        })
+        .collect::<Vec<_>>();
     assert_eq!(
-        placement(&mut after),
-        placement(&mut before)
-            .into_iter()
-            .map(|row| match row.contains(&failed_row) {
-                true => row
-                    .replace("| not_looked_up | not_looked_up |", "| import_error | needs_you |")
-                    .replace(
-                        "| Integer(1) | Integer(0) | Integer(1) | Null | Integer(0)",
-                        "| Integer(1) | Integer(1) | Integer(1) | Null | Integer(0)",
-                    ),
-                false => row,
-            })
-            .collect::<Vec<_>>(),
+        std::mem::take(&mut after.placements),
+        expected,
         "the failed release is Found's import error"
     );
     // Found's counts count it under Needs You with it.
-    // Without each count's own id, which a count that is removed and added again
-    // gets anew.
     let counts = |state: &mut StoreState| {
-        let rows = state.rows.remove("import_list_count").unwrap();
-        let mut rows: Vec<String> =
-            rows.iter().map(|row| row.split_once(" | ").unwrap().1.to_string()).collect();
-        rows.sort();
-        rows
+        std::mem::take(&mut state.counts)
+            .into_iter()
+            .map(|kept| {
+                format!("{} | {} | {:?} | {}", kept.tab, kept.item, kept.pending_entry, kept.count)
+            })
+            .collect::<Vec<_>>()
     };
-    assert_eq!(counts(&mut before), ["pending | candidate | not_looked_up | Integer(2)"]);
+    assert_eq!(counts(&mut before), ["pending | candidate | Some(\"not_looked_up\") | 2"]);
     assert_eq!(
         counts(&mut after),
         [
-            "pending | candidate | needs_you | Integer(1)",
-            "pending | candidate | not_looked_up | Integer(1)"
+            "pending | candidate | Some(\"needs_you\") | 1",
+            "pending | candidate | Some(\"not_looked_up\") | 1"
         ]
     );
     assert_eq!(after, before, "the failed import left nothing else behind");
