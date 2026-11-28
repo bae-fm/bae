@@ -57,26 +57,10 @@ async fn an_invalid_folder_is_listed_with_its_reason_and_answered_by_its_key() {
 /// A library album holding a copy of a release.
 async fn library_album(store: &bae_store::Store, title: &str, release: &str) -> String {
     let records = bae_records::test_fixtures::test_records(store);
-    let created_at = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
-    let album = bae_records::DbAlbum {
-        id: bae_util::test_ids::test_uuid(title),
-        title: title.to_string(),
-        year: None,
-        is_compilation: false,
-        created_at,
-    };
-    records.insert_album(&album).await.unwrap();
-    let release_row = bae_records::DbRelease {
-        id: bae_util::test_ids::test_uuid(&format!("{title} release")),
-        album_id: album.id.clone(),
-        release_name: None,
-        pressing: bae_types::pressing::Pressing::blank(),
-        source_folder_name: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at,
-    };
-    records.insert_release(&release_row).await.unwrap();
+    let album_id = bae_util::test_ids::test_uuid(title);
+    let release_id = bae_util::test_ids::test_uuid(&format!("{title} release"));
+    bae_records::test_fixtures::album_with_releases(&records, &album_id, title, &[&release_id])
+        .await;
     let record = bae_catalogs::records::ReleaseRecord::new(
         &bae_catalogs::records::MetadataRef::new(
             bae_catalogs::catalog::Catalog::MusicBrainz,
@@ -84,8 +68,8 @@ async fn library_album(store: &bae_store::Store, title: &str, release: &str) -> 
         ),
         Some("mb-group".to_string()),
     );
-    records.insert_release_records(&release_row.id, &[record]).await.unwrap();
-    album.id
+    records.insert_release_records(&release_id, &[record]).await.unwrap();
+    album_id
 }
 
 /// The library albums each release of `candidate`'s identify state names.
