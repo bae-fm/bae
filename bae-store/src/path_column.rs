@@ -23,14 +23,6 @@ pub fn get<I: rusqlite::RowIndex>(row: &rusqlite::Row<'_>, index: I) -> rusqlite
     Ok(row.get::<_, StoredPath>(index)?.0)
 }
 
-/// [`get`] of a column that may be NULL.
-pub fn get_optional<I: rusqlite::RowIndex>(
-    row: &rusqlite::Row<'_>,
-    index: I,
-) -> rusqlite::Result<Option<PathBuf>> {
-    Ok(row.get::<_, Option<StoredPath>>(index)?.map(|path| path.0))
-}
-
 /// A path column's value, read as its bytes. A TEXT value is refused, so a
 /// path bound as text by mistake fails rather than reading back.
 struct StoredPath(PathBuf);

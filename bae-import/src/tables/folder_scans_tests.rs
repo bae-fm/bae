@@ -36,7 +36,7 @@ fn load_folder_scan_snapshots_on(
                 row.get::<_, i64>(1)?,
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<String>>(3)?,
-                path_column::get_optional(row, 4)?,
+                row.get::<_, Option<Vec<u8>>>(4)?,
                 row.get::<_, Option<String>>(5)?,
             ))
         },
@@ -45,6 +45,7 @@ fn load_folder_scan_snapshots_on(
     let mut snapshots = Vec::with_capacity(roots.len());
     for (watched_folder_path, generation, status, detail, directory, cause) in roots {
         let generation = to_u64(generation, "folder_scan_roots.generation")?;
+        let directory = directory.map(path_column::decode).transpose()?;
         let status =
             progress::stored_outcome(&watched_folder_path, status, detail, directory.zip(cause))?;
         let items = load_folder_scan_items_on(sql, &watched_folder_path, RowSources::Any)?;
