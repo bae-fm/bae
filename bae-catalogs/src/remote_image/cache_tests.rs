@@ -13,16 +13,8 @@ fn owned_folder(cache: &RemoteImageCache) -> &bae_util::test_files::TestFolder {
 
 /// How many rows `cached_image` holds, and the sum of their bytes.
 async fn held(store: &Store) -> (u64, u64) {
-    store
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT COUNT(*), COALESCE(SUM(bytes), 0) FROM cached_image",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?)
-        })
-        .await
-        .unwrap()
+    let totals = store.read_row(CachedImageTotalsParams {}).await.unwrap();
+    (totals.rows, totals.bytes)
 }
 
 fn image(byte: u8) -> DiskImageEntry {

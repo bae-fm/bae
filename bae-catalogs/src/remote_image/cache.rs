@@ -475,6 +475,16 @@ impl DiskImageEntry {
     }
 }
 
+// How many rows `cached_image` holds, and the sum of their bytes.
+#[cfg(test)]
+coven::read!(
+    writer CachedImageTotals { rows: u64, bytes: u64 },
+    r#"
+    SELECT COUNT(*) AS rows, COALESCE(SUM(image.bytes), 0) AS bytes
+    FROM cached_image AS image
+"#
+);
+
 #[cfg(test)]
 #[path = "cache_tests.rs"]
 mod tests;
