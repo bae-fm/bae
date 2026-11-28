@@ -433,17 +433,12 @@ async fn queueing_names_a_release_the_library_lacks() {
 #[tokio::test]
 async fn the_queue_lookups_are_planned_on_their_keys() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let plan: Vec<String> = db
-        .call(|sql| {
-            Ok(sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::queued_releases::rows::NextDownload::SQL),
-                [],
-                |row| row.get(3),
-            )?)
-        })
-        .await
-        .unwrap();
-    let plan = plan.join("\n");
+    let plan = bae_store::test_fixtures::query_plan::query_plan(
+        &db,
+        crate::queued_releases::rows::NextDownloadParams {},
+    )
+    .await
+    .join("\n");
     assert!(
         plan.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
         "{plan}"

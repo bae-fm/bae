@@ -781,6 +781,28 @@ coven::read!(
 "#
 );
 
+// The context lane's and Up Next's rows of the track `track`: the rows a
+// deleted track's trigger finds.
+#[cfg(test)]
+coven::read!(
+    writer ContextRowsOfTrack(track: String),
+    r#"
+    SELECT lane.track_id
+    FROM playback_context AS lane
+    WHERE lane.track_id = :track
+"#
+);
+
+#[cfg(test)]
+coven::read!(
+    writer ManualRowsOfTrack(track: String),
+    r#"
+    SELECT manual.track_id
+    FROM playback_manual AS manual
+    WHERE manual.track_id = :track
+"#
+);
+
 #[cfg(test)]
 #[path = "queue_tests.rs"]
 mod tests;

@@ -6,6 +6,7 @@ use crate::download_snapshot::DownloadRequest;
 use crate::queued_releases::tables::{self, worker_moves};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
 use bae_records::test_fixtures::*;
+use bae_store::test_fixtures::query_plan::query_plan;
 use bae_store::test_fixtures::*;
 use bae_store::Store;
 
@@ -143,34 +144,16 @@ async fn the_counts_follow_the_pause() {
 #[tokio::test]
 async fn the_list_reads_are_planned_on_the_queue_order() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let plan = |statement: &'static str, names: &'static [&'static str]| {
-        let db = db.clone();
-        async move {
-            db.call(move |sql| {
-                let value = 3_i64;
-                let params: Vec<(&str, &dyn rusqlite::ToSql)> =
-                    names.iter().map(|name| (*name, &value as &dyn rusqlite::ToSql)).collect();
-                Ok(sql.query(
-                    &format!("EXPLAIN QUERY PLAN {statement}"),
-                    params.as_slice(),
-                    |row| row.get::<_, String>(3),
-                )?)
-            })
-            .await
-            .unwrap()
-            .join("\n")
-        }
-    };
-    let window = plan(DownloadWindow::SQL, &[":from", ":limit"]).await;
+    let window = query_plan(&db, DownloadWindowParams { from: 3, limit: 3 }).await.join("\n");
     assert!(window.contains("USING INTEGER PRIMARY KEY (rowid>?)"), "{window}");
     assert!(window.contains("USING INDEX sqlite_autoindex_releases_1 (id=?)"), "{window}");
     assert!(window.contains("USING INDEX sqlite_autoindex_albums_1 (id=?)"), "{window}");
-    let top = plan(DownloadTop::SQL, &[":limit"]).await;
+    let top = query_plan(&db, DownloadTopParams { limit: 3 }).await.join("\n");
     assert!(top.starts_with("SCAN queued"), "{top}");
     assert!(top.contains("USING INDEX sqlite_autoindex_releases_1 (id=?)"), "{top}");
-    let before = plan(DownloadsBefore::SQL, &[":position"]).await;
+    let before = query_plan(&db, DownloadsBeforeParams { position: 3 }).await.join("\n");
     assert!(before.contains("USING INTEGER PRIMARY KEY (rowid<?)"), "{before}");
-    let jump = plan(DownloadPlaceAt::SQL, &[":index"]).await;
+    let jump = query_plan(&db, DownloadPlaceAtParams { index: 3 }).await.join("\n");
     for steps in [window, top, before, jump] {
         assert!(!steps.contains("TEMP B-TREE"), "{steps}");
         assert!(!steps.contains("MATERIALIZE"), "{steps}");

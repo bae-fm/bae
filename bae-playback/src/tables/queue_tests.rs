@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::tables::tests::*;
+use bae_store::test_fixtures::query_plan::{plan_steps, PlanOf};
 /// Play `RELEASE_A` from `start`, returning the entry playing.
 async fn play(db: &Store, start: ReleaseStart) -> crate::QueueEntry {
     match PlaybackQueueTables::new(db.clone())
@@ -342,15 +343,10 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
     );
 }
 
-async fn plan(db: &Store, sql: &str, args: Vec<rusqlite::types::Value>) -> String {
-    let sql = format!("EXPLAIN QUERY PLAN {sql}");
-    db.read(move |read| {
-        Ok(read
-            .query(&sql, rusqlite::params_from_iter(args), |row| row.get::<_, String>("detail"))?
-            .join(" | "))
-    })
-    .await
-    .unwrap()
+/// The details of the plan of the statement `plan_of` names, joined.
+async fn plan(db: &Store, plan_of: PlanOf) -> String {
+    let steps = db.read(move |sql| Ok(plan_of(&sql)?)).await.unwrap();
+    steps.into_iter().map(|step| step.detail).collect::<Vec<_>>().join(" | ")
 }
 
 /// The upcoming list's reads walk the index of the order they read in from
@@ -361,24 +357,23 @@ async fn plan(db: &Store, sql: &str, args: Vec<rusqlite::types::Value>) -> Strin
 async fn the_queue_reads_are_planned_on_the_indexes() {
     use super::queue_upcoming::*;
     let (db, _tmp, _tracks) = release_db(3).await;
-    let ints = |count: usize| vec![rusqlite::types::Value::Integer(1); count];
-    let ordered = [
-        WindowTopOrdered::SQL,
-        WindowFromOrdered::SQL,
-        CountOrdered::SQL,
-        CountBeforeOrdered::SQL,
-        LastPlaceOfFirstOrdered::SQL,
+    let ordered: [PlanOf; 5] = [
+        plan_steps::<WindowTopOrderedParams>,
+        plan_steps::<WindowFromOrderedParams>,
+        plan_steps::<CountOrderedParams>,
+        plan_steps::<CountBeforeOrderedParams>,
+        plan_steps::<LastPlaceOfFirstOrderedParams>,
     ];
-    let shuffled = [
-        WindowTopShuffled::SQL,
-        WindowFromShuffled::SQL,
-        CountShuffled::SQL,
-        CountBeforeShuffled::SQL,
-        LastPlaceOfFirstShuffled::SQL,
+    let shuffled: [PlanOf; 5] = [
+        plan_steps::<WindowTopShuffledParams>,
+        plan_steps::<WindowFromShuffledParams>,
+        plan_steps::<CountShuffledParams>,
+        plan_steps::<CountBeforeShuffledParams>,
+        plan_steps::<LastPlaceOfFirstShuffledParams>,
     ];
     for (column, index, reads) in [("ordered", 1, ordered), ("shuffled", 2, shuffled)] {
-        for (at, (read, parameters)) in reads.into_iter().zip([1, 2, 0, 1, 1]).enumerate() {
-            let plan = plan(&db, read, ints(parameters)).await;
+        for (at, read) in reads.into_iter().enumerate() {
+            let plan = plan(&db, read).await;
             let seek = format!("INDEX sqlite_autoindex_playback_context_{index} ({column}>?");
             assert!(plan.contains(&seek), "{column} read {at}: {plan}");
             if at < 2 {
@@ -390,13 +385,12 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
             }
         }
     }
-    let text = |value: &str| rusqlite::types::Value::Text(value.to_string());
-    for (table, index) in [
-        ("playback_context", "playback_context_track"),
-        ("playback_manual", "playback_manual_track"),
-    ] {
-        let by_track =
-            plan(&db, &format!("SELECT 1 FROM {table} WHERE track_id = ?"), vec![text("")]).await;
+    let by_tracks: [(PlanOf, &str); 2] = [
+        (plan_steps::<ContextRowsOfTrackParams>, "playback_context_track"),
+        (plan_steps::<ManualRowsOfTrackParams>, "playback_manual_track"),
+    ];
+    for (by_track, index) in by_tracks {
+        let by_track = plan(&db, by_track).await;
         assert!(by_track.contains(&format!("USING COVERING INDEX {index}")), "{by_track}");
     }
 }
@@ -408,12 +402,7 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
 #[tokio::test]
 async fn the_session_up_next_list_is_planned_on_the_indexes() {
     let (db, _tmp, _tracks) = release_db(3).await;
-    let rows = plan(
-        &db,
-        super::queue_reads::SessionUpNextItems::SQL,
-        vec![rusqlite::types::Value::Integer(100)],
-    )
-    .await;
+    let rows = plan(&db, plan_steps::<super::queue_reads::SessionUpNextItemsParams>).await;
     for walk in [
         "SCAN manual USING INDEX sqlite_autoindex_playback_manual_1",
         "SEARCH lane USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
@@ -430,14 +419,14 @@ async fn the_session_up_next_list_is_planned_on_the_indexes() {
 #[tokio::test]
 async fn the_track_displays_are_planned_on_the_tracks_key() {
     let (db, _tmp, _tracks) = release_db(3).await;
-    for (read, parameters) in [
-        (super::track_display::OneTrackDisplay::SQL, 1),
-        (super::now::PlayingNow::SQL, 0),
-        (super::queue_reads::QueueValue::SQL, 0),
-        (super::queue_reads::SessionUpNextItems::SQL, 1),
-    ] {
-        let arguments = vec![rusqlite::types::Value::Integer(1); parameters];
-        let plan = plan(&db, read, arguments).await;
+    let reads: [PlanOf; 4] = [
+        plan_steps::<super::track_display::OneTrackDisplayParams>,
+        plan_steps::<super::now::PlayingNowParams>,
+        plan_steps::<super::queue_reads::QueueValueParams>,
+        plan_steps::<super::queue_reads::SessionUpNextItemsParams>,
+    ];
+    for read in reads {
+        let plan = plan(&db, read).await;
         assert!(
             plan.contains("SEARCH track USING INDEX sqlite_autoindex_tracks_1 (id=?)")
                 && !plan.contains("SCAN track "),
