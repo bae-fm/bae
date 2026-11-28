@@ -110,10 +110,11 @@ coven::read!(
     "SELECT record.id, record.release_id, record.catalog FROM release_records AS record"
 );
 
-// Each artist merge: the absorbed artist and the artist it was merged into.
+// Each artist merge, by absorbed artist: the absorbed artist and the artist
+// it was merged into.
 coven::read!(
     writer EveryArtistMerge,
-    "SELECT merge.id, merge.into_artist_id FROM artist_merges AS merge"
+    "SELECT merge.id, merge.into_artist_id FROM artist_merges AS merge ORDER BY merge.id"
 );
 
 // Each audio segment's scrub points.

@@ -23,12 +23,16 @@ fn the_storage_row_names_the_device_that_alone_holds_its_audio() {
             let dir = bae_util::test_files::TestFolder::new();
             let (a, b) = (devices.a(), devices.b());
             write_library(&crate::test_fixtures::test_records(a)).await;
-            devices.converge_rows(|| crate::records::release::ReleaseIdsParams {}).await;
+            devices
+                .converge_rows(|| crate::test_fixtures::library_rows::EveryReleaseParams {})
+                .await;
 
             import_file(a, &dir, RELEASE_EARLY, "track.flac", Flac).await;
             import_file(a, &dir, RELEASE_EARLY, "cover.jpg", Jpeg).await;
             import_file(a, &dir, RELEASE_LATE, "front.jpg", Jpeg).await;
-            devices.converge_rows(|| crate::records::files::ReleaseFileRowsParams {}).await;
+            devices
+                .converge_rows(|| crate::test_fixtures::library_rows::EveryReleaseFileParams {})
+                .await;
             devices.converge_rows(|| crate::records::files::CovenFileIdsParams {}).await;
 
             let other = crate::records::release_detail::DeviceWhereSelfParams { is_self: false };

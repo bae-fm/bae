@@ -41,8 +41,10 @@ async fn merge_artist(
 
 /// The artist each artist merge row was absorbed into, by absorbed id.
 async fn artist_merges(store: &Store) -> Vec<(String, String)> {
-    let rows =
-        store.read_rows(crate::records::identity_merges::ArtistMergeRowsParams {}).await.unwrap();
+    let rows = store
+        .read_rows(crate::test_fixtures::library_rows::EveryArtistMergeParams {})
+        .await
+        .unwrap();
     rows.into_iter().map(|row| (row.id, row.into_artist_id)).collect()
 }
 
@@ -290,7 +292,7 @@ async fn check_synced_artist_merge_chain(devices: &bae_store::test_devices::TwoS
     merge_artist(devices.a(), &smallest, &middle, None).await.unwrap();
     merge_artist(devices.b(), &middle, &largest, None).await.unwrap();
     devices.resume().await;
-    devices.converge_rows(|| crate::records::identity_merges::ArtistMergeRowsParams {}).await;
+    devices.converge_rows(|| crate::test_fixtures::library_rows::EveryArtistMergeParams {}).await;
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(

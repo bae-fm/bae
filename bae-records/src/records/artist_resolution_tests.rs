@@ -477,8 +477,10 @@ async fn a_merge_points_at_the_smaller_id_whichever_artist_came_first() {
             .await
             .unwrap();
 
-        let rows =
-            db.read_rows(crate::records::identity_merges::ArtistMergeRowsParams {}).await.unwrap();
+        let rows = db
+            .read_rows(crate::test_fixtures::library_rows::EveryArtistMergeParams {})
+            .await
+            .unwrap();
         let merges: Vec<(String, String)> =
             rows.into_iter().map(|row| (row.id, row.into_artist_id)).collect();
         assert_eq!(merges, [("second".to_string(), "first".to_string())], "{order:?}");

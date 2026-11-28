@@ -358,7 +358,7 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
             .release(ALBUM_A, TWO_ELSEWHERE)
             .write(&test_records(a))
             .await;
-        devices.converge_rows(|| crate::records::release::ReleaseIdsParams {}).await;
+        devices.converge_rows(|| crate::test_fixtures::library_rows::EveryReleaseParams {}).await;
 
         storage_listing::import_file(b, &dir, PLAYS_HERE, "here.flac", Flac).await;
         storage_listing::import_file(a, &dir, ONE_ELSEWHERE, "one.flac", Flac).await;
@@ -366,7 +366,9 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
         storage_listing::import_file(a, &dir, ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
         storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "b-second.flac", Flac).await;
         storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "a-first.flac", Flac).await;
-        devices.converge_rows(|| crate::records::files::ReleaseFileRowsParams {}).await;
+        devices
+            .converge_rows(|| crate::test_fixtures::library_rows::EveryReleaseFileParams {})
+            .await;
         devices.converge_rows(|| crate::records::files::CovenFileIdsParams {}).await;
 
         let other = crate::records::release_detail::DeviceWhereSelfParams { is_self: false };

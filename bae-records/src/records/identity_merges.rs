@@ -124,14 +124,6 @@ pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> R
     Ok(())
 }
 
-// Each artist merge row: the absorbed artist and the artist it was merged
-// into, by absorbed id.
-#[cfg(test)]
-coven::read!(
-    writer ArtistMergeRows,
-    "SELECT merge.id, merge.into_artist_id FROM artist_merges AS merge ORDER BY merge.id"
-);
-
 // Each label merge row: the absorbed label and the label it was merged into,
 // by absorbed id.
 #[cfg(test)]

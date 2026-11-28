@@ -335,7 +335,7 @@ async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::
     let second = add_label(devices.a(), "Label Name B", None, None).await;
     let converge = || async {
         devices.converge_rows(|| crate::records::label_resolution::LabelIdsParams {}).await;
-        devices.converge_rows(|| crate::records::release::ReleaseIdsParams {}).await;
+        devices.converge_rows(|| crate::test_fixtures::library_rows::EveryReleaseParams {}).await;
     };
     converge().await;
 

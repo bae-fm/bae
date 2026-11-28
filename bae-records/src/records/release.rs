@@ -556,10 +556,6 @@ pub fn edited_release_of(head: EditedHead) -> Result<EditedRelease, DbError> {
 #[cfg(any(test, feature = "test-utils"))]
 coven::read!(writer TotalChanges { changes: i64 }, "SELECT total_changes() AS changes");
 
-// The id of each release.
-#[cfg(test)]
-coven::read!(writer ReleaseIds, "SELECT release.id FROM releases AS release");
-
 // A release row of the album `:album_id`, first in its album.
 #[cfg(test)]
 coven::write!(

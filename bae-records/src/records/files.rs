@@ -531,13 +531,6 @@ impl Records {
     }
 }
 
-// Each release file, with the release and the coven file it names.
-#[cfg(test)]
-coven::read!(
-    writer ReleaseFileRows,
-    "SELECT file.id, file.release_id, file.file FROM release_files AS file"
-);
-
 // Each coven file this device knows.
 #[cfg(test)]
 coven::read!(writer CovenFileIds, "SELECT stored.id FROM coven_files AS stored");
