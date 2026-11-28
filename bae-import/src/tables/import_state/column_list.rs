@@ -1,20 +1,7 @@
-//! Named columns read from a statement's row or from one JSON object, so that
-//! one reader decodes a typed search either way.
+//! Named columns read from one JSON object that a statement selected.
 
 use rusqlite::types::{FromSql, Value, ValueRef};
 use serde_json::Value as Json;
-
-/// Where a reader takes its named columns from: a statement's row, or one
-/// JSON object holding them.
-pub(super) trait Columns {
-    fn get<T: FromSql>(&self, name: &str) -> rusqlite::Result<T>;
-}
-
-impl Columns for rusqlite::Row<'_> {
-    fn get<T: FromSql>(&self, name: &str) -> rusqlite::Result<T> {
-        rusqlite::Row::get(self, name)
-    }
-}
 
 /// The columns of one JSON object that a statement selected. `get` returns a
 /// list inside the object as its JSON text, as a row's column does.
@@ -22,8 +9,9 @@ impl Columns for rusqlite::Row<'_> {
 #[serde(transparent)]
 pub(super) struct JsonColumns(serde_json::Map<String, Json>);
 
-impl Columns for JsonColumns {
-    fn get<T: FromSql>(&self, name: &str) -> rusqlite::Result<T> {
+impl JsonColumns {
+    /// The column `name`, as a statement's row would return it.
+    pub(super) fn get<T: FromSql>(&self, name: &str) -> rusqlite::Result<T> {
         let json =
             self.0.get(name).ok_or_else(|| rusqlite::Error::InvalidColumnName(name.to_string()))?;
         let value = match json {

@@ -17,7 +17,7 @@
 //! Its tables are `search_rows.sql`, which every device's library holds.
 
 use super::cards_read::groups_of;
-use super::column_list::{Columns, JsonColumns};
+use super::column_list::JsonColumns;
 use super::layout::lay_out_search_on;
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::{store_match, MatchOwner, Written};
@@ -47,7 +47,7 @@ pub(super) fn delete_every_search_on(sql: &CovenWrite<'_>) -> Result<(), DbError
 
 /// A query as its row's columns: the mode, and the values that mode asks.
 struct QueryColumns<'a> {
-    mode: &'static str,
+    mode: &'a str,
     artist: Option<&'a str>,
     album: Option<&'a str>,
     catalog_number: Option<&'a str>,
@@ -70,27 +70,18 @@ fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
     }
 }
 
-/// The columns of `import_candidate_search` that hold its query.
-struct StoredQuery {
-    mode: String,
-    artist: Option<String>,
-    album: Option<String>,
-    catalog_number: Option<String>,
-    barcode: Option<String>,
-}
-
 /// The query a search row's columns hold.
-fn query_of(stored: StoredQuery) -> Result<SearchQuery, DbError> {
-    let StoredQuery { mode, artist, album, catalog_number, barcode } = stored;
-    let value = |column: &str, value: Option<String>| {
-        value.ok_or_else(|| {
+fn query_of(columns: QueryColumns<'_>) -> Result<SearchQuery, DbError> {
+    let QueryColumns { mode, artist, album, catalog_number, barcode } = columns;
+    let value = |column: &str, value: Option<&str>| {
+        value.map(str::to_owned).ok_or_else(|| {
             DbError::unreadable(
                 format!("import_candidate_search.{column} of a {mode} search"),
                 None::<String>,
             )
         })
     };
-    Ok(match mode.as_str() {
+    Ok(match mode {
         "general" => {
             SearchQuery::General { artist: value("artist", artist)?, album: value("album", album)? }
         }
@@ -202,12 +193,12 @@ pub(super) fn search_in(search: &JsonColumns) -> Result<CandidateSearch, DbError
     let stored: Vec<StoredPart> = serde_json::from_str(&parts)
         .map_err(|error| DbError::unreadable_json("a search's stored parts", &parts, error))?;
     Ok(CandidateSearch {
-        query: query_of(StoredQuery {
-            mode: search.get("mode")?,
-            artist: search.get("artist")?,
-            album: search.get("album")?,
-            catalog_number: search.get("catalog_number")?,
-            barcode: search.get("barcode")?,
+        query: query_of(QueryColumns {
+            mode: &search.get::<String>("mode")?,
+            artist: search.get::<Option<String>>("artist")?.as_deref(),
+            album: search.get::<Option<String>>("album")?.as_deref(),
+            catalog_number: search.get::<Option<String>>("catalog_number")?.as_deref(),
+            barcode: search.get::<Option<String>>("barcode")?.as_deref(),
         })?,
         sources: stored.into_iter().map(StoredPart::part).collect::<Result<_, _>>()?,
         groups: groups_of(&search.get::<String>("cards")?)?,
@@ -373,7 +364,7 @@ coven::write!(
         candidate_key: &'p crate::CandidateKey,
         content_hash: Option<&'p str>,
         file_edit_revision: Option<i64>,
-        mode: &'static str,
+        mode: &'p str,
         artist: Option<&'p str>,
         album: Option<&'p str>,
         catalog_number: Option<&'p str>,
@@ -636,12 +627,12 @@ impl ImportTables {
                     return Ok(None);
                 };
                 let run = search.search_run;
-                let query = query_of(StoredQuery {
-                    mode: search.mode,
-                    artist: search.artist,
-                    album: search.album,
-                    catalog_number: search.catalog_number,
-                    barcode: search.barcode,
+                let query = query_of(QueryColumns {
+                    mode: &search.mode,
+                    artist: search.artist.as_deref(),
+                    album: search.album.as_deref(),
+                    catalog_number: search.catalog_number.as_deref(),
+                    barcode: search.barcode.as_deref(),
                 });
                 let mut retried: Vec<(i64, String)> = sql
                     .returning(&RetryFailedSourcesParams { run })?
