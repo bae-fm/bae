@@ -21,7 +21,6 @@ use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_store::{DbError, Store, WriteStatements};
 use coven::{CovenWrite, SqlReadContext};
-use rusqlite::OptionalExtension;
 
 /// What a queue's entries carry beyond their release, and how the queue reads
 /// and writes its table.
@@ -114,13 +113,8 @@ impl QueuedPayload for DownloadRequest {
     /// download a stopped pin keeps among them. A move-to-this-device's cancel leaves
     /// the files as they are.
     fn cancelling_in(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
-        let kind: Option<String> = sql
-            .query_row(
-                "SELECT kind FROM download_queue WHERE release_id = ?",
-                [release_id],
-                |row| row.get(0),
-            )
-            .optional()?;
+        let statement = QueuedDownloadKindParams { release: release_id.to_string() };
+        let kind = bae_store::statement_optional(sql, &statement)?.map(|row| row.kind);
         if kind.as_deref() == Some("pin") {
             crate::storage_moves::unpin_files_on(sql, release_id)?;
         }
@@ -273,18 +267,45 @@ pub struct ReleasesQueued {
     pub missing: Vec<String>,
 }
 
+// The kind of the download queue's entry for `release`.
+coven::read!(
+    writer QueuedDownloadKind(release: String),
+    r#"
+    SELECT queued.kind
+    FROM download_queue AS queued
+    WHERE queued.release_id = :release
+"#
+);
+
+// The releases of the JSON array `releases` the library no longer holds, in
+// the array's order.
+coven::read!(
+    writer MissingReleases(releases: String) { release_id: String },
+    r#"
+    SELECT requested.value AS release_id
+    FROM json_each(:releases) AS requested
+    LEFT JOIN @bae_records::records::fragments::ReleaseAlbum AS release
+        ON release.release_id = requested.value
+    WHERE requested.value IS NOT NULL AND release.release_id IS NULL
+    ORDER BY requested.key
+"#
+);
+
+// Whether the queue `queue` is paused.
+coven::read!(
+    writer QueuePaused(queue: String) { paused: bool },
+    r#"
+    SELECT queues.paused
+    FROM release_queues AS queues
+    WHERE queues.queue = :queue
+"#
+);
+
 /// The releases of `release_ids` (a JSON array) the library no longer holds,
 /// in the selection's order.
 fn missing_releases_on(sql: &CovenWrite<'_>, release_ids: &str) -> Result<Vec<String>, DbError> {
-    Ok(sql.query(
-        "SELECT requested.value \
-         FROM json_each(?1) AS requested \
-         LEFT JOIN releases ON releases.id = requested.value \
-         WHERE releases.id IS NULL \
-         ORDER BY requested.key",
-        [release_ids],
-        |row| row.get(0),
-    )?)
+    let statement = MissingReleasesParams { releases: release_ids.to_string() };
+    Ok(bae_store::statement_rows(sql, &statement)?.into_iter().map(|row| row.release_id).collect())
 }
 
 /// Queue to pin, in the order given, each of `release_ids` not wholly pinned
@@ -369,10 +390,8 @@ pub(crate) fn set_release_queue_paused_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     paused: bool,
 ) -> Result<bool, DbError> {
-    let was: bool =
-        sql.query_row("SELECT paused FROM release_queues WHERE queue = ?", [P::QUEUE], |row| {
-            row.get(0)
-        })?;
+    let was =
+        bae_store::statement_row(sql, &QueuePausedParams { queue: P::QUEUE.to_string() })?.paused;
     sql.run(&writes::SetQueuePausedParams { queue: P::QUEUE, paused })?;
     if paused {
         P::requeue_active_on(sql)?;

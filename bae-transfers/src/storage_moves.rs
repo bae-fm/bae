@@ -5,7 +5,33 @@
 use bae_store::DbError;
 use bae_store::Store;
 use bae_store::WriteError;
+use bae_store::{statement_row, statement_rows};
 use coven::CovenWrite;
+
+// Whether the library holds the release `release`.
+coven::read!(
+    writer ReleaseHeld(release: String) { held: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM @bae_records::records::fragments::ReleaseAlbum AS release
+                   WHERE release.release_id = :release) AS held
+"#
+);
+
+// The coven files of a release's files, in their ids' order.
+coven::read!(
+    writer FilesOfRelease(release: String) { file: coven::FileId },
+    r#"
+    SELECT stored.stored_file AS file
+    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS stored
+    WHERE stored.release_id = :release
+    ORDER BY stored.file_id
+"#
+);
+
+/// Whether the library holds `release_id`, read in `sql`.
+fn release_held_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<bool, DbError> {
+    Ok(statement_row(sql, &ReleaseHeldParams { release: release_id.to_string() })?.held)
+}
 
 /// Why [`move_release_to_cloud`] or coven refused the write that moves a
 /// release's files to the cloud. The refused write changes nothing.
@@ -41,12 +67,7 @@ pub async fn move_release_to_cloud(
 ) -> Result<u32, StorageMoveError> {
     store
         .write(move |sql| {
-            let exists: bool = sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM releases WHERE id = ?1)",
-                [&release_id],
-                |row| row.get(0),
-            )?;
-            if !exists {
+            if !release_held_on(&sql, &release_id)? {
                 return Err(WriteError::Refused(StorageMoveRefusal::Missing));
             }
             let files = release_files_on(&sql, &release_id)?;
@@ -98,11 +119,8 @@ pub(crate) fn unpin_files_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<(
 
 /// The coven files of `release_id`'s files, in their ids' order.
 fn release_files_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<Vec<coven::FileId>, DbError> {
-    Ok(sql.query(
-        "SELECT file FROM release_files WHERE release_id = ?1 ORDER BY id",
-        [release_id],
-        |row| row.get(0),
-    )?)
+    let statement = FilesOfReleaseParams { release: release_id.to_string() };
+    Ok(statement_rows(sql, &statement)?.into_iter().map(|row| row.file).collect())
 }
 
 /// Unpin the files of every release of `release_ids`, in one write: coven
@@ -117,12 +135,7 @@ pub async fn unpin_releases(store: &Store, release_ids: Vec<String>) -> Result<U
         .write(move |sql| {
             let mut outcome = Unpinned { unpinned: Vec::new(), refused: Vec::new() };
             for release_id in release_ids {
-                let exists: bool = sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM releases WHERE id = ?1)",
-                    [&release_id],
-                    |row| row.get(0),
-                )?;
-                if !exists {
+                if !release_held_on(&sql, &release_id)? {
                     outcome.refused.push((release_id, UnpinRefusal::Missing));
                     continue;
                 }
