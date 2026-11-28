@@ -87,14 +87,9 @@ impl ResolvedTrackAudio {
     /// lives in another file, or its pregap is silence bae generates. Every
     /// other track is served decoded from its own segments.
     pub fn whole_file(&self) -> Option<&ResolvedTrackAudioSegment> {
-        let [segment] = self.segments.as_slice() else {
-            return None;
-        };
-        (segment.role == DbAudioSegmentRole::Main
-            && segment.span.start_sample == 0
-            && segment.span.end_sample.is_none()
-            && self.generated_pregap_frames() == 0)
-            .then_some(segment)
+        whole_file_segment(&self.segments, self.generated_pregap_samples, |segment| {
+            (&segment.role, segment.span.start_sample, segment.span.end_sample)
+        })
     }
 
     /// The silent frames bae generates before the track's first stored sample,
@@ -112,4 +107,26 @@ impl ResolvedTrackAudio {
         let frames = self.pregap_samples.unwrap_or(0) + self.generated_pregap_frames();
         bae_util::sample_time::frame_start(frames, self.sample_rate.get())
     }
+}
+
+/// The segment of `segments`, a track's audio in order, whose file is the
+/// track's stream, when one is: a single main segment from the file's first
+/// sample to its end, with no pregap bae generates
+/// (`generated_pregap_samples`). `part` gives a segment's role, first sample
+/// and end sample. The Subsonic server's songs and its `stream` both decide by
+/// this.
+pub fn whole_file_segment<S>(
+    segments: &[S],
+    generated_pregap_samples: Option<u64>,
+    part: impl Fn(&S) -> (&DbAudioSegmentRole, u64, Option<u64>),
+) -> Option<&S> {
+    let [segment] = segments else {
+        return None;
+    };
+    let (role, start_sample, end_sample) = part(segment);
+    (*role == DbAudioSegmentRole::Main
+        && start_sample == 0
+        && end_sample.is_none()
+        && generated_pregap_samples.unwrap_or(0) == 0)
+        .then_some(segment)
 }

@@ -37,34 +37,48 @@ sqlive_compose::fragment!(
 "#
 );
 
+// Each audio format's segments as a song outside bae reads them, in order:
+// each one's role, first and end sample, and its file's name, size and
+// container, none for a file the library doesn't hold.
+sqlive_compose::fragment!(
+    ServedSegments on audio_formats {
+        struct ServedSegment {
+            role: String,
+            start_sample: u64,
+            end_sample: Option<u64>,
+            name: Option<String>,
+            size: Option<u64>,
+            container: Option<String>,
+        }
+        segments: json<Vec<ServedSegment>>
+    },
+    r#"
+    SELECT json_group_array(json_object(
+               'role', segment.role, 'start_sample', segment.start_sample,
+               'end_sample', segment.end_sample, 'name', file.original_filename,
+               'size', stored.size, 'container', file.source_audio_container)
+               ORDER BY segment.segment_index) AS segments
+    FROM audio_format_segments AS segment
+    LEFT JOIN release_files AS file ON file.id = segment.file_id
+    LEFT JOIN coven_files AS stored ON stored.id = file.file
+    WHERE segment.audio_format_id = @parent.id
+"#
+);
+
 // Each audio format as a song outside bae states it: its rate, depth and
-// channels, and the one file that plays its track whole when one does: a
-// format of one main segment that starts at its file's start and runs to its
-// end, with no silence bae generates before it (§8.1).
+// channels, the silence bae generates before it, and its segments.
 sqlive_compose::fragment!(
     ServedAudio {
         sample_rate: std::num::NonZeroU32,
         bits_per_sample: Option<std::num::NonZeroU32>,
         channels: std::num::NonZeroU32,
-        whole_size: Option<u64>,
+        generated_pregap_samples: Option<u64>,
     },
     r#"
     SELECT format.track_id AS served_audio_track_id, format.sample_rate,
-           format.bits_per_sample, format.channels, whole.whole_name, whole.whole_size,
-           whole.whole_container
+           format.bits_per_sample, format.channels, format.generated_pregap_samples,
+           @crate::records::served::ServedSegments(parent: format) AS segments
     FROM audio_formats AS format
-    LEFT JOIN (SELECT segment.audio_format_id, file.original_filename AS whole_name,
-                      stored.size AS whole_size, file.source_audio_container AS whole_container
-               FROM audio_format_segments AS segment
-               JOIN release_files AS file ON file.id = segment.file_id
-               JOIN coven_files AS stored ON stored.id = file.file
-               WHERE segment.role = 'main' AND segment.start_sample = 0
-                 AND segment.end_sample IS NULL
-                 AND NOT EXISTS (SELECT 1 FROM audio_format_segments AS other
-                                 WHERE other.audio_format_id = segment.audio_format_id
-                                   AND other.id <> segment.id)) AS whole
-           ON whole.audio_format_id = format.id
-          AND COALESCE(format.generated_pregap_samples, 0) = 0
 "#
 );
 
@@ -255,14 +269,33 @@ impl ServedTrack {
         let audio = self.audio.ok_or_else(|| unreadable("audio format"))?;
         let created_at = bae_util::timestamp::parse_rfc3339(&self.added_at)
             .map_err(|_unparsed| DbError::unreadable("a track's created_at", &self.added_at))?;
-        let whole_file = match (audio.whole_name, audio.whole_size, audio.whole_container) {
-            (Some(name), Some(size), Some(container)) => Some(DbServedFile {
-                name,
-                size,
-                container: bae_util::audio_container::AudioContainer::from_name(&container),
-            }),
-            (None, None, None) => None,
-            _ => return Err(unreadable("whole file")),
+        let segments = audio.segments.segments;
+        let roles = segments
+            .iter()
+            .map(|segment| {
+                crate::DbAudioSegmentRole::from_db_value(&segment.role)
+                    .ok_or_else(|| unreadable("audio segment role"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let parts: Vec<_> = segments.into_iter().zip(roles).collect();
+        let whole =
+            crate::whole_file_segment(&parts, audio.generated_pregap_samples, |(segment, role)| {
+                (role, segment.start_sample, segment.end_sample)
+            });
+        let whole_file = match whole {
+            None => None,
+            Some((segment, _role)) => {
+                let (Some(name), Some(size), Some(container)) =
+                    (&segment.name, segment.size, &segment.container)
+                else {
+                    return Err(unreadable("whole file"));
+                };
+                Some(DbServedFile {
+                    name: name.clone(),
+                    size,
+                    container: bae_util::audio_container::AudioContainer::from_name(container),
+                })
+            }
         };
         Ok(DbServedTrack {
             credits: super::read::credits_from_json(&credits.credits)?,

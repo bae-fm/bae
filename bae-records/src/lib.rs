@@ -48,7 +48,9 @@ pub use records::{
 };
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use records::{SeededAlbum, SeededAudio};
-pub use resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError};
+pub use resolved_track_audio::{
+    whole_file_segment, ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError,
+};
 pub use upload_progress::{UploadActivity, UploadProgress};
 
 include!(concat!(env!("OUT_DIR"), "/schema.rs"));
