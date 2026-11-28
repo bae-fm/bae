@@ -17,14 +17,30 @@ pub(super) struct Emptiable {
     artists: Vec<String>,
 }
 
-/// The works `$releases` (a JSON array of release ids) have tracks perform,
-/// and the works those are parts of, however far up.
-const PERFORMED_WORKS: &str = "WITH RECURSIVE performed(id) AS ( \
-        SELECT tw.work_id FROM track_works tw JOIN tracks t ON t.id = tw.track_id \
-        WHERE t.release_id IN (SELECT value FROM json_each(?1)) \
-        UNION \
-        SELECT p.parent_work_id FROM work_parts p JOIN performed ON p.child_work_id = performed.id \
-    ) SELECT id FROM performed";
+// The works whose tracks the releases the JSON array `releases` names
+// perform, and the works those are parts of, however far up. sqlive reads
+// the recursive CTE's tables whole.
+coven::fragment!(
+    PerformedWorks(releases: String) { id: String },
+    r#"
+    WITH RECURSIVE performed(id) AS (
+        SELECT tw.work_id FROM track_works AS tw JOIN tracks AS t ON t.id = tw.track_id
+        WHERE t.release_id IN (SELECT j.value FROM json_each(:releases) AS j)
+        UNION
+        SELECT p.parent_work_id FROM work_parts AS p JOIN performed ON p.child_work_id = performed.id)
+    SELECT performed.id FROM performed
+"#
+);
+
+// The works the releases the JSON array `releases` names perform
+// ([`PerformedWorks`]).
+coven::read!(
+    writer PerformedWorksOfReleases(releases: String),
+    r#"
+    SELECT work.id
+    FROM @crate::records::emptied::PerformedWorks(releases: :releases) AS work
+"#
+);
 
 // The albums of the releases the JSON array `releases` names, each once.
 coven::read!(
@@ -37,10 +53,10 @@ coven::read!(
 );
 
 // Every artist that the releases the JSON array `releases` names credit,
-// through their album, tracks and roles, and that the works the JSON array
-// `works` names credit.
+// through their album, tracks and roles, and that the works they perform
+// credit ([`PerformedWorks`]).
 coven::read!(
-    writer CreditedByReleases(releases: String, works: String) { artist_id: String },
+    writer CreditedByReleases(releases: String) { artist_id: String },
     r#"
     SELECT album_credit.artist_id
     FROM album_artists AS album_credit
@@ -63,7 +79,8 @@ coven::read!(
     UNION
     SELECT work_credit.artist_id
     FROM work_artists AS work_credit
-    WHERE work_credit.work_id IN (SELECT asked.value FROM json_each(:works) AS asked)
+    WHERE work_credit.work_id IN (
+        SELECT work.id FROM @crate::records::emptied::PerformedWorks(releases: :releases) AS work)
 "#
 );
 
@@ -122,9 +139,6 @@ impl Emptiable {
         release_ids: &[&str],
     ) -> Result<Self, DbError> {
         let releases = serde_json::to_string(release_ids).expect("ids serialize as JSON");
-        let strings = |sql: &str, params: &[&dyn rusqlite::ToSql]| {
-            conn.query(sql, params, |row| row.get::<_, String>(0))
-        };
         let albums = bae_store::statement_rows(
             conn,
             &AlbumsOfReleasesParams { releases: releases.clone() },
@@ -132,15 +146,17 @@ impl Emptiable {
         .into_iter()
         .map(|row| row.album_id)
         .collect();
-        let works = strings(PERFORMED_WORKS, &[&releases])?;
-        let works_json = serde_json::to_string(&works).expect("ids serialize as JSON");
-        let artists = bae_store::statement_rows(
+        let works = bae_store::statement_rows(
             conn,
-            &CreditedByReleasesParams { releases, works: works_json },
+            &PerformedWorksOfReleasesParams { releases: releases.clone() },
         )?
         .into_iter()
-        .map(|row| row.artist_id)
+        .map(|row| row.id)
         .collect();
+        let artists = bae_store::statement_rows(conn, &CreditedByReleasesParams { releases })?
+            .into_iter()
+            .map(|row| row.artist_id)
+            .collect();
         Ok(Self { albums, works, artists })
     }
 
