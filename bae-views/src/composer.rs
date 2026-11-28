@@ -240,12 +240,23 @@ fn work_detail_rows_of(
         return Ok(None);
     };
     let work = work_summary(found.work.clone(), found.cover.clone())?;
+    let track_count = list_count(found.tracks)?;
+    // Each child's row counts the children of its kind beside it; a kind with
+    // no children counts zero.
+    let (mut child_work_count, mut release_count) = (0, 0);
     let mut child_works = Vec::new();
     let mut releases = Vec::new();
     for child in children {
+        let of_kind = list_count(child.of_kind)?;
         match work_child_of(child)? {
-            DbWorkChild::Part(part) => child_works.push(part),
-            DbWorkChild::Release(release) => releases.push(release),
+            DbWorkChild::Part(part) => {
+                child_work_count = of_kind;
+                child_works.push(part);
+            }
+            DbWorkChild::Release(release) => {
+                release_count = of_kind;
+                releases.push(release);
+            }
         }
     }
     let tracks = page
@@ -261,9 +272,9 @@ fn work_detail_rows_of(
         .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Some(DbWorkDetail {
         work,
-        child_work_count: child_works.len() as u64,
-        release_count: releases.len() as u64,
-        track_count: tracks.len() as u64,
+        child_work_count,
+        release_count,
+        track_count,
         child_works,
         releases,
         tracks,
@@ -360,13 +371,14 @@ sqlive_compose::fragment!(
 );
 
 // The work `work` as its page shows it, with its cover, beside each track that
-// performs it: release by release in its page's order, each release's tracks
-// in playing order. A work no track performs gives one row with no track, and
-// a work the library does not hold gives none.
+// performs it and how many do: release by release in its page's order, each
+// release's tracks in playing order. A work no track performs gives one row
+// with no track, and a work the library does not hold gives none.
 sqlive_compose::read!(
-    writer WorkPage(work: String),
+    writer WorkPage(work: String) { tracks: i64 },
     r#"
-    SELECT work.*, cover.*, performed.*
+    SELECT work.*, cover.*, performed.*,
+           COUNT(performed.performed_work_id) OVER () AS tracks
     FROM @bae_records::records::browse_fragments::WorkSummary AS work
     LEFT JOIN @bae_records::records::files::CoverVersion AS cover
            ON cover.id = work.representative_release_id
@@ -380,11 +392,12 @@ sqlive_compose::read!(
 
 // The children of the work `work` at the places from `offset`, at most
 // `limit`, in their order: its parts, then the releases that perform it, each
-// with what it shows.
+// with what it shows and beside how many children of its kind the work has.
 sqlive_compose::read!(
-    writer WorkChildRows(work: String, offset: i64, limit: i64),
+    writer WorkChildRows(work: String, offset: i64, limit: i64) { of_kind: i64 },
     r#"
-    SELECT child.*, part.*, part_cover.*, release.*, release_cover.*
+    SELECT child.*, part.*, part_cover.*, release.*, release_cover.*,
+           COUNT(*) OVER (PARTITION BY child.section) AS of_kind
     FROM @bae_records::records::browse_fragments::WorkChildren(work: :work) AS child
     LEFT JOIN @bae_records::records::browse_fragments::WorkSummary AS part
            ON child.section = 0 AND part.work_id = child.item_id
