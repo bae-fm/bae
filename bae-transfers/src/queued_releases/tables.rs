@@ -507,6 +507,28 @@ pub mod bulk {
     }
 }
 
+// The download queue's releases, in the order queued.
+#[cfg(test)]
+coven::read!(
+    writer DownloadQueueOrder,
+    r#"
+    SELECT queued.release_id
+    FROM download_queue AS queued
+    ORDER BY queued.position
+"#
+);
+
+// The download batch's rows, each a release and its kind, in kind order.
+#[cfg(test)]
+coven::read!(
+    writer DownloadBatchRows,
+    r#"
+    SELECT batch.kind, batch.release_id
+    FROM download_batch AS batch
+    ORDER BY batch.kind, batch.release_id
+"#
+);
+
 #[cfg(test)]
 #[path = "tables_tests.rs"]
 mod tests;

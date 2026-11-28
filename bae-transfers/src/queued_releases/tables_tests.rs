@@ -3,7 +3,9 @@
 
 use crate::download_snapshot::DownloadRequest;
 use crate::output_snapshot::{OutputKind, OutputRequest};
-use crate::queued_releases::tables::{self, QueuedPayload};
+use crate::queued_releases::tables::{
+    self, DownloadBatchRowsParams, DownloadQueueOrderParams, QueuedPayload,
+};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
 use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
@@ -128,13 +130,12 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
     assert!(!enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap());
 
     let rows: Vec<String> = db
-        .call(|sql| {
-            Ok(sql.query("SELECT release_id FROM download_queue ORDER BY position", [], |row| {
-                row.get(0)
-            })?)
-        })
+        .read_rows(DownloadQueueOrderParams {})
         .await
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(|row| row.release_id)
+        .collect();
     assert_eq!(rows, vec![RELEASE_A.to_string(), RELEASE_B.to_string()]);
     assert_eq!(
         next_queued_release::<DownloadRequest>(&db).await.unwrap(),
@@ -451,15 +452,8 @@ async fn the_queue_lookups_are_planned_on_their_keys() {
 
 /// The download batch's rows, each a release and its kind, in kind order.
 async fn download_batch(db: &Store) -> Vec<(String, String)> {
-    db.read(|sql| {
-        Ok(sql.query(
-            "SELECT kind, release_id FROM download_batch ORDER BY kind, release_id",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?)
-    })
-    .await
-    .unwrap()
+    let rows = db.read_rows(DownloadBatchRowsParams {}).await.unwrap();
+    rows.into_iter().map(|row| (row.kind, row.release_id)).collect()
 }
 
 fn batched(kind: &str, release_id: &str) -> (String, String) {
