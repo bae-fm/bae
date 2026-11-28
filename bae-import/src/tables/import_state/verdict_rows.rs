@@ -707,18 +707,13 @@ impl ImportTables {
         key: &crate::CandidateKey,
     ) -> Result<bool, crate::ImportError> {
         let request = CandidateAnswerParams { key: key.clone() };
-        let (entries, answered): (Vec<_>, Vec<_>) = self
-            .store
-            .read_rows(request)
-            .await?
-            .into_iter()
-            .map(|row| (row.entry, row.answered))
-            .unzip();
-        let entry = crate::tables::release_groupings::listed_entry_of(key, entries)?;
+        let row = self.store.read(move |sql| bae_store::statement_optional(&sql, &request)).await?;
+        let (entry, answered) = row.map(|row| (row.entry, row.answered)).unzip();
+        let entry = crate::tables::release_groupings::listed_entry_of(key, entry)?;
         if let Some(release_id) = entry.imported {
             return Err(crate::ImportError::FilesAlreadyImported { release_id });
         }
-        Ok(answered.iter().all(Option::is_none))
+        Ok(answered.flatten().is_none())
     }
 }
 

@@ -14,7 +14,7 @@ use crate::file_tag_snapshot::{
 use crate::folder_scanner::FileVersion;
 use crate::tables::release_groupings::fragments::EnteredCandidate;
 use crate::tables::release_groupings::CandidateEntry;
-use bae_store::{statement_optional, statement_rows};
+use bae_store::statement_optional;
 use bae_util::content_type::ContentType;
 
 coven::read!(
@@ -307,14 +307,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
     let request = EntryTagSnapshotAtParams { key: candidate_path.clone() };
-    let mut rows = statement_rows(sql, &request)?;
-    if rows.len() > 1 {
-        return Err(DbError::unreadable(
-            format!("the watched folders scan_candidate stores {candidate_path} under"),
-            rows.len(),
-        ));
-    }
-    let Some(EntryTagSnapshotAtRow { entry, tags }) = rows.pop() else {
+    let Some(EntryTagSnapshotAtRow { entry, tags }) = statement_optional(sql, &request)? else {
         return Ok(None);
     };
     let EnteredCandidate { scan, grouping, standing, imported } = entry;

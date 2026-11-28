@@ -11,7 +11,7 @@ use crate::tables::import_origin::fragments::ImportedRelease;
 use crate::tables::import_state::fragments::Standing;
 use crate::tables::PreparationRefusal;
 use crate::{CandidateStanding, ImportError, TriageRuntimeFacts};
-use bae_store::statement_rows;
+use bae_store::statement_optional;
 
 coven::read!(
     writer CandidateEntryAt(key: crate::CandidateKey),
@@ -128,39 +128,27 @@ fn load_scanned_entry_on(
     sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<ScannedEntry>, DbError> {
-    let rows = statement_rows(sql, &CandidateEntryAtParams { key: key.clone() })?;
-    scanned_entry_of(key, rows.into_iter().map(|row| row.entry).collect())
+    let row = statement_optional(sql, &CandidateEntryAtParams { key: key.clone() })?;
+    row.map(|row| scanned_entry_of(row.entry)).transpose()
 }
 
-/// What the rows a read of [`EnteredCandidate`] returned for `key` hold.
-fn scanned_entry_of(
-    key: &CandidateKey,
-    mut rows: Vec<EnteredCandidate>,
-) -> Result<Option<ScannedEntry>, DbError> {
-    if rows.len() > 1 {
-        return Err(DbError::unreadable(
-            format!("the watched folders scan_candidate stores {key} under"),
-            rows.len(),
-        ));
-    }
-    rows.pop()
-        .map(|row| {
-            let EnteredCandidate { scan, grouping, standing, imported } = row;
-            Ok(match CandidateEntry::of(scan, grouping, standing, imported)? {
-                Some(entry) => ScannedEntry::Release(Box::new(entry)),
-                None => ScannedEntry::InvalidFolder,
-            })
-        })
-        .transpose()
+/// What a read of [`EnteredCandidate`] returned holds.
+fn scanned_entry_of(row: EnteredCandidate) -> Result<ScannedEntry, DbError> {
+    let EnteredCandidate { scan, grouping, standing, imported } = row;
+    Ok(match CandidateEntry::of(scan, grouping, standing, imported)? {
+        Some(entry) => ScannedEntry::Release(Box::new(entry)),
+        None => ScannedEntry::InvalidFolder,
+    })
 }
 
-/// The release at `key` that the import list shows, from the rows a read of
-/// [`EnteredCandidate`] returned; refused when the list shows none there.
+/// The release at `key` that the import list shows, from what a read of
+/// [`EnteredCandidate`] returned there; refused when the list shows none
+/// there.
 pub(crate) fn listed_entry_of(
     key: &CandidateKey,
-    rows: Vec<EnteredCandidate>,
+    row: Option<EnteredCandidate>,
 ) -> Result<CandidateEntry, ImportError> {
-    match scanned_entry_of(key, rows)? {
+    match row.map(scanned_entry_of).transpose()? {
         Some(ScannedEntry::Release(entry)) if entry.listed() => Ok(*entry),
         _ => Err(ImportError::Internal {
             detail: format!("{key} is not a scanned folder candidate"),
