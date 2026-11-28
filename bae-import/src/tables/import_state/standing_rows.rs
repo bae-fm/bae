@@ -471,6 +471,35 @@ fn write_on(
     Ok(())
 }
 
+/// Store a standing for `candidate_key` that says `facts` are running for
+/// it, for a test of what those facts offer: the files and the run it names
+/// stand for any.
+#[cfg(test)]
+pub(crate) fn plant_facts_on(
+    sql: &CovenWrite<'_>,
+    candidate_key: &CandidateKey,
+    facts: &TriageRuntimeFacts,
+) -> Result<(), DbError> {
+    use crate::IdentificationStatus as S;
+    let run = IdentifyRunId::of_number(1);
+    let identification = facts.identification.as_ref().map(|status| StoredIdentification {
+        files: CandidateFiles { content_hash: "planted".to_string(), file_edit_revision: 0 },
+        stage: match status {
+            S::Queued => IdentificationStage::Queued { admission: Admission::Requested },
+            S::Running => IdentificationStage::Running { run },
+            S::Finalizing => IdentificationStage::Finalizing { run },
+            S::ReadingPick { import_asked } => {
+                IdentificationStage::ReadingPick { run, import_asked: *import_asked }
+            }
+            S::FinalizationFailed { failure } => {
+                IdentificationStage::Failed { failure: failure.clone() }
+            }
+        },
+    });
+    let import = facts.import.map(|step| StoredImport { import_id: "planted".to_string(), step });
+    write_on(sql, candidate_key, &StoredStanding { identification, import })
+}
+
 /// Apply `change` to `candidate_key`'s identification as stored, inside the
 /// caller's write.
 pub(crate) fn change_identification_on(

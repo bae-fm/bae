@@ -125,22 +125,13 @@ async fn restore_runs(
             .map_err(|error| format!("run {run}: restore failed: {error}"))?,
         };
         let restoring = started.elapsed();
-        let tracks = restored
-            .read(|sql| {
-                Ok::<_, coven::CovenError>(sql.query_row(
-                    "SELECT COUNT(*) FROM tracks",
-                    [],
-                    |row| row.get::<_, i64>(0),
-                )?)
-            })
-            .await
-            .map_err(|error| error.to_string());
         let device = restored.device_id();
         let downloads = restored.transfer_limits().downloads;
+        let restored = bae_store::test_devices::store_under(restored, clock.clone());
+        let tracks = bae_records::test_fixtures::library_rows::track_count(&restored).await;
         let closing = Instant::now();
         restored.close().await.map_err(|error| error.to_string())?;
         let closing = closing.elapsed();
-        let tracks = tracks?;
         let removing = Instant::now();
         remove_device(source, device).await.map_err(|error| format!("run {run}: {error}"))?;
         let removing = removing.elapsed();

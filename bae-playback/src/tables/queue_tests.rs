@@ -227,23 +227,15 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
     assert_eq!(context_head(&db).await, (None, None, Some(false), None));
 }
 
-/// The text `query` reads from the schema's own table, on a bare library of
-/// the schema: the schema's shape, which no library row holds.
-fn schema_texts(query: &str) -> Vec<String> {
-    let connection = rusqlite::Connection::open_in_memory().unwrap();
-    crate::TEST_SCHEMA.open_bare_library(&connection);
-    let mut statement = connection.prepare(query).unwrap();
-    statement.query_map([], |row| row.get(0)).unwrap().map(Result::unwrap).collect()
-}
-
 /// No trigger runs on the context lane's rows: a play takes out and puts in
 /// up to a library's worth of them, and a trigger would run once for each
 /// row taken out and keep SQLite from emptying the table without visiting
 /// its rows.
 #[tokio::test]
 async fn the_context_lane_has_no_trigger() {
-    let triggers = schema_texts(
-        "SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'playback_context'",
+    let triggers = bae_store::test_fixtures::schema_checks::triggers_on(
+        crate::TEST_SCHEMA,
+        "playback_context",
     );
     assert!(triggers.is_empty(), "{triggers:?}");
 }
@@ -496,11 +488,9 @@ async fn an_up_next_row_is_named_by_its_entry() {
 #[tokio::test]
 async fn the_queue_tables_hold_no_foreign_key_and_a_deleted_track_still_leaves() {
     let (db, _tmp, tracks) = single_track_releases_db(3).await;
-    let definitions = schema_texts(
-        "SELECT sql FROM sqlite_master \
-         WHERE type = 'table' AND name IN ('playback_context', 'playback_manual')",
-    );
-    assert_eq!(definitions.len(), 2);
+    let definitions = ["playback_context", "playback_manual"].map(|table| {
+        bae_store::test_fixtures::schema_checks::table_definition(crate::TEST_SCHEMA, table)
+    });
     assert!(definitions.iter().all(|sql| !sql.contains("REFERENCES")), "{definitions:?}");
 
     play_tracks(&db, &tracks, 0).await;

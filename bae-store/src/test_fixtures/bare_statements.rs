@@ -22,3 +22,9 @@ pub fn rows<Q: coven::Read>(
 pub fn row<Q: coven::Read>(conn: &rusqlite::Connection, statement: &Q) -> rusqlite::Result<Q::Row> {
     conn.query_row(<Q as coven::Statement>::SQL, statement.params().as_slice(), Q::read)
 }
+
+/// Turn off `conn`'s foreign key checks, for a domain's test that writes a
+/// row whose parents its bare library lacks.
+pub fn without_foreign_keys(conn: &rusqlite::Connection) {
+    conn.pragma_update(None, "foreign_keys", false).expect("foreign keys turn off");
+}

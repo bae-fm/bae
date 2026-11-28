@@ -1,10 +1,7 @@
 use super::*;
-use crate::tables::import_list::selection::{selection_params, Selection};
-use crate::{
-    IdentificationStatus, ImportPhase, ImportStep, PrepareStep, TriagePlacement,
-    TriageRuntimeFacts, TriageTab,
-};
-use coven::Statement as _;
+use crate::tables::import_list::selection::selection_params;
+use crate::{IdentificationStatus, TriagePlacement, TriageRuntimeFacts, TriageTab};
+use bae_store::WriteStatements as _;
 
 /// The columns of one release's `import_list_placement` row that its command
 /// columns read. `lookup` is the stored `lookup` column: `"answered"`,
@@ -28,80 +25,45 @@ impl PlacementRow {
         Self { actionable, placement: *placement, draft_valid, lookup, separable }
     }
 
-    /// The commands the command columns offer, computed over this placement
-    /// row and one standing row that holds the given facts.
-    fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
-        let (tab, failed) = match self.placement {
-            TriagePlacement::Pending => ("pending", 0),
-            TriagePlacement::Failed => ("pending", 1),
-            TriagePlacement::Done => ("done", 0),
-            TriagePlacement::Skipped => ("skipped", 0),
+    /// The commands a release offers, read by the list's selection over a
+    /// library that places it with these columns and holds a standing of
+    /// the given facts.
+    async fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
+        let (tab, pending_state, failed) = match self.placement {
+            TriagePlacement::Pending => ("pending", Some("not_looked_up"), false),
+            TriagePlacement::Failed => ("pending", Some("import_error"), true),
+            TriagePlacement::Done => ("done", None, false),
+            TriagePlacement::Skipped => ("skipped", None, false),
         };
-        let lookup = match self.lookup {
-            None => "NULL".to_owned(),
-            Some(lookup) => format!("'{lookup}'"),
-        };
-        let (identification, asked) = match &live.identification {
-            None => ("NULL", "NULL"),
-            Some(IdentificationStatus::Queued) => ("'queued'", "NULL"),
-            Some(IdentificationStatus::Running) => ("'running'", "NULL"),
-            Some(IdentificationStatus::Finalizing) => ("'finalizing'", "NULL"),
-            Some(IdentificationStatus::ReadingPick { import_asked: true }) => {
-                ("'reading_pick'", "1")
-            }
-            Some(IdentificationStatus::ReadingPick { import_asked: false }) => {
-                ("'reading_pick'", "0")
-            }
-            Some(IdentificationStatus::FinalizationFailed { failure }) => match failure.retryable()
-            {
-                true => ("'not_written'", "NULL"),
-                false => ("'inapplicable'", "NULL"),
-            },
-        };
-        let step = match live.import {
-            None => "NULL",
-            Some(ImportStep::Preparing(PrepareStep::Queued)) => "'queued'",
-            Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)) => {
-                "'validating_source_files'"
-            }
-            Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)) => {
-                "'fetching_artist_pictures'"
-            }
-            Some(ImportStep::Running(ImportPhase::ReadingFiles)) => "'reading_files'",
-            Some(ImportStep::Running(ImportPhase::MeasuringLoudness)) => "'measuring_loudness'",
-            Some(ImportStep::Running(ImportPhase::Finalizing)) => "'finalizing'",
-        };
-        let connection = rusqlite::Connection::open_in_memory().unwrap();
-        let mut statement = connection
-            .prepare(&format!(
-                "WITH import_list_placement (item, key, tab, import_failed, actionable, \
-                                            draft_valid, lookup, separable) \
-                      AS (VALUES ('candidate', X'6B', '{tab}', {failed}, {actionable}, \
-                                  {valid}, {lookup}, {separable})), \
-                      import_candidate_standing (candidate_key, identification, \
-                                                 import_asked, save_failure_error, \
-                                                 import_step) \
-                      AS (VALUES (X'6B', {identification}, {asked}, NULL, {step})) \
-                 SELECT command, offering FROM ({selection}) \
-                 WHERE command IS NOT NULL",
-                actionable = self.actionable,
-                valid = self.draft_valid,
-                separable = self.separable,
-                selection = Selection::SQL,
-            ))
-            .unwrap();
+        let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+        let key = crate::CandidateKey::from(b"k".to_vec());
+        let planted = key.clone();
+        let (actionable, draft_valid, lookup, separable) =
+            (self.actionable, self.draft_valid, self.lookup, self.separable);
+        let live = live.clone();
+        db.call(move |sql| {
+            crate::tables::import_state::plant_facts_on(sql, &planted, &live)?;
+            sql.run(&super::test_reads::PlantPlacementParams {
+                key: &planted,
+                tab,
+                pending_state,
+                actionable,
+                import_failed: failed,
+                draft_valid,
+                lookup,
+                separable,
+            })?;
+            Ok(())
+        })
+        .await
+        .unwrap();
         // Two keys naming the release select it twice, so the selection
         // offers Combine too, counting no row unless the release can join one.
-        let key = crate::CandidateKey::from(b"k".to_vec());
-        let params = selection_params(&[key.clone(), key]);
-        statement
-            .query_map(params.params().as_slice(), |row| {
-                Ok((row.get::<_, usize>("command")?, row.get::<_, i64>("offering")?))
-            })
-            .unwrap()
-            .map(Result::unwrap)
+        let rows = db.read_rows(selection_params(&[key.clone(), key])).await.unwrap();
+        rows.into_iter()
+            .filter_map(|row| Some((row.command?, row.offering?)))
             .filter(|(_, offering)| *offering > 0)
-            .map(|(command, _)| CandidateAction::ALL[command])
+            .map(|(command, _)| CandidateAction::ALL[usize::try_from(command).unwrap()])
             .collect()
     }
 }
@@ -116,8 +78,8 @@ fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
 
 /// Import is offered for a candidate on Pending — a failed attempt
 /// included — whose draft would import.
-#[test]
-fn every_pending_candidate_with_a_valid_draft_offers_import() {
+#[tokio::test]
+async fn every_pending_candidate_with_a_valid_draft_offers_import() {
     let rest = TriageRuntimeFacts::default();
     for placement in [
         TriagePlacement::Pending,
@@ -127,26 +89,28 @@ fn every_pending_candidate_with_a_valid_draft_offers_import() {
     ] {
         let pending = placement.tab() == TriageTab::Pending;
         assert_eq!(
-            placed(placement, None).actions(&rest).contains(&CandidateAction::Import),
+            placed(placement, None).actions(&rest).await.contains(&CandidateAction::Import),
             pending,
             "{placement:?}"
         );
         assert!(!PlacementRow::of(true, &placement, false, None, false)
             .actions(&rest)
+            .await
             .contains(&CandidateAction::Import));
         assert_eq!(
             PlacementRow::of(false, &placement, true, None, false)
-                .actions(&TriageRuntimeFacts::default()),
+                .actions(&TriageRuntimeFacts::default())
+                .await,
             vec![CandidateAction::RevealFolder],
             "a candidate that cannot be acted on still shows where it is"
         );
     }
 }
 
-#[test]
-fn skipped_candidates_offer_restore_without_replacing_metadata() {
+#[tokio::test]
+async fn skipped_candidates_offer_restore_without_replacing_metadata() {
     assert_eq!(
-        placed(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()),
+        placed(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()).await,
         vec![CandidateAction::Combine, CandidateAction::Restore, CandidateAction::RevealFolder]
     );
 }
@@ -154,8 +118,8 @@ fn skipped_candidates_offer_restore_without_replacing_metadata() {
 /// An import owning the candidate takes every command away but cancelling
 /// it, the skip included, wherever the tables still place it — whether it
 /// is still waiting for the worker or running.
-#[test]
-fn a_queued_or_running_import_offers_only_its_cancel() {
+#[tokio::test]
+async fn a_queued_or_running_import_offers_only_its_cancel() {
     for step in [
         crate::ImportStep::Preparing(crate::PrepareStep::Queued),
         crate::ImportStep::Running(crate::ImportPhase::ReadingFiles),
@@ -163,7 +127,7 @@ fn a_queued_or_running_import_offers_only_its_cancel() {
         let importing = TriageRuntimeFacts { identification: None, import: Some(step) };
         for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
             assert_eq!(
-                placed(placement, None).actions(&importing),
+                placed(placement, None).actions(&importing).await,
                 vec![CandidateAction::CancelImport, CandidateAction::RevealFolder],
                 "{step:?}, {placement:?}"
             );
@@ -173,27 +137,27 @@ fn a_queued_or_running_import_offers_only_its_cancel() {
 
 /// An import writing its release completes whatever is asked, so it is
 /// not offered a cancel it would refuse.
-#[test]
-fn an_import_writing_its_release_offers_no_cancel() {
+#[tokio::test]
+async fn an_import_writing_its_release_offers_no_cancel() {
     let writing = TriageRuntimeFacts {
         identification: None,
         import: Some(crate::ImportStep::Running(crate::ImportPhase::Finalizing)),
     };
     assert_eq!(
-        placed(TriagePlacement::Pending, None).actions(&writing),
+        placed(TriagePlacement::Pending, None).actions(&writing).await,
         vec![CandidateAction::RevealFolder]
     );
 }
 
-#[test]
-fn a_draft_cannot_be_replaced_while_identification_is_running() {
+#[tokio::test]
+async fn a_draft_cannot_be_replaced_while_identification_is_running() {
     for status in [
         IdentificationStatus::Queued,
         IdentificationStatus::Running,
         IdentificationStatus::Finalizing,
     ] {
         assert_eq!(
-            placed(TriagePlacement::Pending, Some("answered")).actions(&identifying(status)),
+            placed(TriagePlacement::Pending, Some("answered")).actions(&identifying(status)).await,
             vec![
                 CandidateAction::CancelIdentification,
                 CandidateAction::Skip,
@@ -206,12 +170,13 @@ fn a_draft_cannot_be_replaced_while_identification_is_running() {
 /// While the release a run picked unattended is read, the row offers
 /// importing once it is stored — whether or not the draft stored now would
 /// import, since it is not what imports — until that is asked.
-#[test]
-fn a_pick_being_read_offers_import_until_it_is_asked() {
+#[tokio::test]
+async fn a_pick_being_read_offers_import_until_it_is_asked() {
     for draft_valid in [true, false] {
         let row = PlacementRow::of(true, &TriagePlacement::Pending, draft_valid, None, false);
         assert_eq!(
-            row.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: false })),
+            row.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: false }))
+                .await,
             vec![
                 CandidateAction::Import,
                 CandidateAction::CancelIdentification,
@@ -221,7 +186,8 @@ fn a_pick_being_read_offers_import_until_it_is_asked() {
             "draft valid: {draft_valid}"
         );
         assert_eq!(
-            row.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: true })),
+            row.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: true }))
+                .await,
             vec![
                 CandidateAction::CancelIdentification,
                 CandidateAction::Skip,
@@ -235,15 +201,15 @@ fn a_pick_being_read_offers_import_until_it_is_asked() {
 /// A candidate nobody has answered yet is Pending, and a run in flight for
 /// it leaves only cancelling the run and the skip — the run is about to
 /// write the answer every other command would overwrite.
-#[test]
-fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
+#[tokio::test]
+async fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
     for status in [
         IdentificationStatus::Queued,
         IdentificationStatus::Running,
         IdentificationStatus::Finalizing,
     ] {
         assert_eq!(
-            placed(TriagePlacement::Pending, None).actions(&identifying(status)),
+            placed(TriagePlacement::Pending, None).actions(&identifying(status)).await,
             vec![
                 CandidateAction::CancelIdentification,
                 CandidateAction::Skip,
@@ -257,40 +223,41 @@ fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
 /// running for it and it is not imported: a grouping separates — even one
 /// that cannot be worked on, which separating fixes — and anything else
 /// that can be acted on combines.
-#[test]
-fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
+#[tokio::test]
+async fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
     let rest = TriageRuntimeFacts::default();
     let grouped = PlacementRow::of(true, &TriagePlacement::Pending, true, None, true);
-    assert!(grouped.actions(&rest).contains(&CandidateAction::Separate));
-    assert!(!grouped.actions(&rest).contains(&CandidateAction::Combine));
+    assert!(grouped.actions(&rest).await.contains(&CandidateAction::Separate));
+    assert!(!grouped.actions(&rest).await.contains(&CandidateAction::Combine));
     let blocked = PlacementRow::of(false, &TriagePlacement::Failed, true, None, true);
     assert_eq!(
-        blocked.actions(&rest),
+        blocked.actions(&rest).await,
         vec![CandidateAction::Separate, CandidateAction::RevealFolder]
     );
     let lone = placed(TriagePlacement::Pending, Some("answered"));
-    assert!(lone.actions(&rest).contains(&CandidateAction::Combine));
+    assert!(lone.actions(&rest).await.contains(&CandidateAction::Combine));
     let done = PlacementRow::of(true, &TriagePlacement::Done, true, None, true);
-    assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
+    assert_eq!(done.actions(&rest).await, vec![CandidateAction::RevealFolder]);
     let importing = TriageRuntimeFacts {
         identification: None,
         import: Some(crate::ImportStep::Running(crate::ImportPhase::ReadingFiles)),
     };
-    assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
+    assert!(!grouped.actions(&importing).await.contains(&CandidateAction::Separate));
 }
 
 /// A candidate is offered identifying only while no lookup is stored for
 /// its files — the rule Automatic follows, which shows a stored one as it
 /// stood. A failed lookup is retried rather than identified again.
-#[test]
-fn only_a_candidate_with_no_stored_lookup_offers_identify() {
+#[tokio::test]
+async fn only_a_candidate_with_no_stored_lookup_offers_identify() {
     let rest = TriageRuntimeFacts::default();
     for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
-        assert!(placed(placement, None).actions(&rest).contains(&CandidateAction::Identify));
+        assert!(placed(placement, None).actions(&rest).await.contains(&CandidateAction::Identify));
         for lookup in ["answered", "failed"] {
             assert!(
                 !placed(placement, Some(lookup))
                     .actions(&rest)
+                    .await
                     .contains(&CandidateAction::Identify),
                 "{placement:?} with a stored {lookup:?} lookup"
             );
@@ -298,11 +265,12 @@ fn only_a_candidate_with_no_stored_lookup_offers_identify() {
     }
 }
 
-#[test]
-fn lookup_and_finalization_failures_offer_retry() {
+#[tokio::test]
+async fn lookup_and_finalization_failures_offer_retry() {
     for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
         assert!(placed(placement, Some("failed"))
             .actions(&TriageRuntimeFacts::default())
+            .await
             .contains(&CandidateAction::RetryIdentification));
     }
     let failure = identifying(IdentificationStatus::FinalizationFailed {
@@ -310,13 +278,16 @@ fn lookup_and_finalization_failures_offer_retry() {
     });
     assert!(placed(TriagePlacement::Pending, None)
         .actions(&failure)
+        .await
         .contains(&CandidateAction::RetryIdentification));
     assert!(!placed(TriagePlacement::Pending, None)
         .actions(&TriageRuntimeFacts::default())
+        .await
         .contains(&CandidateAction::RetryIdentification));
     assert!(
         !placed(TriagePlacement::Pending, Some("answered"))
             .actions(&TriageRuntimeFacts::default())
+            .await
             .contains(&CandidateAction::RetryIdentification),
         "a lookup that finished offers no retry"
     );
@@ -324,14 +295,14 @@ fn lookup_and_finalization_failures_offer_retry() {
 
 /// An answer whose release cannot be read into the draft fails the same
 /// way on every run, so neither identifying nor retrying is offered.
-#[test]
-fn an_answer_that_fails_again_offers_no_retry() {
+#[tokio::test]
+async fn an_answer_that_fails_again_offers_no_retry() {
     let failure = identifying(IdentificationStatus::FinalizationFailed {
         failure: crate::SaveFailure::Inapplicable {
             error: "the release lists a track with no title".to_owned(),
         },
     });
-    let actions = placed(TriagePlacement::Pending, None).actions(&failure);
+    let actions = placed(TriagePlacement::Pending, None).actions(&failure).await;
     assert!(!actions.contains(&CandidateAction::RetryIdentification));
     assert!(!actions.contains(&CandidateAction::Identify));
 }

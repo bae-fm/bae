@@ -57,7 +57,7 @@ fn points_out_of_order_fail_the_write() {
 fn the_table_refuses_a_blob_that_ends_inside_a_varint() {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
     crate::test_fixtures::TEST_SCHEMA.open_bare_library(&conn);
-    conn.pragma_update(None, "foreign_keys", false).unwrap();
+    bae_store::test_fixtures::bare_statements::without_foreign_keys(&conn);
     let insert = |points: &[u8]| {
         let plant = crate::records::scrub_points_column::PlantScrubPointsParams {
             segment: "segment",

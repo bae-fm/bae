@@ -48,16 +48,8 @@ fn opener(
 
 /// How many rows `cached_tiles` holds, and the sum of their bytes.
 async fn held(store: &Store) -> (u64, u64) {
-    store
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT COUNT(*), COALESCE(SUM(bytes), 0) FROM cached_tiles",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?)
-        })
-        .await
-        .unwrap()
+    let held = store.read_row(HeldTilesParams {}).await.unwrap();
+    (held.rows, held.bytes)
 }
 
 #[tokio::test(flavor = "multi_thread")]

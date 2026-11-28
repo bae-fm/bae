@@ -504,6 +504,16 @@ fn forget_all(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     Ok(())
 }
 
+// How many folders' rows the cache holds, and the sum of their bytes.
+#[cfg(all(test, libvips))]
+coven::read!(
+    writer HeldTiles { rows: u64, bytes: u64 },
+    r#"
+    SELECT COUNT(*) AS rows, COALESCE(SUM(tiles.bytes), 0) AS bytes
+    FROM cached_tiles AS tiles
+"#
+);
+
 #[cfg(all(test, libvips))]
 #[path = "tile_cache_tests.rs"]
 mod tests;

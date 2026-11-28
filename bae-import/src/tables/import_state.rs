@@ -119,6 +119,8 @@ pub use rows::DbImportCandidateState;
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 pub(super) use signal_rows::file_evidence_of_json;
 use signal_rows::{delete_signals, store_signals};
+#[cfg(test)]
+pub(crate) use standing_rows::plant_facts_on;
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]

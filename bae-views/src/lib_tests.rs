@@ -706,17 +706,13 @@ mod window_cost {
 /// links came first.
 #[tokio::test]
 async fn no_trigger_of_the_views_waits_for_a_parent_row() {
-    // The schema's own text, which only a bare connection reads.
-    let connection = rusqlite::Connection::open_in_memory().unwrap();
-    crate::TEST_SCHEMA.open_bare_library(&connection);
-    let mut statement = connection
-        .prepare(
-            "SELECT name FROM sqlite_master WHERE type = 'trigger' \
-             AND name IN ('artist_listing_added', 'album_credit_shown_added', 'track_added') \
-             ORDER BY name",
-        )
-        .unwrap();
     let waiting: Vec<String> =
-        statement.query_map([], |row| row.get(0)).unwrap().map(Result::unwrap).collect();
+        bae_store::test_fixtures::schema_checks::tables_and_triggers(crate::TEST_SCHEMA)
+            .into_iter()
+            .filter(|name| {
+                ["artist_listing_added", "album_credit_shown_added", "track_added"]
+                    .contains(&name.as_str())
+            })
+            .collect();
     assert!(waiting.is_empty(), "triggers waiting for a parent: {waiting:?}");
 }

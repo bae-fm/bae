@@ -175,3 +175,27 @@ pub(crate) async fn every_placement_standing(
 pub(crate) async fn stored_counts(db: &bae_store::Store) -> Vec<StoredCountsRow> {
     db.read_rows(StoredCountsParams {}).await.unwrap()
 }
+
+// A release placed alone at the top of a watched folder, with the tab and
+// command columns a test gives it: what the command columns read.
+#[cfg(test)]
+coven::write!(
+    PlantPlacement(
+        key: &'p crate::CandidateKey,
+        tab: &'static str,
+        pending_state: Option<&'static str>,
+        actionable: bool,
+        import_failed: bool,
+        draft_valid: bool,
+        lookup: Option<&'static str>,
+        separable: bool,
+    ),
+    r#"
+    INSERT INTO import_list_placement (watched_folder_path, item, key, root_position, tab,
+        pending_state, folder, path_text, own_date, has_summary, shown_title, actionable,
+        import_failed, draft_valid, lookup, separable)
+    VALUES (X'2F', 'candidate', :key, 0, :tab, :pending_state, :key, coven_path_text(:key),
+        iif(:tab = 'done', 0, NULL), 0, 'Planted', :actionable, :import_failed, :draft_valid,
+        :lookup, :separable)
+"#
+);

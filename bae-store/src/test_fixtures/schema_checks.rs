@@ -115,3 +115,31 @@ pub fn absent_update_of_columns(schema: Schema) -> Vec<String> {
     assert!(checked > 0, "no UPDATE OF trigger found");
     missing
 }
+
+/// The names of the triggers `schema` creates on `table`.
+pub fn triggers_on(schema: Schema, table: &str) -> Vec<String> {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    schema.open_bare_library(&conn);
+    let triggers = conn
+        .prepare(
+            "SELECT name FROM sqlite_schema WHERE type = 'trigger' AND tbl_name = ? ORDER BY name",
+        )
+        .unwrap()
+        .query_map([table], |row| row.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    triggers
+}
+
+/// The `CREATE TABLE` statement `schema` creates `table` with.
+pub fn table_definition(schema: Schema, table: &str) -> String {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    schema.open_bare_library(&conn);
+    conn.query_row(
+        "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?",
+        [table],
+        |row| row.get(0),
+    )
+    .unwrap_or_else(|error| panic!("the schema creates no table {table}: {error}"))
+}
