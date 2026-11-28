@@ -48,9 +48,9 @@ mod storage_totals;
 mod sync_activity;
 mod uploads;
 
-pub use activity_bars::{
-    activity_bars_on, subscribe_activity_bars, ActivityBarRows, BatchBar, MovingShare,
-};
+#[cfg(any(test, feature = "test-utils"))]
+pub use activity_bars::activity_bars_on;
+pub use activity_bars::{subscribe_activity_bars, ActivityBarRows, BatchBar, MovingShare};
 pub use browse::*;
 #[cfg(desktop)]
 pub use release_files::{

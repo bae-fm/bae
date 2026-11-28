@@ -5,9 +5,7 @@
 
 use crate::download_snapshot::DownloadRow;
 use bae_store::list_windows::{sql_bound, OrderKey, SortValue};
-use bae_store::{
-    statement_optional, statement_row, DbError, ListWindow, WindowRead,
-};
+use bae_store::{statement_optional, DbError, ListWindow, WindowRead};
 use coven::SqlReadContext;
 
 // The downloads list's order: each entry's place, in the order queued.
@@ -154,8 +152,9 @@ pub fn download_window_of(
 }
 
 /// How many entries of the downloads list come before the entry at `key`.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn downloads_before_on(sql: &SqlReadContext<'_>, key: &OrderKey) -> Result<u64, DbError> {
-    Ok(statement_row(sql, &downloads_before_read(key)?)?.entries)
+    Ok(bae_store::statement_row(sql, &downloads_before_read(key)?)?.entries)
 }
 
 /// The read of how many entries of the downloads list come before the entry
