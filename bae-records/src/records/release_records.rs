@@ -103,15 +103,38 @@ pub struct RecordsChange {
     pub new_album: Option<DbAlbum>,
 }
 
+// Whether the library holds the album `album`.
+#[cfg(desktop)]
+coven::read!(
+    writer AlbumHeld(album: String) { held: bool },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM albums AS album WHERE album.id = :album) AS held
+"#
+);
+
+// The album `album`'s credits in list order, each with the other printed
+// name it names, if any.
+#[cfg(desktop)]
+coven::read!(
+    writer AlbumCreditRows(album: String) { position: u32 },
+    r#"
+    SELECT credit.artist_id, credit.position, credit.join_phrase,
+           credit_name.name_key, credit_name.name
+    FROM album_artists AS credit
+    LEFT JOIN artist_credits AS credit_name
+           ON credit_name.artist_id = credit.artist_id
+          AND credit_name.name_key = credit.credit_key
+    WHERE credit.album_id = :album
+    ORDER BY credit.position
+"#
+);
+
 /// Whether the library holds the album `album_id`, as the write `tx` finds
 /// it.
 #[cfg(desktop)]
 pub(super) fn album_held_on(tx: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
-    Ok(tx.query_row(
-        "SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)",
-        params![album_id],
-        |row| row.get(0),
-    )?)
+    let statement = AlbumHeldParams { album: album_id.to_owned() };
+    Ok(bae_store::statement_row(tx, &statement)?.held)
 }
 
 // Order the release `release_id` last among those of the album `album_id`.
@@ -172,28 +195,19 @@ pub(super) fn set_records_on(
     if let Some(album) = new_album {
         if !album_held_on(tx, &album.id)? {
             insert_album_row(tx, album)?;
-            let source_artists: Vec<DbAlbumArtist> = tx.query(
-                &format!(
-                    "SELECT aa.artist_id, aa.position, aa.join_phrase, ac.name_key, ac.name \
-                     FROM album_artists aa {credit_name} \
-                     WHERE aa.album_id = ? ORDER BY aa.position",
-                    credit_name = super::read::credit_name_join("aa", "ac"),
-                ),
-                params![current_album_id],
-                |row| {
+            let statement = AlbumCreditRowsParams { album: current_album_id.clone() };
+            let source_artists: Vec<DbAlbumArtist> = bae_store::statement_rows(tx, &statement)?
+                .into_iter()
+                .map(|row| {
+                    let credit = super::read::joined_credit_name(row.name_key, row.name)
+                        .map_err(|reason| DbError::unreadable("an album credit's name", reason))?;
                     Ok(DbAlbumArtist {
-                        credit: super::read::credit_name_column(row, "name_key", "name")?,
-                        join_phrase: row.get("join_phrase")?,
-                        ..DbAlbumArtist::new(
-                            ids,
-                            &album.id,
-                            &row.get::<_, String>("artist_id")?,
-                            row.get::<_, u32>("position")?,
-                            now_dt,
-                        )
+                        credit,
+                        join_phrase: row.join_phrase,
+                        ..DbAlbumArtist::new(ids, &album.id, &row.artist_id, row.position, now_dt)
                     })
-                },
-            )?;
+                })
+                .collect::<Result<_, DbError>>()?;
             replace_album_artists(tx, &album.id, &source_artists, &now)?;
         }
     }

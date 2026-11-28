@@ -321,11 +321,7 @@ pub(super) fn write_layout_on(
     ids: &dyn coven::IdSource,
     now: &str,
 ) -> Result<(), DbError> {
-    let held: Vec<(u16, String)> = tx.query(
-        "SELECT position, id FROM release_mediums WHERE release_id = ? ORDER BY position",
-        params![release_id],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
+    let held = mediums_held_on(tx, release_id)?;
     let mut medium_ids = Vec::with_capacity(layout.mediums.len());
     for (index, medium) in layout.mediums.iter().enumerate() {
         let position = u16::try_from(index + 1).expect("a release holds fewer than 65536 mediums");

@@ -26,6 +26,58 @@ const PERFORMED_WORKS: &str = "WITH RECURSIVE performed(id) AS ( \
         SELECT p.parent_work_id FROM work_parts p JOIN performed ON p.child_work_id = performed.id \
     ) SELECT id FROM performed";
 
+// The albums of the releases the JSON array `releases` names, each once.
+coven::read!(
+    writer AlbumsOfReleases(releases: String),
+    r#"
+    SELECT DISTINCT release.album_id
+    FROM releases AS release
+    WHERE release.id IN (SELECT asked.value FROM json_each(:releases) AS asked)
+"#
+);
+
+// Every artist that the releases the JSON array `releases` names credit,
+// through their album, tracks and roles, and that the works the JSON array
+// `works` names credit.
+coven::read!(
+    writer CreditedByReleases(releases: String, works: String) { artist_id: String },
+    r#"
+    SELECT album_credit.artist_id
+    FROM album_artists AS album_credit
+    JOIN releases AS release ON release.album_id = album_credit.album_id
+    WHERE release.id IN (SELECT asked.value FROM json_each(:releases) AS asked)
+    UNION
+    SELECT track_credit.artist_id
+    FROM track_artists AS track_credit
+    JOIN tracks AS track ON track.id = track_credit.track_id
+    WHERE track.release_id IN (SELECT asked.value FROM json_each(:releases) AS asked)
+    UNION
+    SELECT track_role.artist_id
+    FROM track_artist_roles AS track_role
+    JOIN tracks AS track ON track.id = track_role.track_id
+    WHERE track.release_id IN (SELECT asked.value FROM json_each(:releases) AS asked)
+    UNION
+    SELECT release_role.artist_id
+    FROM release_artist_roles AS release_role
+    WHERE release_role.release_id IN (SELECT asked.value FROM json_each(:releases) AS asked)
+    UNION
+    SELECT work_credit.artist_id
+    FROM work_artists AS work_credit
+    WHERE work_credit.work_id IN (SELECT asked.value FROM json_each(:works) AS asked)
+"#
+);
+
+// The artists the album `album`'s credits name.
+#[cfg(desktop)]
+coven::read!(
+    writer ArtistsOfAlbum(album: String),
+    r#"
+    SELECT credit.artist_id
+    FROM album_artists AS credit
+    WHERE credit.album_id = :album
+"#
+);
+
 coven::write!(
     DeleteEmptiedAlbum(album: &'p str),
     r#"
@@ -73,26 +125,22 @@ impl Emptiable {
         let strings = |sql: &str, params: &[&dyn rusqlite::ToSql]| {
             conn.query(sql, params, |row| row.get::<_, String>(0))
         };
-        let albums = strings(
-            "SELECT DISTINCT album_id FROM releases \
-             WHERE id IN (SELECT value FROM json_each(?1))",
-            &[&releases],
-        )?;
+        let albums = bae_store::statement_rows(
+            conn,
+            &AlbumsOfReleasesParams { releases: releases.clone() },
+        )?
+        .into_iter()
+        .map(|row| row.album_id)
+        .collect();
         let works = strings(PERFORMED_WORKS, &[&releases])?;
         let works_json = serde_json::to_string(&works).expect("ids serialize as JSON");
-        let artists = strings(
-            "SELECT artist_id FROM album_artists WHERE album_id IN ( \
-                 SELECT album_id FROM releases WHERE id IN (SELECT value FROM json_each(?1))) \
-             UNION SELECT artist_id FROM track_artists WHERE track_id IN ( \
-                 SELECT id FROM tracks WHERE release_id IN (SELECT value FROM json_each(?1))) \
-             UNION SELECT artist_id FROM track_artist_roles WHERE track_id IN ( \
-                 SELECT id FROM tracks WHERE release_id IN (SELECT value FROM json_each(?1))) \
-             UNION SELECT artist_id FROM release_artist_roles \
-                 WHERE release_id IN (SELECT value FROM json_each(?1)) \
-             UNION SELECT artist_id FROM work_artists \
-                 WHERE work_id IN (SELECT value FROM json_each(?2))",
-            &[&releases, &works_json],
-        )?;
+        let artists = bae_store::statement_rows(
+            conn,
+            &CreditedByReleasesParams { releases, works: works_json },
+        )?
+        .into_iter()
+        .map(|row| row.artist_id)
+        .collect();
         Ok(Self { albums, works, artists })
     }
 
@@ -105,11 +153,10 @@ impl Emptiable {
         conn: &Q,
         album_id: &str,
     ) -> Result<Self, DbError> {
-        self.artists.extend(conn.query(
-            "SELECT artist_id FROM album_artists WHERE album_id = ?",
-            params![album_id],
-            |row| row.get::<_, String>(0),
-        )?);
+        let statement = ArtistsOfAlbumParams { album: album_id.to_owned() };
+        self.artists.extend(
+            bae_store::statement_rows(conn, &statement)?.into_iter().map(|row| row.artist_id),
+        );
         Ok(self)
     }
 

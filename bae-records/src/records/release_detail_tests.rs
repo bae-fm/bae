@@ -1,5 +1,6 @@
 use super::*;
 use bae_store::FormerDeviceState;
+use rusqlite::params;
 
 /// The line naming the device a release's audio is on follows coven's
 /// registration of that device: active, removed, replaced when it was reset,

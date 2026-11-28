@@ -1,76 +1,81 @@
 use super::*;
 
+// An album's own columns.
+coven::fragment!(
+    AlbumColumns { year: Option<i32>, is_compilation: bool },
+    r#"
+    SELECT album.id AS album_id, album.title, album.year, album.is_compilation,
+           album.created_at AS album_created_at
+    FROM albums AS album
+"#
+);
+
+impl AlbumColumns {
+    /// The album these columns hold.
+    pub(super) fn into_album(self) -> Result<DbAlbum, DbError> {
+        let created_at =
+            bae_util::timestamp::parse_rfc3339(&self.album_created_at).map_err(|_unparsed| {
+                DbError::unreadable(
+                    format!("album {} created_at", self.album_id),
+                    &self.album_created_at,
+                )
+            })?;
+        Ok(DbAlbum {
+            id: self.album_id,
+            title: self.title,
+            year: self.year,
+            is_compilation: self.is_compilation,
+            created_at,
+        })
+    }
+}
+
+// The album `album`; no row when the library holds no such album.
+coven::read!(
+    writer OneAlbum(album: String),
+    r#"
+    SELECT album.*
+    FROM @crate::records::read::AlbumColumns AS album
+    WHERE album.album_id = :album
+"#
+);
+
 pub fn find_album_by_id_on(
     sql: &impl bae_store::WriterRead,
     album_id: &str,
 ) -> Result<Option<DbAlbum>, DbError> {
-    sql.query_row(
-        r#"
-            SELECT
-                id, title, year,
-                is_compilation,
-                created_at
-            FROM albums
-            WHERE id = ?
-            "#,
-        params![album_id],
-        row_to_album,
-    )
-    .optional()
-    .map_err(DbError::from)
+    let statement = OneAlbumParams { album: album_id.to_owned() };
+    bae_store::statement_optional(sql, &statement)?.map(|row| row.album.into_album()).transpose()
 }
 
+// The album `album`'s credits in list order
+// ([`AlbumCredits`](super::fragments::AlbumCredits)); no row when the library
+// holds no such album.
+coven::read!(
+    writer CreditsOfAlbum(album: String),
+    r#"
+    SELECT @crate::records::fragments::AlbumCredits(parent: album) AS listed
+    FROM albums AS album
+    WHERE album.id = :album
+"#
+);
+
+/// The album's credits in list order, each the artist it shows after merges;
+/// a list naming one artist twice gives it twice. None for an album the
+/// library does not hold.
 pub fn get_artists_for_album_on(
     sql: &impl bae_store::WriterRead,
     album_id: &str,
 ) -> Result<Vec<LibraryCredit>, DbError> {
-    // Each credit in list order, showing the artist it resolves to after
-    // merges; a list naming one artist twice gives it twice.
-    sql.query(
-        &format!(
-            r#"
-            SELECT {columns} FROM album_artists credit
-            JOIN artists artist ON artist.id = {shown}
-            {credit_name}
-            WHERE credit.album_id = ?1
-            ORDER BY credit.position
-            "#,
-            columns = LIBRARY_CREDIT_COLUMNS,
-            shown = shown_artist_id("credit.artist_id"),
-            credit_name = credit_name_join("credit", "credit_name"),
-        ),
-        params![album_id],
-        row_to_library_credit,
-    )
-    .map_err(DbError::from)
-}
-
-/// What [`row_to_library_credit`] reads, from a query joining the credit row
-/// as `credit`, its shown artist as `artist` and its credit name, if any, as
-/// `credit_name`.
-pub const LIBRARY_CREDIT_COLUMNS: &str = "artist.id AS artist_id, \
-     artist.name AS artist_name, artist.sort_name AS artist_sort_name, \
-     artist.discogs_artist_id AS artist_discogs_artist_id, \
-     artist.musicbrainz_artist_id AS artist_musicbrainz_artist_id, \
-     artist.created_at AS artist_created_at, \
-     credit_name.name_key AS credit_key, credit_name.name AS credit_name, \
-     credit.join_phrase AS credit_join";
-
-pub fn row_to_library_credit(row: &Row) -> rusqlite::Result<LibraryCredit> {
-    Ok(LibraryCredit {
-        artist: row_to_artist_with_prefix(row, "artist_")?,
-        credit: credit_name_column(row, "credit_key", "credit_name")?,
-        join: row.get("credit_join")?,
-    })
-}
-
-/// The join of a credit row `credit` (an `album_artists` or `track_artists`
-/// row) to the other printed name it names, if any, as `name`.
-pub fn credit_name_join(credit: &str, name: &str) -> String {
-    format!(
-        "LEFT JOIN artist_credits {name} \
-             ON {name}.artist_id = {credit}.artist_id AND {name}.name_key = {credit}.credit_key"
-    )
+    let statement = CreditsOfAlbumParams { album: album_id.to_owned() };
+    match bae_store::statement_optional(sql, &statement)? {
+        Some(row) => {
+            let listed =
+                row.listed.ok_or_else(|| DbError::unreadable("an album's credits", album_id))?;
+            credits_from_json(&listed.credits)
+        }
+        None => Ok(Vec::new()),
+    }
 }
 
 /// The other printed name a [`credit_name_join`] found, from its key and
@@ -86,17 +91,6 @@ pub(super) fn joined_credit_name(
         (Some(key), None) => Err(format!("credit name {key:?} has no name")),
         (None, Some(name)) => Err(format!("credit name {name:?} has no key")),
     }
-}
-
-/// The `joined_credit_name` of a row's `key` and `name` columns, read in a row
-/// closure.
-pub fn credit_name_column(
-    row: &Row,
-    key: &str,
-    name: &str,
-) -> rusqlite::Result<Option<crate::credits::CreditName>> {
-    joined_credit_name(row.get(key)?, row.get(name)?)
-        .map_err(|error| column_conversion_error(row, key, error))
 }
 
 /// An artist as a JSON object of its row's columns spells it.
@@ -196,25 +190,134 @@ pub(super) fn album_year(year: Option<i64>) -> Result<Option<i32>, DbError> {
     .transpose()
 }
 
+// A release's own columns, with its labels, barcodes, media and Discogs
+// details.
+coven::fragment!(
+    ReleaseColumns { year: Option<i32> },
+    r#"
+    SELECT release.album_id, release.release_name, release.year,
+           release.country, release.region, release.status, release.packaging,
+           release.source_folder_name, release.album_loudness_lufs, release.album_peak_linear,
+           release.created_at AS release_created_at,
+           @crate::records::pressing_columns::ReleaseLabels(parent: release) AS labels,
+           @crate::records::pressing_columns::ReleaseBarcodes(parent: release) AS barcodes,
+           @crate::records::pressing_columns::ReleaseMedia(parent: release) AS media,
+           @crate::records::pressing_columns::ReleaseDiscogsDetails(parent: release)
+               AS discogs_details,
+           release.id AS columns_release_id
+    FROM releases AS release
+"#
+);
+
+impl ReleaseColumns {
+    /// The release these columns hold.
+    pub(super) fn release(&self) -> Result<DbRelease, DbError> {
+        let facts = super::pressing_columns::facts_of_columns(
+            self.country.clone(),
+            self.region.clone(),
+            self.status.as_deref(),
+            self.packaging.as_deref(),
+            &self.discogs_details.discogs_details,
+            &self.media.media,
+        )?;
+        Ok(DbRelease {
+            id: self.columns_release_id.clone(),
+            album_id: self.album_id.clone(),
+            release_name: self.release_name.clone(),
+            pressing: bae_types::pressing::Pressing {
+                typed: bae_types::pressing::TypedPressing {
+                    year: self.year,
+                    labels: super::pressing_columns::labels_of_json(&self.labels.labels)?,
+                    barcodes: super::pressing_columns::barcodes_of_json(&self.barcodes.barcodes)?,
+                },
+                facts,
+            },
+            source_folder_name: self.source_folder_name.clone(),
+            album_loudness_lufs: self.album_loudness_lufs,
+            album_peak_linear: self.album_peak_linear,
+            created_at: bae_util::timestamp::parse_rfc3339(&self.release_created_at).map_err(
+                |_unparsed| DbError::unreadable("a release's created_at", &self.release_created_at),
+            )?,
+        })
+    }
+}
+
+// The release `release`; no row when the library holds no such release.
+coven::read!(
+    writer OneRelease(release: String),
+    r#"
+    SELECT held.*
+    FROM @crate::records::read::ReleaseColumns AS held
+    WHERE held.columns_release_id = :release
+"#
+);
+
 pub fn find_release_by_id_on(
     sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Option<DbRelease>, DbError> {
-    sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
-        .optional()
-        .map_err(DbError::from)
+    let statement = OneReleaseParams { release: release_id.to_owned() };
+    bae_store::statement_optional(sql, &statement)?.map(|row| row.held.release()).transpose()
 }
+
+// The releases of the album `album`, in album order.
+coven::read!(
+    writer ReleasesOfAlbum(album: String),
+    r#"
+    SELECT held.*
+    FROM @crate::records::read::ReleaseColumns AS held
+    JOIN releases AS ordered ON ordered.id = held.columns_release_id
+    WHERE ordered.album_id = :album
+    ORDER BY ordered.album_order, ordered.id
+"#
+);
 
 pub fn get_releases_for_album_on(
     sql: &impl bae_store::WriterRead,
     album_id: &str,
 ) -> Result<Vec<DbRelease>, DbError> {
-    sql.query(
-        &release_rows_sql("r.album_id = ? ORDER BY r.album_order, r.id"),
-        params![album_id],
-        row_to_release,
-    )
-    .map_err(DbError::from)
+    let statement = ReleasesOfAlbumParams { album: album_id.to_owned() };
+    bae_store::statement_rows(sql, &statement)?.iter().map(|row| row.held.release()).collect()
+}
+
+// A track's own columns.
+coven::fragment!(
+    TrackColumns {
+        side: std::num::NonZeroU8,
+        track_number: std::num::NonZeroU32,
+        duration_ms: u64,
+        stated_length_ms: Option<u64>,
+    },
+    r#"
+    SELECT track.id AS columns_track_id, track.release_id AS track_release_id,
+           track.title AS track_title, track.medium_id, track.side, track.track_number,
+           track.duration_ms, track.stated_length_ms, track.created_at AS track_created_at
+    FROM tracks AS track
+"#
+);
+
+impl TrackColumns {
+    /// The track these columns hold.
+    pub(super) fn into_track(self) -> Result<DbTrack, DbError> {
+        let created_at =
+            bae_util::timestamp::parse_rfc3339(&self.track_created_at).map_err(|_unparsed| {
+                DbError::unreadable(
+                    format!("track {} created_at", self.columns_track_id),
+                    &self.track_created_at,
+                )
+            })?;
+        Ok(DbTrack {
+            id: self.columns_track_id,
+            release_id: self.track_release_id,
+            title: self.track_title,
+            medium_id: self.medium_id,
+            side: self.side,
+            track_number: self.track_number,
+            duration_ms: self.duration_ms,
+            stated_length_ms: self.stated_length_ms,
+            created_at,
+        })
+    }
 }
 
 // One release's catalog records.
@@ -293,70 +396,21 @@ fn record_of(
     })
 }
 
-// ─── Entity row readers ──────────────────────────────────────────────────────
-//
-// A query that joins several entity tables aliases each table's columns behind
-// a per-entity prefix (`artist_name`, `album_title`); a query that selects one
-// table leaves them bare. Same read either way, so each entity has one reader
-// taking that prefix, plus a bare-column wrapper — which is also the `fn(&Row)`
-// value the single-table queries hand to `query` / `query_row`.
-
-pub fn row_to_artist_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbArtist> {
-    let column = |name: &str| format!("{prefix}{name}");
-    Ok(DbArtist {
-        id: row.get(column("id").as_str())?,
-        name: row.get(column("name").as_str())?,
-        sort_name: row.get(column("sort_name").as_str())?,
-        discogs_artist_id: row.get(column("discogs_artist_id").as_str())?,
-        musicbrainz_artist_id: row.get(column("musicbrainz_artist_id").as_str())?,
-        created_at: rfc3339_column(row, &column("created_at"))?,
-    })
-}
-
-pub fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbAlbum> {
-    let column = |name: &str| format!("{prefix}{name}");
-    Ok(DbAlbum {
-        id: row.get(column("id").as_str())?,
-        title: row.get(column("title").as_str())?,
-        year: row.get(column("year").as_str())?,
-        is_compilation: row.get(column("is_compilation").as_str())?,
-        created_at: rfc3339_column(row, &column("created_at"))?,
-    })
-}
-
-pub fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbTrack> {
-    let column = |name: &str| format!("{prefix}{name}");
-    Ok(DbTrack {
-        id: row.get(column("id").as_str())?,
-        release_id: row.get(column("release_id").as_str())?,
-        title: row.get(column("title").as_str())?,
-        medium_id: row.get(column("medium_id").as_str())?,
-        side: row.get(column("side").as_str())?,
-        track_number: row.get(column("track_number").as_str())?,
-        duration_ms: row.get(column("duration_ms").as_str())?,
-        stated_length_ms: row.get(column("stated_length_ms").as_str())?,
-        created_at: rfc3339_column(row, &column("created_at"))?,
-    })
-}
-
+// The release `release`'s mediums, in order.
 #[cfg(any(test, feature = "test-utils"))]
-pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedium> {
-    let medium: Option<String> = row.get("medium")?;
-    let carrier = medium
-        .map(|key| {
-            bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
-                column_conversion_error(row, "medium", format!("unknown release medium {key:?}"))
-            })
-        })
-        .transpose()?;
-    Ok(DbReleaseMedium {
-        id: row.get("id")?,
-        release_id: row.get("release_id")?,
-        position: row.get("position")?,
-        medium: bae_types::mediums::ReleaseMedium { carrier, sides: row.get("side_count")? },
-        created_at: rfc3339_column(row, "created_at")?,
-    })
-}
+coven::read!(
+    writer MediumsOfRelease(release: String) {
+        position: std::num::NonZeroU16,
+        side_count: std::num::NonZeroU8,
+    },
+    r#"
+    SELECT medium.id, medium.release_id, medium.position, medium.medium, medium.side_count,
+           medium.created_at
+    FROM release_mediums AS medium
+    WHERE medium.release_id = :release
+    ORDER BY medium.position
+"#
+);
 
 /// A release's mediums, in order.
 #[cfg(any(test, feature = "test-utils"))]
@@ -364,47 +418,30 @@ pub fn release_mediums_on(
     sql: &impl bae_store::WriterRead,
     release_id: &str,
 ) -> Result<Vec<DbReleaseMedium>, DbError> {
-    Ok(sql.query(
-        "SELECT * FROM release_mediums WHERE release_id = ? ORDER BY position",
-        params![release_id],
-        row_to_release_medium,
-    )?)
-}
-
-/// A `SELECT` of the `releases` rows `condition` names (and orders), each with
-/// its labels, its barcodes, its media and its Discogs details as one
-/// `labels`, one `barcodes`, one `media` and one `discogs_details` column, as
-/// [`row_to_release`] reads them.
-pub(super) fn release_rows_sql(condition: &str) -> String {
-    format!(
-        "SELECT r.*, {labels} AS labels, {barcodes} AS barcodes, {media} AS media, \
-                {discogs_details} AS discogs_details \
-         FROM releases r WHERE {condition}",
-        labels = super::pressing_columns::release_labels_sql("r.id"),
-        barcodes = super::pressing_columns::release_barcodes_sql("r.id"),
-        media = super::pressing_columns::release_media_sql("r.id"),
-        discogs_details = super::pressing_columns::release_discogs_details_sql("r.id"),
-    )
-}
-
-pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
-    Ok(DbRelease {
-        id: row.get("id")?,
-        album_id: row.get("album_id")?,
-        release_name: row.get("release_name")?,
-        pressing: bae_types::pressing::Pressing {
-            typed: bae_types::pressing::TypedPressing {
-                year: row.get("year")?,
-                labels: super::pressing_columns::read_labels(row, "labels")?,
-                barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
-            },
-            facts: super::pressing_columns::read_facts(row, "")?,
-        },
-        source_folder_name: row.get("source_folder_name")?,
-        album_loudness_lufs: row.get("album_loudness_lufs")?,
-        album_peak_linear: row.get("album_peak_linear")?,
-        created_at: rfc3339_column(row, "created_at")?,
-    })
+    let statement = MediumsOfReleaseParams { release: release_id.to_owned() };
+    bae_store::statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| {
+            let carrier = row
+                .medium
+                .map(|key| {
+                    bae_types::pressing::Medium::from_key(&key)
+                        .ok_or_else(|| DbError::unreadable("a release medium", key))
+                })
+                .transpose()?;
+            let created_at =
+                bae_util::timestamp::parse_rfc3339(&row.created_at).map_err(|_unparsed| {
+                    DbError::unreadable("a release medium's created_at", &row.created_at)
+                })?;
+            Ok(DbReleaseMedium {
+                id: row.id,
+                release_id: row.release_id,
+                position: row.position,
+                medium: bae_types::mediums::ReleaseMedium { carrier, sides: row.side_count },
+                created_at,
+            })
+        })
+        .collect()
 }
 
 /// A stored `source_audio_layout` value, or why it is none.
@@ -523,18 +560,6 @@ pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, Str
         stored: columns.stored != 0,
         created_at,
     })
-}
-
-pub fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {
-    row_to_artist_with_prefix(row, "")
-}
-
-pub fn row_to_album(row: &Row) -> rusqlite::Result<DbAlbum> {
-    row_to_album_with_prefix(row, "")
-}
-
-pub fn row_to_track(row: &Row) -> rusqlite::Result<DbTrack> {
-    row_to_track_with_prefix(row, "")
 }
 
 /// A track's stored audio value that must be above zero and fit a `u32`: its

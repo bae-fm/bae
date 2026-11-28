@@ -1,5 +1,30 @@
 use super::*;
 
+// The credits the track `track` shows
+// ([`TrackCredits`](super::credit_fragments::TrackCredits)); no row when the
+// library holds no such track.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer ShownCreditsOfTrack(track: String),
+    r#"
+    SELECT @crate::records::credit_fragments::TrackCredits(parent: track) AS shown
+    FROM tracks AS track
+    WHERE track.id = :track
+"#
+);
+
+// The artist `artist`'s row; no row when the library holds no such artist.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer OneArtist(artist: String),
+    r#"
+    SELECT artist.id, artist.name, artist.sort_name, artist.discogs_artist_id,
+           artist.musicbrainz_artist_id, artist.created_at
+    FROM artists AS artist
+    WHERE artist.id = :artist
+"#
+);
+
 impl Records {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
@@ -35,39 +60,40 @@ impl Records {
         track_id: &str,
     ) -> Result<Vec<LibraryCredit>, DbError> {
         let track_id = track_id.to_string();
-        self.store
-            .read(move |sql| {
-                let credits: Option<String> = sql
-                    .query_row(
-                        &format!(
-                            "SELECT {} FROM tracks t \
-                         JOIN releases r ON r.id = t.release_id \
-                         JOIN albums a ON a.id = r.album_id \
-                         WHERE t.id = ?",
-                            super::query::track_credits_json_sql("t")
-                        ),
-                        params![track_id],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                credits.map_or(Ok(Vec::new()), |json| super::read::credits_from_json(&json))
-            })
-            .await
+        let statement = ShownCreditsOfTrackParams { track: track_id };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        match row {
+            Some(row) => {
+                let shown = row.shown.ok_or_else(|| {
+                    DbError::unreadable("a track's shown credits", None::<String>)
+                })?;
+                super::read::credits_from_json(&shown.credits)
+            }
+            None => Ok(Vec::new()),
+        }
     }
     /// Find artist by ID. Caller-provided ID — may not exist.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_artist_by_id(&self, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
         let artist_id = artist_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT * FROM artists WHERE id = ?",
-                    params![artist_id],
-                    row_to_artist,
-                )
-                .optional()
-                .map_err(DbError::from)
+        let statement = OneArtistParams { artist: artist_id };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        row.map(|row| {
+            let created_at =
+                bae_util::timestamp::parse_rfc3339(&row.created_at).map_err(|_unparsed| {
+                    DbError::unreadable(format!("artist {} created_at", row.id), &row.created_at)
+                })?;
+            Ok(DbArtist {
+                id: row.id,
+                name: row.name,
+                sort_name: row.sort_name,
+                discogs_artist_id: row.discogs_artist_id,
+                musicbrainz_artist_id: row.musicbrainz_artist_id,
+                created_at,
             })
-            .await
+        })
+        .transpose()
     }
 }

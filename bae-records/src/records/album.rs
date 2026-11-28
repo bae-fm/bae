@@ -37,6 +37,40 @@ coven::write!(
 "#
 );
 
+// The album the release `release` is in; no row when the library holds no
+// such release.
+coven::read!(
+    writer AlbumOfRelease(release: String),
+    r#"
+    SELECT release.album_id
+    FROM releases AS release
+    WHERE release.id = :release
+"#
+);
+
+// The ids of the album `album`'s releases, in id order.
+coven::read!(
+    writer ReleaseIdsOfAlbum(album: String),
+    r#"
+    SELECT release.id
+    FROM releases AS release
+    WHERE release.album_id = :album
+    ORDER BY release.id
+"#
+);
+
+// The album `album`'s primary release
+// ([`AlbumPrimaryRelease`](super::fragments::AlbumPrimaryRelease)), none when
+// it has no release; no row when the library holds no such album.
+coven::read!(
+    writer AlbumPrimaryReleaseId(album: String),
+    r#"
+    SELECT @crate::records::fragments::AlbumPrimaryRelease(parent: album) AS lowest
+    FROM albums AS album
+    WHERE album.id = :album
+"#
+);
+
 impl Records {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
@@ -53,23 +87,8 @@ impl Records {
     /// exist. See the method conventions above.
     pub async fn get_album_for_release(&self, release: &DbRelease) -> Result<DbAlbum, DbError> {
         let album_id = release.album_id.clone();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    r#"
-                    SELECT
-                        id, title, year,
-                        is_compilation,
-                        created_at
-                    FROM albums
-                    WHERE id = ?
-                    "#,
-                    params![album_id],
-                    row_to_album,
-                )
-                .map_err(DbError::from)
-            })
-            .await
+        let statement = OneAlbumParams { album: album_id };
+        self.store.read_row(statement).await?.album.into_album()
     }
 
     /// Find album_id for a release. Caller-provided ID — may not exist.
@@ -78,17 +97,10 @@ impl Records {
         release_id: &str,
     ) -> Result<Option<String>, DbError> {
         let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT album_id FROM releases WHERE id = ?",
-                    params![release_id],
-                    |row| row.get::<_, String>("album_id"),
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await
+        let statement = AlbumOfReleaseParams { release: release_id };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        Ok(row.map(|row| row.album_id))
     }
 
     /// Delete every release of `album_id` in one write, each as `releases`
@@ -106,12 +118,13 @@ impl Records {
                 let release_ids: Vec<&str> =
                     releases.iter().map(|release| release.release_id()).collect();
                 let emptiable = Emptiable::of_releases(&sql, &release_ids)?;
-                let mut current: Vec<String> = sql.query(
-                    "SELECT id FROM releases WHERE album_id = ? ORDER BY id",
-                    params![album_id],
-                    |row| row.get(0),
-                )?;
-                current.sort();
+                let current: Vec<String> = bae_store::statement_rows(
+                    &sql,
+                    &ReleaseIdsOfAlbumParams { album: album_id.clone() },
+                )?
+                .into_iter()
+                .map(|row| row.id)
+                .collect();
                 let mut planned: Vec<String> = releases
                     .iter()
                     .filter(|release| release.album_id() == album_id)
@@ -144,17 +157,11 @@ impl Records {
                 // The release is ordered below the album's lowest, so it is the
                 // album's primary on every device that applies this write. One
                 // already primary stays where it is.
-                let current: Option<String> = sql
-                    .query_row(
-                        &format!(
-                            "SELECT {} FROM albums a WHERE a.id = ?",
-                            album_primary_release_sql()
-                        ),
-                        params![album],
-                        |row| row.get(0),
-                    )
-                    .optional()?
-                    .flatten();
+                let current = bae_store::statement_optional(
+                    &sql,
+                    &AlbumPrimaryReleaseIdParams { album: album.clone() },
+                )?
+                .and_then(|row| row.lowest.map(|lowest| lowest.release_id));
                 if current.as_deref() == Some(release.as_str()) {
                     return Ok(true);
                 }

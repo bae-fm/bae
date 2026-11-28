@@ -341,14 +341,8 @@ fn write_applied_rows_on(
     // place, and a position it did not hold gets the new row; tracks move
     // onto the kept rows before a medium no track sits on any more goes.
     let release_id = &rows.release.id;
-    let held: std::collections::HashMap<u16, String> = tx
-        .query(
-            "SELECT position, id FROM release_mediums WHERE release_id = ?",
-            params![release_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?
-        .into_iter()
-        .collect();
+    let held: std::collections::HashMap<u16, String> =
+        mediums_held_on(tx, release_id)?.into_iter().collect();
     let mut kept: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
     for medium in &rows.mediums {
         let id = match held.get(&medium.position.get()) {

@@ -114,15 +114,6 @@ pub struct LabelRow {
 }
 
 impl LabelRow {
-    pub fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            id: row.get("id")?,
-            name: row.get("name")?,
-            musicbrainz_label_id: row.get("musicbrainz_label_id")?,
-            discogs_label_id: row.get("discogs_label_id")?,
-        })
-    }
-
     /// Fill each catalog id this row lacks from `label`, a row or a
     /// release's label of the same label.
     fn fill_from(&mut self, label: &impl CatalogIds) {
@@ -163,6 +154,97 @@ impl CatalogRow for LabelRow {
     }
 }
 
+// A label's own columns, as resolution reads them.
+coven::fragment!(
+    LabelColumns,
+    r#"
+    SELECT label.id AS label_id, label.name, label.musicbrainz_label_id, label.discogs_label_id
+    FROM labels AS label
+"#
+);
+
+impl LabelColumns {
+    /// The row these columns hold.
+    pub(crate) fn into_row(self) -> LabelRow {
+        LabelRow {
+            id: self.label_id,
+            name: self.name,
+            musicbrainz_label_id: self.musicbrainz_label_id,
+            discogs_label_id: self.discogs_label_id,
+        }
+    }
+}
+
+// The labels that the labels holding the Discogs id `catalog_id`, or whose
+// id is `identity`, show as, in id order.
+coven::read!(
+    writer LabelsHoldingDiscogsId(catalog_id: String, identity: Option<String>),
+    r#"
+    SELECT held.*
+    FROM @crate::records::label_resolution::LabelColumns AS held
+    WHERE held.label_id IN (
+        SELECT shown.shown_label_id
+        FROM labels AS named
+        JOIN label_shown_as AS shown ON shown.label_id = named.id
+        WHERE named.discogs_label_id = :catalog_id OR named.id = :identity)
+    ORDER BY held.label_id
+"#
+);
+
+// The labels that the labels holding the MusicBrainz id `catalog_id`, or
+// whose id is `identity`, show as, in id order.
+coven::read!(
+    writer LabelsHoldingMusicBrainzId(catalog_id: String, identity: Option<String>),
+    r#"
+    SELECT held.*
+    FROM @crate::records::label_resolution::LabelColumns AS held
+    WHERE held.label_id IN (
+        SELECT shown.shown_label_id
+        FROM labels AS named
+        JOIN label_shown_as AS shown ON shown.label_id = named.id
+        WHERE named.musicbrainz_label_id = :catalog_id OR named.id = :identity)
+    ORDER BY held.label_id
+"#
+);
+
+// The label `label`, which a test reads.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer OneLabel(label: String),
+    r#"
+    SELECT held.*
+    FROM @crate::records::label_resolution::LabelColumns AS held
+    WHERE held.label_id = :label
+"#
+);
+
+// The name and id of each label the release `release` names, as each shows,
+// in the release's order.
+coven::read!(
+    writer LabelsNamedBy(release: String),
+    r#"
+    SELECT shown.name, shown.id
+    FROM release_labels AS named
+    JOIN label_shown_as AS shown_as ON shown_as.label_id = named.label_id
+    JOIN labels AS shown ON shown.id = shown_as.shown_label_id
+    WHERE named.release_id = :release
+    ORDER BY named.position
+"#
+);
+
+// The labels no merge absorbed whose name key is `key`, in id order.
+coven::read!(
+    writer UnmergedLabelsKeyed(key: String),
+    r#"
+    SELECT held.*
+    FROM @crate::records::label_resolution::LabelColumns AS held
+    JOIN labels AS keyed ON keyed.id = held.label_id
+    WHERE keyed.name_key = :key
+      AND keyed.id NOT IN (SELECT merged.id FROM label_merges AS merged)
+    ORDER BY held.label_id
+"#
+);
+
 /// The library's labels, as a write's transaction reads them.
 struct LibraryLabels<'a, Q>(&'a Q);
 
@@ -170,25 +252,30 @@ impl<Q: bae_store::WriterRead> CatalogLibrary<LabelRow> for LibraryLabels<'_, Q>
     type Error = rusqlite::Error;
 
     fn holding(&self, column: CatalogColumn, catalog_id: &str) -> rusqlite::Result<Vec<LabelRow>> {
-        let (column, identity) = match column {
+        let catalog_id = catalog_id.to_owned();
+        let rows = match column {
             CatalogColumn::Discogs => {
-                ("discogs_label_id", LabelRow::catalog_entry_id(None, Some(catalog_id)))
+                let identity = LabelRow::catalog_entry_id(None, Some(&catalog_id));
+                bae_store::statement_rows(
+                    self.0,
+                    &LabelsHoldingDiscogsIdParams { catalog_id, identity },
+                )?
+                .into_iter()
+                .map(|row| row.held)
+                .collect::<Vec<_>>()
             }
             CatalogColumn::MusicBrainz => {
-                ("musicbrainz_label_id", LabelRow::catalog_entry_id(Some(catalog_id), None))
+                let identity = LabelRow::catalog_entry_id(Some(&catalog_id), None);
+                bae_store::statement_rows(
+                    self.0,
+                    &LabelsHoldingMusicBrainzIdParams { catalog_id, identity },
+                )?
+                .into_iter()
+                .map(|row| row.held)
+                .collect()
             }
         };
-        self.0.query(
-            &format!(
-                "SELECT l.* FROM labels l WHERE l.id IN ( \
-                     SELECT shown.shown_label_id FROM labels named \
-                     JOIN label_shown_as shown ON shown.label_id = named.id \
-                     WHERE named.{column} = ?1 OR named.id = ?2) \
-                 ORDER BY l.id",
-            ),
-            params![catalog_id, identity],
-            LabelRow::from_row,
-        )
+        Ok(rows.into_iter().map(LabelColumns::into_row).collect())
     }
 }
 
@@ -363,14 +450,11 @@ fn labels_named_on<Q: bae_store::WriterRead>(
     sql: &Q,
     release_id: &str,
 ) -> Result<Vec<(String, String)>, DbError> {
-    Ok(sql.query(
-        "SELECT shown.name, shown.id FROM release_labels named \
-         JOIN label_shown_as shown_as ON shown_as.label_id = named.label_id \
-         JOIN labels shown ON shown.id = shown_as.shown_label_id \
-         WHERE named.release_id = ? ORDER BY named.position",
-        [release_id],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?)
+    let statement = LabelsNamedByParams { release: release_id.to_owned() };
+    Ok(bae_store::statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| (row.name, row.id))
+        .collect())
 }
 
 /// The library label `label`, named `name`, names.
@@ -426,20 +510,15 @@ fn resolve_label_on(
             return Ok(decided.link(only.clone(), label));
         }
         if pending.is_empty() {
-            let named: Vec<LabelRow> = tx
-                .query(
-                    "SELECT * FROM labels WHERE name_key = ? \
-                       AND id NOT IN (SELECT id FROM label_merges) \
-                     ORDER BY id",
-                    [&key],
-                    LabelRow::from_row,
-                )?
-                .into_iter()
-                // A label this write merges into another is that one.
-                .filter(|row| !decided.merges.iter().any(|merge| merge.absorbed.id == row.id))
-                .map(|row| decided.overlaid(row))
-                .filter(|row| ids_agree(row, label))
-                .collect();
+            let named: Vec<LabelRow> =
+                bae_store::statement_rows(tx, &UnmergedLabelsKeyedParams { key: key.clone() })?
+                    .into_iter()
+                    .map(|row| LabelColumns::into_row(row.held))
+                    // A label this write merges into another is that one.
+                    .filter(|row| !decided.merges.iter().any(|merge| merge.absorbed.id == row.id))
+                    .map(|row| decided.overlaid(row))
+                    .filter(|row| ids_agree(row, label))
+                    .collect();
             if let [only] = named.as_slice() {
                 return Ok(decided.link(only.clone(), label));
             }

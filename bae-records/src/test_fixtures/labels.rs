@@ -91,7 +91,8 @@ pub async fn placed(db: &Store) -> Vec<(Option<String>, Option<String>)> {
 pub async fn stored_label(db: &Store, id: &str) -> LabelRow {
     let id = id.to_string();
     db.read(move |sql| {
-        Ok(sql.query_row("SELECT * FROM labels WHERE id = ?", [id], LabelRow::from_row)?)
+        let statement = crate::records::label_resolution::OneLabelParams { label: id };
+        Ok(bae_store::statement_row(&sql, &statement)?.held.into_row())
     })
     .await
     .unwrap()

@@ -17,14 +17,7 @@ coven::fragment!(
         release_number: Option<i64>
     },
     r#"
-    SELECT rel.id AS detail_release_id, rel.album_id, rel.album_order, rel.release_name, rel.year,
-           rel.country, rel.region, rel.status, rel.packaging, rel.source_folder_name,
-           rel.album_loudness_lufs, rel.album_peak_linear, rel.created_at,
-           @crate::records::pressing_columns::ReleaseLabels(parent: rel) AS labels,
-           @crate::records::pressing_columns::ReleaseBarcodes(parent: rel) AS barcodes,
-           @crate::records::pressing_columns::ReleaseMedia(parent: rel) AS media,
-           @crate::records::pressing_columns::ReleaseDiscogsDetails(parent: rel)
-               AS discogs_details,
+    SELECT rel.id AS detail_release_id, rel.album_order, held.*,
            @crate::records::track_group_fragments::TotalDuration(parent: rel)
                AS total_duration,
            @crate::records::track_group_fragments::TrackGroups(
@@ -54,6 +47,7 @@ coven::fragment!(
            (SELECT numbered.number FROM release_number_in_album AS numbered
             WHERE numbered.release_id = rel.id) AS release_number
     FROM releases AS rel
+    JOIN @crate::records::read::ReleaseColumns AS held ON held.columns_release_id = rel.id
     JOIN @crate::records::fragments::ReleaseRecords AS described
       ON described.records_release_id = rel.id
     JOIN @crate::release_storage::ReleaseStorage AS storage ON storage.release_id = rel.id
@@ -63,47 +57,10 @@ coven::fragment!(
 );
 
 impl ReleaseDetail {
-    /// The release's row.
-    fn release(&self) -> Result<DbRelease, DbError> {
-        let facts = super::pressing_columns::facts_of_columns(
-            self.country.clone(),
-            self.region.clone(),
-            self.status.as_deref(),
-            self.packaging.as_deref(),
-            &self.discogs_details.discogs_details,
-            &self.media.media,
-        )?;
-        Ok(DbRelease {
-            id: self.detail_release_id.clone(),
-            album_id: self.album_id.clone(),
-            release_name: self.release_name.clone(),
-            pressing: bae_types::pressing::Pressing {
-                typed: bae_types::pressing::TypedPressing {
-                    year: self
-                        .year
-                        .map(|year| {
-                            i32::try_from(year)
-                                .map_err(|_error| DbError::unreadable("a release's year", year))
-                        })
-                        .transpose()?,
-                    labels: super::pressing_columns::labels_of_json(&self.labels.labels)?,
-                    barcodes: super::pressing_columns::barcodes_of_json(&self.barcodes.barcodes)?,
-                },
-                facts,
-            },
-            source_folder_name: self.source_folder_name.clone(),
-            album_loudness_lufs: self.album_loudness_lufs,
-            album_peak_linear: self.album_peak_linear,
-            created_at: bae_util::timestamp::parse_rfc3339(&self.created_at).map_err(
-                |_unparsed| DbError::unreadable("a release's created_at", &self.created_at),
-            )?,
-        })
-    }
-
     /// The release's detail, one entry per track. A value no column of the
     /// library may hold fails.
     pub fn decoded(self) -> Result<DbReleaseDetail, DbError> {
-        let release = self.release()?;
+        let release = self.held.release()?;
         let total = self.total_duration.total_duration_ms;
         let number = self
             .release_number
@@ -288,6 +245,22 @@ pub enum OtherDeviceError {
     Database(#[from] DbError),
 }
 
+// The device `device` as coven registers it: its name, its state, whether a
+// member removed its person from the library, and whether it is this device.
+coven::read!(
+    writer OtherDeviceRegistration(device: coven::DeviceId) {
+        state: coven::DeviceState,
+        removed: bool,
+        is_self: bool,
+    },
+    r#"
+    SELECT registered.name, registered.state, member.removed, registered.is_self
+    FROM coven_devices AS registered
+    JOIN coven_members AS member ON member.member = registered.member
+    WHERE registered.device = :device
+"#
+);
+
 impl Records {
     /// The device `device` that a read of a release file named as the only
     /// one that holds the file (`coven::FileReadError::DeviceOnly`), with its
@@ -296,24 +269,8 @@ impl Records {
         &self,
         device: coven::DeviceId,
     ) -> Result<OtherDevice, OtherDeviceError> {
-        let (name, state, member_removed, is_self) = self
-            .store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT d.name, d.state, m.removed, d.is_self FROM coven_devices AS d \
-                     JOIN coven_members AS m ON m.member = d.member WHERE d.device = ?1",
-                    params![device],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>("name")?,
-                            row.get::<_, coven::DeviceState>("state")?,
-                            row.get::<_, bool>("removed")?,
-                            row.get::<_, bool>("is_self")?,
-                        ))
-                    },
-                )?)
-            })
-            .await?;
+        let OtherDeviceRegistrationRow { name, state, removed: member_removed, is_self } =
+            self.store.read_row(OtherDeviceRegistrationParams { device }).await?;
         if is_self {
             return Err(OtherDeviceError::ThisDevice(device));
         }

@@ -196,31 +196,14 @@ impl Records {
     /// it, read in one statement; `None` when it has no cover.
     pub async fn cover_picture(&self, release_id: &str) -> Result<Option<CoverPicture>, DbError> {
         let release_id = release_id.to_string();
-        let Some((source, file)) = self
-            .store
-            .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT c.source_file, c.embedded_file, \
-                                COALESCE(image.file, audio.file, c.original_file) \
-                         FROM covers AS c \
-                         LEFT JOIN release_files AS image ON image.id = c.source_file \
-                         LEFT JOIN release_files AS audio ON audio.id = c.embedded_file \
-                         WHERE c.id = ?",
-                        params![release_id],
-                        |row| {
-                            Ok((
-                                CoverSource::of_columns(row.get(0)?, row.get(1)?),
-                                row.get::<_, Option<coven::FileId>>(2)?,
-                            ))
-                        },
-                    )
-                    .optional()?)
-            })
-            .await?
+        let statement = CoverPictureOfReleaseParams { release: release_id };
+        let Some(row) =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?
         else {
             return Ok(None);
         };
+        let source = CoverSource::of_columns(row.source_file, row.embedded_file);
+        let file = row.file;
         let file = file.ok_or_else(|| DbError::unreadable("a cover's file", &source))?;
         Ok(Some(CoverPicture { source, file: self.store.file_ref(file).await? }))
     }
@@ -263,20 +246,10 @@ impl Records {
         release_id: &str,
     ) -> Result<Option<coven::FileRef>, DbError> {
         let release_id = release_id.to_string();
-        let Some(file) = self
-            .store
-            .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT original_file FROM covers WHERE id = ?",
-                        params![release_id],
-                        |row| row.get::<_, Option<coven::FileId>>(0),
-                    )
-                    .optional()?
-                    .flatten())
-            })
-            .await?
-        else {
+        let statement = CoverOriginalParams { release: release_id };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        let Some(file) = row.and_then(|row| row.original_file) else {
             return Ok(None);
         };
         Ok(Some(self.store.file_ref(file).await?))
@@ -289,21 +262,13 @@ impl Records {
         file_id: &str,
     ) -> Result<Option<coven::FileRef>, DbError> {
         let file_id = file_id.to_string();
-        let Some(file) = self
-            .store
-            .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT file FROM release_file_previews WHERE id = ?",
-                        params![file_id],
-                        |row| row.get::<_, coven::FileId>(0),
-                    )
-                    .optional()?)
-            })
-            .await?
+        let statement = PreviewOfFileParams { file: file_id };
+        let Some(row) =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?
         else {
             return Ok(None);
         };
+        let file = row.file;
         Ok(Some(self.store.file_ref(file).await?))
     }
 
@@ -444,19 +409,83 @@ impl ArtistImageVersion {
     }
 }
 
+// The coven file the release `release`'s cover is read from, its browse
+// copy; no row when the release has no cover.
+coven::read!(
+    writer CoverFile(release: String) { browse_file: coven::FileId },
+    r#"
+    SELECT cover.browse_file
+    FROM covers AS cover
+    WHERE cover.id = :release
+"#
+);
+
+// The coven file of the artist `artist`'s image; no row when the artist has
+// no image.
+coven::read!(
+    writer ArtistImageFile(artist: String) { file: coven::FileId },
+    r#"
+    SELECT image.file
+    FROM artist_images AS image
+    WHERE image.id = :artist
+"#
+);
+
+// What the release `release`'s cover is made from and the coven file that
+// holds it; no row when the release has no cover.
+coven::read!(
+    writer CoverPictureOfRelease(release: String) { file: Option<coven::FileId> },
+    r#"
+    SELECT cover.source_file, cover.embedded_file,
+           COALESCE(image.file, audio.file, cover.original_file) AS file
+    FROM covers AS cover
+    LEFT JOIN release_files AS image ON image.id = cover.source_file
+    LEFT JOIN release_files AS audio ON audio.id = cover.embedded_file
+    WHERE cover.id = :release
+"#
+);
+
+// The coven file of the release `release`'s cover original, none when the
+// cover is made from one of the release's files; no row when the release
+// has no cover.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer CoverOriginal(release: String) { original_file: Option<coven::FileId> },
+    r#"
+    SELECT cover.original_file
+    FROM covers AS cover
+    WHERE cover.id = :release
+"#
+);
+
+// The coven file of the release file `file`'s preview; no row when it has
+// none.
+coven::read!(
+    writer PreviewOfFile(file: String) { file: coven::FileId },
+    r#"
+    SELECT preview.file
+    FROM release_file_previews AS preview
+    WHERE preview.id = :file
+"#
+);
+
 /// The coven file one image row names (a cover's browse copy), or `None` when there is no such row.
 pub fn image_file_on<Q: bae_store::WriterRead>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,
 ) -> Result<Option<coven::FileId>, DbError> {
-    let table = image_table(image_type);
-    let column = image_file_column(image_type);
-    Ok(sql
-        .query_row(&format!("SELECT {column} FROM {table} WHERE id = ?"), params![id], |row| {
-            row.get::<_, coven::FileId>(0)
-        })
-        .optional()?)
+    let id = id.to_owned();
+    Ok(match image_type {
+        LibraryImageType::Cover => {
+            bae_store::statement_optional(sql, &CoverFileParams { release: id })?
+                .map(|row| row.browse_file)
+        }
+        LibraryImageType::Artist => {
+            bae_store::statement_optional(sql, &ArtistImageFileParams { artist: id })?
+                .map(|row| row.file)
+        }
+    })
 }
 
 // Whether this device keeps each of the release `:release`'s files whole, as

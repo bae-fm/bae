@@ -436,6 +436,32 @@ pub fn insert_release_medium_row(
     Ok(())
 }
 
+// The position and id of each of the release `release`'s mediums, in order.
+#[cfg(desktop)]
+coven::read!(
+    writer MediumsHeldBy(release: String) { position: u16 },
+    r#"
+    SELECT medium.position, medium.id
+    FROM release_mediums AS medium
+    WHERE medium.release_id = :release
+    ORDER BY medium.position
+"#
+);
+
+/// The position and id of each of the release `release_id`'s mediums, in
+/// order.
+#[cfg(desktop)]
+pub(super) fn mediums_held_on(
+    sql: &impl bae_store::WriterRead,
+    release_id: &str,
+) -> Result<Vec<(u16, String)>, DbError> {
+    let statement = MediumsHeldByParams { release: release_id.to_owned() };
+    Ok(bae_store::statement_rows(sql, &statement)?
+        .into_iter()
+        .map(|row| (row.position, row.id))
+        .collect())
+}
+
 #[cfg(desktop)]
 coven::write!(
     SetReleaseMedium(id: &'p str, medium: Option<&'static str>, side_count: std::num::NonZeroU8),

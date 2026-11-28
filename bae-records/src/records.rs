@@ -1,28 +1,10 @@
 use crate::credits::LibraryCredit;
 use crate::models::*;
-use bae_util::content_type::ContentType;
-use rusqlite::{params, OptionalExtension, Row};
-// coven owns production connections; row-mapping tests also use bare SQLite.
 use bae_store::Store;
 use bae_store::{DbError, WriteError};
+use bae_util::content_type::ContentType;
 use coven::CovenWrite;
 use std::collections::{HashMap, HashSet};
-
-/// A query that lists each move this device is making to move the files of
-/// the release `$release` (an SQL literal naming its id) to the cloud, and
-/// lists each move only once. `coven_moves` lists each file of each move that
-/// is still moving or has failed. A macro so a caller's `concat!` can build
-/// its statement from it.
-macro_rules! release_moves {
-    ($release:literal) => {
-        concat!(
-            "SELECT DISTINCT moves.move FROM coven_moves AS moves \
-             JOIN release_files AS f ON f.file = moves.file \
-             WHERE f.release_id = ",
-            $release
-        )
-    };
-}
 
 mod album;
 pub use album::PrimaryReleaseError;
@@ -148,11 +130,9 @@ pub mod work_writes;
 pub mod write;
 
 use bae_store::query::*;
-use bae_store::read::*;
 #[cfg(any(test, feature = "test-utils", desktop))]
 use file_writes::*;
 use image_writes::*;
-use query::*;
 use read::*;
 #[cfg(any(test, feature = "test-utils", desktop))]
 use work_writes::*;

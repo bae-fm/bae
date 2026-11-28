@@ -83,14 +83,22 @@ fn settle_credit_name_beside(
     Ok(Some(credit.key.clone()))
 }
 
+// The key of the artist `artist`'s own name; no row when the library holds
+// no such artist.
+coven::read!(
+    writer OwnNameKey(artist: String),
+    r#"
+    SELECT artist.name_key
+    FROM artists AS artist
+    WHERE artist.id = :artist
+"#
+);
+
 /// The key of `artist_id`'s own name; `None` when the library holds no such
 /// artist.
 fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<Option<String>, DbError> {
-    Ok(conn
-        .query_row("SELECT name_key FROM artists WHERE id = ?", params![artist_id], |row| {
-            row.get(0)
-        })
-        .optional()?)
+    let statement = OwnNameKeyParams { artist: artist_id.to_owned() };
+    Ok(bae_store::statement_optional(conn, &statement)?.map(|row| row.name_key))
 }
 
 coven::write!(

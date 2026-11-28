@@ -1,7 +1,8 @@
 use crate::records::release_with_files::{ReleaseFileById, ReleaseFileByIdParams};
 use crate::records::*;
 use coven::Returning as _;
-use rusqlite::Connection;
+use coven::Statement as _;
+use rusqlite::{params, Connection};
 
 /// An in-memory DB on the real schema with one album and release whose
 /// `created_at` is valid, so a test can corrupt one column and prove the
@@ -24,20 +25,20 @@ fn seeded_conn() -> Connection {
 }
 
 #[test]
-fn row_to_release_rejects_malformed_created_at() {
-    // A corrupt timestamp must propagate as an error, not panic the mapper.
+fn a_release_with_a_malformed_created_at_is_unreadable() {
+    // A corrupt timestamp must propagate as an error, not panic the reader.
     let conn = seeded_conn();
     conn.execute(
         "UPDATE releases SET created_at = 'not-a-timestamp' WHERE id = 'cccb6034-5922-40d2-8d0b-d94619230882'",
         [],
     )
     .unwrap();
-    let result = conn.query_row(
-        &release_rows_sql("r.id = 'cccb6034-5922-40d2-8d0b-d94619230882'"),
-        [],
-        row_to_release,
-    );
-    assert!(result.is_err());
+    let statement =
+        OneReleaseParams { release: "cccb6034-5922-40d2-8d0b-d94619230882".to_string() };
+    let row = conn
+        .query_row(OneRelease::SQL, statement.params().as_slice(), OneReleaseParams::read)
+        .unwrap();
+    assert!(row.held.release().is_err());
 }
 
 /// The release file `id`, as [`ReleaseFileById`] reads it.

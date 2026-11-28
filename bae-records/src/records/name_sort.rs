@@ -29,6 +29,16 @@ coven::fragment!(
 "#
 );
 
+// The language this device orders names in, and the collation data its keys
+// were written with.
+coven::read!(
+    writer NameSortState { data_version: u32 },
+    r#"
+    SELECT sort.language, sort.data_version
+    FROM name_sort AS sort
+"#
+);
+
 coven::write!(
     SetNameSort(language: &'p str, data_version: u32),
     "UPDATE name_sort SET language = :language, data_version = :data_version"
@@ -62,10 +72,8 @@ impl super::Records {
     async fn write_sort_language(&self, language: Option<String>) -> Result<(), DbError> {
         self.store
             .call_bulk(move |sql| {
-                let (stored, version): (String, u32) =
-                    sql.query_row("SELECT language, data_version FROM name_sort", [], |row| {
-                        Ok((row.get(0)?, row.get(1)?))
-                    })?;
+                let NameSortStateRow { language: stored, data_version: version } =
+                    bae_store::statement_row(sql, &NameSortStateParams {})?;
                 let language = language.unwrap_or_else(|| stored.clone());
                 if stored == language && version == DATA_VERSION {
                     return Ok(());

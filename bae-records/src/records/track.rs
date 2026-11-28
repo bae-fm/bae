@@ -38,6 +38,79 @@ coven::read!(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnknownTrackSource(pub String);
 
+// The track `track`; no row when the library holds no such track.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer OneTrack(track: String),
+    r#"
+    SELECT held.*
+    FROM @crate::records::read::TrackColumns AS held
+    WHERE held.columns_track_id = :track
+"#
+);
+
+// The ids of the release `release`'s tracks, in its order.
+coven::read!(
+    writer TrackIdsOfRelease(release: String),
+    r#"
+    SELECT track.id
+    FROM tracks AS track
+    WHERE track.release_id = :release
+    ORDER BY track.position, track.id
+"#
+);
+
+// The tracks from `anchor` to `target`, both included, in their release's
+// order; only `target` when `anchor` is no track of its release, and none
+// when the library holds no track `target`.
+coven::read!(
+    writer TrackIdsBetween(anchor: String, target: String),
+    r#"
+    SELECT picked.id
+    FROM (SELECT t.id, t.position
+          FROM tracks AS t
+          JOIN tracks AS target ON target.id = :target
+          JOIN tracks AS anchor
+            ON anchor.id = :anchor AND anchor.release_id = target.release_id
+          WHERE t.release_id = target.release_id
+            AND ((t.position, t.id) BETWEEN (anchor.position, anchor.id)
+                                        AND (target.position, target.id)
+              OR (t.position, t.id) BETWEEN (target.position, target.id)
+                                        AND (anchor.position, anchor.id))
+          UNION ALL
+          SELECT alone.id, alone.position
+          FROM tracks AS alone
+          WHERE alone.id = :target
+            AND NOT EXISTS (SELECT 1 FROM tracks AS other
+                            WHERE other.id = :anchor
+                              AND other.release_id = alone.release_id)) AS picked
+    ORDER BY picked.position, picked.id
+"#
+);
+
+// Every track id in the library, by release, then position and id.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer AllTrackIds,
+    r#"
+    SELECT track.id
+    FROM tracks AS track
+    ORDER BY track.release_id, track.position, track.id
+"#
+);
+
+// The release `release`'s tracks, in its order.
+coven::read!(
+    writer TracksOfRelease(release: String),
+    r#"
+    SELECT held.*
+    FROM @crate::records::read::TrackColumns AS held
+    JOIN tracks AS ordered ON ordered.id = held.columns_track_id
+    WHERE ordered.release_id = :release
+    ORDER BY ordered.position, ordered.id
+"#
+);
+
 impl Records {
     /// The track ids that `ids`, of albums and tracks, name, in their order:
     /// an album's are the tracks of its primary release, none when it has no
@@ -100,13 +173,10 @@ impl Records {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query_row("SELECT * FROM tracks WHERE id = ?", params![track_id], row_to_track)
-                    .optional()
-                    .map_err(DbError::from)
-            })
-            .await
+        let statement = OneTrackParams { track: track_id };
+        let row =
+            self.store.read(move |sql| bae_store::statement_optional(&sql, &statement)).await?;
+        row.map(|row| row.held.into_track()).transpose()
     }
     /// Ordered track IDs for a release — cheaper than `get_tracks_for_release`
     /// when the caller only needs IDs (queue building, play context).
@@ -115,16 +185,8 @@ impl Records {
         release_id: &str,
     ) -> Result<Vec<String>, DbError> {
         let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query(
-                    "SELECT id FROM tracks WHERE release_id = ? ORDER BY position, id",
-                    params![release_id],
-                    |row| row.get::<_, String>("id"),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+        let statement = TrackIdsOfReleaseParams { release: release_id };
+        Ok(self.store.read_rows(statement).await?.into_iter().map(|row| row.id).collect())
     }
 
     /// The tracks from `anchor_id` to `target_id`, both included, in the
@@ -137,32 +199,8 @@ impl Records {
         anchor_id: String,
         target_id: String,
     ) -> Result<Vec<String>, DbError> {
-        self.store
-            .read(move |sql| {
-                sql.query(
-                    "SELECT id FROM ( \
-                         SELECT t.id, t.position FROM tracks AS t \
-                         JOIN tracks AS target ON target.id = ?2 \
-                         JOIN tracks AS anchor \
-                           ON anchor.id = ?1 AND anchor.release_id = target.release_id \
-                         WHERE t.release_id = target.release_id \
-                           AND ((t.position, t.id) BETWEEN (anchor.position, anchor.id) \
-                                                       AND (target.position, target.id) \
-                             OR (t.position, t.id) BETWEEN (target.position, target.id) \
-                                                       AND (anchor.position, anchor.id)) \
-                         UNION ALL \
-                         SELECT target.id, target.position FROM tracks AS target \
-                         WHERE target.id = ?2 \
-                           AND NOT EXISTS (SELECT 1 FROM tracks AS anchor \
-                                           WHERE anchor.id = ?1 \
-                                             AND anchor.release_id = target.release_id)) \
-                     ORDER BY position, id",
-                    params![anchor_id, target_id],
-                    |row| row.get::<_, String>("id"),
-                )
-                .map_err(DbError::from)
-            })
-            .await
+        let statement = TrackIdsBetweenParams { anchor: anchor_id, target: target_id };
+        Ok(self.store.read_rows(statement).await?.into_iter().map(|row| row.id).collect())
     }
 
     /// Every track id in the library, in a deterministic base order (the same
@@ -171,14 +209,13 @@ impl Records {
     /// library play unshuffles into.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
-        self.store
-            .read(move |sql| {
-                sql.query("SELECT id FROM tracks ORDER BY release_id, position, id", [], |row| {
-                    row.get::<_, String>("id")
-                })
-                .map_err(DbError::from)
-            })
-            .await
+        Ok(self
+            .store
+            .read_rows(AllTrackIdsParams {})
+            .await?
+            .into_iter()
+            .map(|row| row.id)
+            .collect())
     }
 
     /// The subset of `track_ids` that exist in the tracks table. The returned
@@ -195,16 +232,13 @@ impl Records {
     /// Ordered by the release’s stored track positions.
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
+        let statement = TracksOfReleaseParams { release: release_id };
         self.store
-            .read(move |sql| {
-                sql.query(
-                    "SELECT * FROM tracks WHERE release_id = ? ORDER BY position, id",
-                    params![release_id],
-                    row_to_track,
-                )
-                .map_err(DbError::from)
-            })
-            .await
+            .read_rows(statement)
+            .await?
+            .into_iter()
+            .map(|row| row.held.into_track())
+            .collect()
     }
 }
 
