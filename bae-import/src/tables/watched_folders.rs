@@ -55,9 +55,9 @@ pub enum WatchedFolderRefusal {
     InsideChanged { parent: PathBuf, inside: Vec<PathBuf>, named: Vec<PathBuf> },
 }
 
-/// The folders at or below one folder, as a condition on a stored folder
-/// column: the range each owner of rows kept by folder forgets when the
-/// folder stops being watched.
+/// The folders at or below one folder, as the stored bytes of the folder and
+/// the range of those below it: what each owner of rows kept by folder
+/// forgets when the folder stops being watched.
 pub(crate) struct FoldersAtOrBelow {
     /// The folder's stored bytes.
     pub(crate) folder: Vec<u8>,
@@ -71,20 +71,6 @@ impl FoldersAtOrBelow {
     pub(crate) fn of(folder: &Path) -> Self {
         let (below_first, below_past) = crate::tables::watched_path::paths_below(folder);
         Self { folder: coven::path_bytes(folder), below_first, below_past }
-    }
-
-    /// `column` names one of the folders, given [`Self::params`]. Read on the
-    /// column's index, as a range.
-    pub(crate) fn condition(column: &str) -> String {
-        format!("({column} = :root OR ({column} >= :below_first AND {column} < :below_past))")
-    }
-
-    pub(crate) fn params(&self) -> [(&'static str, &dyn rusqlite::ToSql); 3] {
-        [
-            (":root", &self.folder),
-            (":below_first", &self.below_first),
-            (":below_past", &self.below_past),
-        ]
     }
 }
 

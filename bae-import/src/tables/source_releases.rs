@@ -337,6 +337,41 @@ pub(crate) fn load_source_releases_on<S: bae_store::WriterRead>(
         .collect())
 }
 
+// Whether a candidate's row names the release `release_id` of `catalog`.
+coven::read!(
+    writer NamedRelease(catalog: String, release_id: String) { named: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM @crate::tables::import_state::row_fragments::NamedReleases AS named
+        WHERE named.source = :catalog AND named.release_id = :release_id
+    ) AS named
+"#
+);
+
+// Whether the release `release_id` of `catalog` is stored.
+coven::read!(
+    writer HeldRelease(catalog: String, release_id: String) { stored: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM source_release AS release
+        WHERE release.catalog = :catalog AND release.release_id = :release_id
+    ) AS stored
+"#
+);
+
+// The documents the stored release `release_id` of `catalog` lists as
+// unfetched.
+coven::read!(
+    writer StoredUnfetched(catalog: String, release_id: String),
+    r#"
+    SELECT unfetched.document, unfetched.key
+    FROM source_release_unfetched AS unfetched
+    WHERE unfetched.catalog = :catalog AND unfetched.release_id = :release_id
+"#
+);
+
 /// Store each of `releases` that a row names, in the write that wrote the
 /// row: insert one not stored yet, and replace a stored one only where this
 /// copy read a document the stored one lists as unfetched — a copy read
@@ -352,33 +387,24 @@ pub(crate) fn store_named_releases_on(
     for release in releases {
         let catalog = release.release.catalog.as_str();
         let key = release.release.key.as_str();
-        let named = sql.query_row(
-            "SELECT EXISTS (SELECT 1 FROM import_candidate_match \
-                            WHERE source = ?1 AND release_id = ?2) \
-                 OR EXISTS (SELECT 1 FROM import_candidate_draft_provenance \
-                            WHERE source = ?1 AND release_id = ?2) \
-                 OR EXISTS (SELECT 1 FROM import_candidate_release_link \
-                            WHERE source = ?1 AND release_id = ?2) \
-                 OR EXISTS (SELECT 1 FROM import_candidate_release_link_partner \
-                            WHERE source = ?1 AND release_id = ?2)",
-            params![catalog, key],
-            |row| row.get::<_, bool>(0),
-        )?;
+        let held = || HeldReleaseParams { catalog: catalog.to_owned(), release_id: key.to_owned() };
+        let named = bae_store::statement_row(
+            sql,
+            &NamedReleaseParams { catalog: catalog.to_owned(), release_id: key.to_owned() },
+        )?
+        .named;
         if !named {
             continue;
         }
-        let stored = sql.query_row(
-            "SELECT EXISTS (SELECT 1 FROM source_release WHERE catalog = ? AND release_id = ?)",
-            params![catalog, key],
-            |row| row.get::<_, bool>(0),
-        )?;
+        let stored = bae_store::statement_row(sql, &held())?.stored;
         let reads_more = || -> Result<bool, DbError> {
-            let stored_unfetched = sql.query(
-                "SELECT document, key FROM source_release_unfetched \
-                 WHERE catalog = ? AND release_id = ?",
-                params![catalog, key],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )?;
+            let stored_unfetched: Vec<(String, String)> = bae_store::statement_rows(
+                sql,
+                &StoredUnfetchedParams { catalog: catalog.to_owned(), release_id: key.to_owned() },
+            )?
+            .into_iter()
+            .map(|unfetched| (unfetched.document, unfetched.key))
+            .collect();
             Ok(stored_unfetched.iter().any(|(document, document_key)| {
                 !release.unfetched.iter().any(|unfetched| {
                     unfetched.document.as_str() == document && unfetched.key == *document_key

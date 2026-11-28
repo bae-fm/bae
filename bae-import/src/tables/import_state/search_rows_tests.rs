@@ -9,6 +9,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::MetadataRef;
 use bae_preferences::{CatalogAvailability, SourceAvailability};
 use bae_store::test_fixtures::empty_db;
+use rusqlite::OptionalExtension;
 
 /// A library that asks every catalog it can — what these tests search from
 /// unless they are about a catalog that is not asked.

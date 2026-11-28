@@ -55,6 +55,16 @@ coven::write!(
 "#
 );
 
+coven::read!(
+    writer StoredDiscovery(folder: Vec<u8>) { settled: bool },
+    r#"
+    SELECT discovery.first_seen_at, discovery.settled, discovery.source_date,
+           discovery.source_date_kind
+    FROM folder_discovery AS discovery
+    WHERE discovery.folder = :folder
+"#
+);
+
 /// What is known about when a folder was found, kept by its path on disk
 /// rather than with the scan row of whichever watched folder covers it.
 pub(super) struct FolderDiscovery {
@@ -73,25 +83,16 @@ impl FolderDiscovery {
         now: i64,
     ) -> Result<Self, DbError> {
         let folder = folder.to_path_buf();
-        let stored = sql
-            .query_row(
-                "SELECT first_seen_at, settled, source_date, source_date_kind \
-                 FROM folder_discovery WHERE folder = ?",
-                [coven::path_bytes(&folder)],
-                |row| {
-                    Ok((
-                        row.get::<_, i64>(0)?,
-                        row.get::<_, bool>(1)?,
-                        row.get::<_, Option<i64>>(2)?,
-                        row.get::<_, Option<String>>(3)?,
-                    ))
-                },
-            )
-            .optional()?;
+        let stored = bae_store::statement_optional(
+            sql,
+            &StoredDiscoveryParams { folder: coven::path_bytes(&folder) },
+        )?;
         let (first_seen_at, settled, stored_date) = match stored {
-            Some((first_seen_at, settled, at, kind)) => {
-                (first_seen_at, settled, stored_date(&folder, at, kind.as_deref())?)
-            }
+            Some(stored) => (
+                stored.first_seen_at,
+                stored.settled,
+                stored_date(&folder, stored.source_date, stored.source_date_kind.as_deref())?,
+            ),
             None => (now, false, None),
         };
         Ok(Self {

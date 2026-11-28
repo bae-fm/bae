@@ -70,11 +70,20 @@ fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
     }
 }
 
+/// The columns of `import_candidate_search` that hold its query.
+struct StoredQuery {
+    mode: String,
+    artist: Option<String>,
+    album: Option<String>,
+    catalog_number: Option<String>,
+    barcode: Option<String>,
+}
+
 /// The query a search row's columns hold.
-fn query_of(row: &impl Columns) -> Result<SearchQuery, DbError> {
-    let mode: String = row.get("mode")?;
-    let value = |column: &str| {
-        row.get::<Option<String>>(column)?.ok_or_else(|| {
+fn query_of(stored: StoredQuery) -> Result<SearchQuery, DbError> {
+    let StoredQuery { mode, artist, album, catalog_number, barcode } = stored;
+    let value = |column: &str, value: Option<String>| {
+        value.ok_or_else(|| {
             DbError::unreadable(
                 format!("import_candidate_search.{column} of a {mode} search"),
                 None::<String>,
@@ -82,9 +91,13 @@ fn query_of(row: &impl Columns) -> Result<SearchQuery, DbError> {
         })
     };
     Ok(match mode.as_str() {
-        "general" => SearchQuery::General { artist: value("artist")?, album: value("album")? },
-        "catalog_number" => SearchQuery::CatalogNumber { catalog_number: value("catalog_number")? },
-        "barcode" => SearchQuery::Barcode { barcode: value("barcode")? },
+        "general" => {
+            SearchQuery::General { artist: value("artist", artist)?, album: value("album", album)? }
+        }
+        "catalog_number" => {
+            SearchQuery::CatalogNumber { catalog_number: value("catalog_number", catalog_number)? }
+        }
+        "barcode" => SearchQuery::Barcode { barcode: value("barcode", barcode)? },
         other => return Err(DbError::unreadable("import_candidate_search.mode", other)),
     })
 }
@@ -189,7 +202,13 @@ pub(super) fn search_in(search: &JsonColumns) -> Result<CandidateSearch, DbError
     let stored: Vec<StoredPart> = serde_json::from_str(&parts)
         .map_err(|error| DbError::unreadable_json("a search's stored parts", &parts, error))?;
     Ok(CandidateSearch {
-        query: query_of(search)?,
+        query: query_of(StoredQuery {
+            mode: search.get("mode")?,
+            artist: search.get("artist")?,
+            album: search.get("album")?,
+            catalog_number: search.get("catalog_number")?,
+            barcode: search.get("barcode")?,
+        })?,
         sources: stored.into_iter().map(StoredPart::part).collect::<Result<_, _>>()?,
         groups: groups_of(&search.get::<String>("cards")?)?,
         status: status_of(&search.get::<String>("status")?)?,
@@ -204,25 +223,26 @@ pub(super) struct PickedResult {
     pub(super) links: AlbumLinks,
 }
 
-/// The picks of the search a column names, as one JSON list column in the
-/// order bae stored them, each with the albums its documents named.
-fn picks_column(search_run: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-                  'release_id', pick.release_id, 'links', pick.links, \
-                  'albums', json((SELECT json_group_array(json_object( \
-                                        'catalog', album.catalog, 'key', album.key) \
-                                    ORDER BY album.ordinal) \
-                             FROM import_candidate_search_pick_album AS album \
-                             WHERE album.search_run = pick.search_run \
-                               AND album.release_id = pick.release_id))) \
-                  ORDER BY pick.rowid) \
-          FROM import_candidate_search_pick AS pick \
-          WHERE pick.search_run = {search_run})"
-    )
-}
+// The picks of the search `run` as one JSON list, in the order bae stored
+// them, each with the albums its documents named.
+coven::read!(
+    writer SearchPicks(run: i64) { picks: String },
+    r#"
+    SELECT (SELECT json_group_array(json_object(
+                       'release_id', pick.release_id, 'links', pick.links,
+                       'albums', json((SELECT json_group_array(json_object(
+                                                 'catalog', album.catalog, 'key', album.key)
+                                             ORDER BY album.ordinal)
+                                      FROM import_candidate_search_pick_album AS album
+                                      WHERE album.search_run = pick.search_run
+                                        AND album.release_id = pick.release_id)))
+                   ORDER BY pick.rowid)
+            FROM import_candidate_search_pick AS pick
+            WHERE pick.search_run = :run) AS picks
+"#
+);
 
-/// One pick as [`picks_column`] holds it.
+/// One pick as the `SearchPicks` read holds it.
 #[derive(serde::Deserialize)]
 struct StoredPick {
     release_id: String,
@@ -251,9 +271,7 @@ pub(super) fn load_picks_on(
     sql: &impl bae_store::WriterRead,
     run: i64,
 ) -> Result<Vec<PickedResult>, DbError> {
-    let json: String =
-        sql.query_row(&format!("SELECT {}", picks_column("?1")), [run], |row| row.get(0))?;
-    picks_of(&json)
+    picks_of(&bae_store::statement_row(sql, &SearchPicksParams { run })?.picks)
 }
 
 coven::write!(
@@ -446,6 +464,52 @@ coven::write!(
 "#
 );
 
+coven::read!(
+    writer NextSearchPosition(run: i64) { next: i64 },
+    r#"
+    SELECT COALESCE(MAX(found.position) + 1, 0) AS next
+    FROM import_candidate_match AS found
+    WHERE found.search_run = :run
+"#
+);
+
+// The search of the candidate `key`, with its query's columns.
+coven::read!(
+    writer KeySearch(key: CandidateKey),
+    r#"
+    SELECT typed.search_run, typed.mode, typed.artist, typed.album, typed.catalog_number,
+           typed.barcode
+    FROM import_candidate_search AS typed
+    WHERE typed.candidate_key = :key
+"#
+);
+
+// The searches that hold a release `source` returned.
+coven::read!(
+    writer SearchesHoldingSource(source: String) { search_run: i64 },
+    r#"
+    SELECT DISTINCT found.search_run
+    FROM import_candidate_match AS found
+    WHERE found.search_run IS NOT NULL AND found.source = :source
+    ORDER BY found.search_run
+"#
+);
+
+// The search of the candidate `key` and the group of its first listing of
+// the release `release_id` from `source`.
+coven::read!(
+    writer SearchFirstListing(key: CandidateKey, source: String, release_id: String),
+    r#"
+    SELECT typed.search_run, found.source_group_id
+    FROM import_candidate_search AS typed
+    JOIN import_candidate_match AS found ON found.search_run = typed.search_run
+    WHERE typed.candidate_key = :key AND found.source = :source
+      AND found.release_id = :release_id
+    ORDER BY found.position
+    LIMIT 1
+"#
+);
+
 /// Land `catalog`'s answer on its part of the search `run`, if that part is
 /// still searching; whether it landed.
 fn land_on(
@@ -467,11 +531,7 @@ fn land_on(
     if landed == 0 {
         return Ok(false);
     }
-    let next: i64 = sql.query_row(
-        "SELECT COALESCE(MAX(position) + 1, 0) FROM import_candidate_match WHERE search_run = ?",
-        [run.number()],
-        |row| row.get(0),
-    )?;
+    let next = bae_store::statement_row(sql, &NextSearchPositionParams { run: run.number() })?.next;
     let next = to_usize(next, "a search's next position")?;
     for (offset, result) in results.iter().enumerate() {
         // A catalog's search answers with its own releases.
@@ -570,17 +630,19 @@ impl ImportTables {
         let key = key.clone();
         self.store
             .call(move |sql| {
-                let Some((run, query)) = sql
-                    .query_row(
-                        "SELECT search_run, mode, artist, album, catalog_number, barcode \
-                     FROM import_candidate_search WHERE candidate_key = ?",
-                        [&key],
-                        |row| Ok((row.get::<_, i64>("search_run")?, query_of(row))),
-                    )
-                    .optional()?
+                let Some(search) =
+                    bae_store::statement_optional(sql, &KeySearchParams { key: key.clone() })?
                 else {
                     return Ok(None);
                 };
+                let run = search.search_run;
+                let query = query_of(StoredQuery {
+                    mode: search.mode,
+                    artist: search.artist,
+                    album: search.album,
+                    catalog_number: search.catalog_number,
+                    barcode: search.barcode,
+                });
                 let mut retried: Vec<(i64, String)> = sql
                     .returning(&RetryFailedSourcesParams { run })?
                     .into_iter()
@@ -611,19 +673,17 @@ impl ImportTables {
             .call(move |sql| {
                 // A part holds releases only while it stands answered, so they go
                 // first, and every search that held some lays out what is left.
-                let held = sql.query(
-                    "SELECT DISTINCT search_run FROM import_candidate_match \
-                     WHERE search_run IS NOT NULL AND source = ? ORDER BY search_run",
-                    [catalog.as_str()],
-                    |row| row.get::<_, i64>(0),
+                let held = bae_store::statement_rows(
+                    sql,
+                    &SearchesHoldingSourceParams { source: catalog.as_str().to_owned() },
                 )?;
                 super::match_rows::delete_search_matches_of(sql, catalog)?;
                 if catalog == LookupCatalog::MusicBrainz {
                     // A person can pick only a MusicBrainz release.
                     sql.run(&DeleteEverySearchPickParams {})?;
                 }
-                for run in held {
-                    lay_out_search_on(sql, run)?;
+                for search in held {
+                    lay_out_search_on(sql, search.search_run)?;
                 }
                 sql.run(&SwitchSourceOffParams { catalog: catalog.as_str() })?;
                 Ok(())
@@ -661,20 +721,15 @@ impl ImportTables {
                     return Ok(());
                 }
                 // The search's first listing of the release names its group.
-                let Some((run, Some(group))) = sql
-                    .query_row(
-                        "SELECT typed.search_run, found.source_group_id \
-                         FROM import_candidate_search AS typed \
-                         JOIN import_candidate_match AS found \
-                             ON found.search_run = typed.search_run \
-                         WHERE typed.candidate_key = ? AND found.source = ? \
-                           AND found.release_id = ? \
-                         ORDER BY found.position LIMIT 1",
-                        params![key, release.catalog.as_str(), release.key],
-                        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?)),
-                    )
-                    .optional()?
-                else {
+                let first = SearchFirstListingParams {
+                    key: key.clone(),
+                    source: release.catalog.as_str().to_owned(),
+                    release_id: release.key.clone(),
+                };
+                let Some(listing) = bae_store::statement_optional(sql, &first)? else {
+                    return Ok(());
+                };
+                let (run, Some(group)) = (listing.search_run, listing.source_group_id) else {
                     return Ok(());
                 };
                 store_pick_on(sql, run, &release.key, &links)?;

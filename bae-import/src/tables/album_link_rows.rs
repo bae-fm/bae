@@ -15,7 +15,7 @@ use super::*;
 use bae_catalogs::album_links::{AlbumLinks, GroupAlbum};
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::source_release::SourceRelease;
-use bae_store::{statement_row, WriteStatements};
+use bae_store::{statement_row, statement_rows, WriteStatements};
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored)
@@ -210,6 +210,15 @@ impl ImportTables {
     }
 }
 
+coven::read!(
+    writer GroupAlbumLinks(release_group: String),
+    r#"
+    SELECT link.catalog, link.key
+    FROM release_group_album_link AS link
+    WHERE link.release_group = :release_group
+"#
+);
+
 /// Keep, inside the caller's write, the albums reading these release groups
 /// found each to be, replacing whatever an earlier reading of the same group
 /// found, and store again what each link claims whose claimed release joins
@@ -220,14 +229,11 @@ pub(super) fn replace_group_album_links_on(
 ) -> Result<(), DbError> {
     let mut changed: Vec<MetadataRef> = Vec::new();
     for (group, albums) in read {
-        let kept_before = sql.query(
-            "SELECT catalog, key FROM release_group_album_link WHERE release_group = ?",
-            params![group],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )?;
+        let kept_before =
+            statement_rows(sql, &GroupAlbumLinksParams { release_group: group.clone() })?;
         changed.push(MetadataRef::new(Catalog::MusicBrainz, group.clone()));
-        for (catalog, key) in kept_before {
-            changed.push(MetadataRef::new(catalog_of(&catalog)?, key));
+        for link in kept_before {
+            changed.push(MetadataRef::new(catalog_of(&link.catalog)?, link.key));
         }
         changed.extend(albums.iter().cloned());
         sql.run(&DeleteGroupAlbumLinksParams { release_group: group })?;

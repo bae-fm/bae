@@ -276,6 +276,15 @@ coven::write!(
 "#
 );
 
+coven::read!(
+    writer CandidateStateHeld(content_hash: String) { held: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1 FROM import_candidate_state AS state WHERE state.content_hash = :content_hash
+    ) AS held
+"#
+);
+
 /// Write `prep` over what is stored, provided the stored revisions still
 /// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
@@ -316,14 +325,11 @@ pub(super) fn save_preparation_on(
         expected_metadata,
     })?;
     if changed != 1 {
-        let exists = sql
-            .query_row(
-                "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
-                [content_hash],
-                |_| Ok(()),
-            )
-            .optional()?
-            .is_some();
+        let exists = bae_store::statement_row(
+            sql,
+            &CandidateStateHeldParams { content_hash: content_hash.to_owned() },
+        )?
+        .held;
         if !exists {
             return Err(PreparationRefusal::NoState(content_hash.to_string()).into());
         }

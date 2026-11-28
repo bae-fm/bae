@@ -242,29 +242,24 @@ pub(super) fn write_sidecar(
         SidecarFiles::Downloading => Vec::new(),
     };
     let paths = path_column::hex_list(files.iter().map(|entry| entry.path));
-    let superseded_keys: Vec<CandidateKey> = sql.query(
-        "SELECT DISTINCT file.candidate_path FROM scan_candidate_file AS file \
-         JOIN scan_candidate AS candidate \
-           ON candidate.watched_folder_path = file.watched_folder_path \
-          AND candidate.path = file.candidate_path \
-         WHERE file.absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
-           AND candidate.source_kind = 'folder' \
-         ORDER BY file.candidate_path",
-        [&paths],
-        |row| row.get(0),
-    )?;
+    let superseded_keys: Vec<CandidateKey> =
+        bae_store::statement_rows(sql, &EntriesHoldingFilesParams { paths: paths.clone() })?
+            .into_iter()
+            .map(|entry| entry.candidate_path)
+            .collect();
     for key in &superseded_keys {
         delete_entry(sql, watched_folder_path, key)?;
     }
     // A sidecar an earlier reading stored for another folder that held one
     // of these files — the folder above, before this one held audio below
     // it — is replaced the same way.
-    let touched: Vec<PathBuf> = sql.query(
-        "SELECT ? UNION SELECT folder FROM scan_sidecar_file \
-         WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
-         ORDER BY 1",
-        params![folder_text, paths],
-        |row| path_column::get(row, 0),
+    let touched = decoded(
+        bae_store::statement_rows(
+            sql,
+            &FolderAndSidecarsHoldingParams { folder: folder_text.clone(), paths },
+        )?
+        .into_iter()
+        .map(|sidecar| sidecar.folder),
     )?;
     delete_sidecars_at(sql, &touched)?;
     let state = match &sidecar.files {
@@ -317,6 +312,84 @@ coven::write!(
 "#
 );
 
+// The scanned folder entries that hold one of the files `paths` names, a JSON
+// array of their paths' bytes in hex.
+coven::read!(
+    writer EntriesHoldingFiles(paths: String) { candidate_path: CandidateKey },
+    r#"
+    SELECT DISTINCT file.candidate_path
+    FROM scan_candidate_file AS file
+    JOIN scan_candidate AS candidate
+      ON candidate.watched_folder_path = file.watched_folder_path
+     AND candidate.path = file.candidate_path
+    WHERE file.absolute_path IN (SELECT unhex(wanted.value) FROM json_each(:paths) AS wanted)
+      AND candidate.source_kind = 'folder'
+    ORDER BY file.candidate_path
+"#
+);
+
+// `folder`, and the folders whose sidecar holds one of the files `paths`
+// names.
+coven::read!(
+    writer FolderAndSidecarsHolding(folder: Vec<u8>, paths: String) { folder: Vec<u8> },
+    r#"
+    SELECT :folder AS folder
+    UNION
+    SELECT sidecar.folder
+    FROM scan_sidecar_file AS sidecar
+    WHERE sidecar.absolute_path IN (SELECT unhex(wanted.value) FROM json_each(:paths) AS wanted)
+    ORDER BY 1
+"#
+);
+
+// The folders whose sidecar holds one of the files `paths` names.
+coven::read!(
+    writer SidecarsHolding(paths: String),
+    r#"
+    SELECT DISTINCT sidecar.folder
+    FROM scan_sidecar_file AS sidecar
+    WHERE sidecar.absolute_path IN (SELECT unhex(wanted.value) FROM json_each(:paths) AS wanted)
+    ORDER BY sidecar.folder
+"#
+);
+
+// The sidecars under the root `root` that the scan `generation` did not
+// write.
+coven::read!(
+    writer OtherGenerationSidecars(root: Vec<u8>, generation: i64),
+    r#"
+    SELECT sidecar.folder
+    FROM scan_sidecar AS sidecar
+    WHERE sidecar.watched_folder_path = :root AND sidecar.generation != :generation
+    ORDER BY sidecar.folder
+"#
+);
+
+// The sidecars at or below `folder` under the root `root` that the scan
+// `generation` did not write.
+coven::read!(
+    writer OtherGenerationSidecarsUnder(
+        folder: Vec<u8>,
+        below_first: Vec<u8>,
+        below_past: Vec<u8>,
+        root: Vec<u8>,
+        generation: i64
+    ),
+    r#"
+    SELECT sidecar.folder
+    FROM scan_sidecar AS sidecar
+    WHERE (sidecar.folder = :folder
+           OR (sidecar.folder >= :below_first AND sidecar.folder < :below_past))
+      AND sidecar.watched_folder_path = :root AND sidecar.generation != :generation
+    ORDER BY sidecar.folder
+"#
+);
+
+/// The paths stored folder columns record.
+fn decoded(folders: impl IntoIterator<Item = Vec<u8>>) -> Result<Vec<PathBuf>, DbError> {
+    folders.into_iter().map(path_column::decode).collect()
+}
+
 /// Delete the sidecars stored for `folders`.
 fn delete_sidecars_at(sql: &CovenWrite<'_>, folders: &[PathBuf]) -> Result<(), DbError> {
     sql.run(&DeleteSidecarsParams {
@@ -334,14 +407,13 @@ pub(super) fn delete_sidecars_holding(
     let ScanItem::Valid(candidate) = item else {
         return Ok(Vec::new());
     };
-    let held: Vec<PathBuf> = sql.query(
-        "SELECT DISTINCT folder FROM scan_sidecar_file \
-         WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
-         ORDER BY folder",
-        [path_column::hex_list(
-            candidate.files.files.iter().map(|entry| entry.file.version.path.as_path()),
-        )],
-        |row| path_column::get(row, 0),
+    let paths = path_column::hex_list(
+        candidate.files.files.iter().map(|entry| entry.file.version.path.as_path()),
+    );
+    let held = decoded(
+        bae_store::statement_rows(sql, &SidecarsHoldingParams { paths })?
+            .into_iter()
+            .map(|sidecar| sidecar.folder),
     )?;
     delete_sidecars_at(sql, &held)?;
     Ok(held)
@@ -356,32 +428,31 @@ pub(super) fn prune_sidecars(
     generation: i64,
     under: Option<&Path>,
 ) -> Result<Vec<PathBuf>, DbError> {
-    let pruned: Vec<PathBuf> = match under {
-        None => sql.query(
-            "SELECT folder FROM scan_sidecar WHERE watched_folder_path = ? AND generation != ? \
-             ORDER BY folder",
-            params![coven::path_bytes(watched_folder_path), generation],
-            |row| path_column::get(row, 0),
-        )?,
+    let root = coven::path_bytes(watched_folder_path);
+    let pruned = decoded(match under {
+        None => {
+            bae_store::statement_rows(sql, &OtherGenerationSidecarsParams { root, generation })?
+                .into_iter()
+                .map(|sidecar| sidecar.folder)
+                .collect::<Vec<_>>()
+        }
         Some(under) => {
             let (below_first, below_past) = crate::tables::watched_path::paths_below(under);
-            let under = coven::path_bytes(under);
-            sql.query(
-                "SELECT folder FROM scan_sidecar \
-                 WHERE (folder = :folder OR (folder >= :below_first AND folder < :below_past)) \
-                   AND watched_folder_path = :root AND generation != :generation \
-                 ORDER BY folder",
-                rusqlite::named_params! {
-                    ":folder": under,
-                    ":below_first": below_first,
-                    ":below_past": below_past,
-                    ":root": coven::path_bytes(watched_folder_path),
-                    ":generation": generation,
+            bae_store::statement_rows(
+                sql,
+                &OtherGenerationSidecarsUnderParams {
+                    folder: coven::path_bytes(under),
+                    below_first,
+                    below_past,
+                    root,
+                    generation,
                 },
-                |row| path_column::get(row, 0),
             )?
+            .into_iter()
+            .map(|sidecar| sidecar.folder)
+            .collect()
         }
-    };
+    })?;
     delete_sidecars_at(sql, &pruned)?;
     Ok(pruned)
 }

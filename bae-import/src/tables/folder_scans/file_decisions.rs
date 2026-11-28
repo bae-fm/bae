@@ -18,6 +18,17 @@ coven::write!(
 "#
 );
 
+coven::read!(
+    writer ScannedReadings(content_hash: String) { path: CandidateKey },
+    r#"
+    SELECT candidate.watched_folder_path, candidate.path, candidate.source_kind,
+           candidate.file_edit_revision
+    FROM scan_candidate AS candidate
+    WHERE candidate.content_hash = :content_hash
+    ORDER BY candidate.watched_folder_path, candidate.path
+"#
+);
+
 /// Give every scanned release reading `content_hash` its files from
 /// `settled_by_key`, stamped `next_revision`, and return their keys in key
 /// order. Refused as [`PreparationRefusal::Changed`] unless the scan still
@@ -30,22 +41,15 @@ pub(crate) fn settle_candidate_files(
     next_revision: i64,
     settled_by_key: &HashMap<CandidateKey, crate::folder_scanner::CategorizedFiles>,
 ) -> Result<Vec<CandidateKey>, crate::ImportError> {
-    let scanned = sql.query(
-        "SELECT watched_folder_path, path, source_kind, file_edit_revision FROM scan_candidate \
-         WHERE content_hash = ? ORDER BY watched_folder_path, path",
-        [content_hash],
-        |row| {
-            Ok((
-                path_column::get(row, 0)?,
-                row.get::<_, CandidateKey>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
-            ))
-        },
+    let scanned = bae_store::statement_rows(
+        sql,
+        &ScannedReadingsParams { content_hash: content_hash.to_owned() },
     )?;
     let mut settled = Vec::with_capacity(scanned.len());
-    for (watched_folder_path, path, source_kind, revision) in scanned {
-        if revision != expected_revision {
+    for scanned in scanned {
+        let watched_folder_path = path_column::decode(scanned.watched_folder_path)?;
+        let (path, source_kind) = (scanned.path, scanned.source_kind);
+        if scanned.file_edit_revision != expected_revision {
             return Err(PreparationRefusal::Changed(path).into());
         }
         match source_kind.as_str() {

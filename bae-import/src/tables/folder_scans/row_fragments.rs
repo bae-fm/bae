@@ -1,12 +1,47 @@
 //! The folder scans' rows that other domains' fragments spread to reach them.
 
-// Every candidate the scans hold: the key its rows are under, and the files it
-// reads.
+// Every candidate the scans hold: the key its rows are under, the files it
+// reads, and its name.
 coven::fragment!(
     HeldCandidates,
     r#"
-    SELECT scan.watched_folder_path, scan.path, scan.content_hash
+    SELECT scan.watched_folder_path, scan.path, scan.content_hash, scan.name
     FROM scan_candidate AS scan
+"#
+);
+
+// Every release the scans read from one folder, not a grouping's: the folder
+// it was read from and the grouping that takes it in, if one does.
+coven::fragment!(
+    HeldFolderReleases,
+    r#"
+    SELECT scan.watched_folder_path, scan.path, scan.folder, scan.grouping_key
+    FROM scan_candidate AS scan
+    WHERE scan.source_kind = 'folder'
+"#
+);
+
+// Every image file a scanned candidate holds, at the version the scan read,
+// with the volume of the candidate's watched folder.
+coven::fragment!(
+    HeldArtworkFiles,
+    r#"
+    SELECT file.watched_folder_path, file.candidate_path, file.absolute_path, file.size,
+           file.modified_at_ns, root.volume
+    FROM scan_candidate_file AS file
+    JOIN folder_scan_roots AS root ON root.watched_folder_path = file.watched_folder_path
+    WHERE file.role = 'artwork'
+"#
+);
+
+// Every candidate the scans hold, under its key, with the volume of its
+// watched folder.
+coven::fragment!(
+    HeldCandidateVolumes,
+    r#"
+    SELECT scan.watched_folder_path, scan.path, root.volume
+    FROM scan_candidate AS scan
+    JOIN folder_scan_roots AS root ON root.watched_folder_path = scan.watched_folder_path
 "#
 );
 

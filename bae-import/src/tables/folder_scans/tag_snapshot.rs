@@ -101,6 +101,18 @@ coven::write!(
 "#
 );
 
+// The audio files the candidate at `candidate_path` holds, in play order.
+coven::read!(
+    writer CandidateAudioFiles(watched_folder_path: Vec<u8>, candidate_path: CandidateKey),
+    r#"
+    SELECT file.relative_path, file.size
+    FROM scan_candidate_file AS file
+    WHERE file.watched_folder_path = :watched_folder_path
+      AND file.candidate_path = :candidate_path AND file.role = 'audio'
+    ORDER BY file.position
+"#
+);
+
 /// Replace a candidate's file-tag snapshot, inside the caller's transaction,
 /// if its scan generation and file edit revision still match the snapshot's.
 /// `false` means the candidate changed first and nothing was written.
@@ -123,13 +135,16 @@ pub(crate) fn replace_candidate_file_tag_snapshot_on(
         return Ok(false);
     }
 
-    let audio_files: Vec<(String, i64)> = sql.query(
-        "SELECT relative_path, size FROM scan_candidate_file \
-         WHERE watched_folder_path = ? AND candidate_path = ? AND role = 'audio' \
-         ORDER BY position",
-        params![coven::path_bytes(watched_folder_path), candidate_path],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
+    let audio_files: Vec<(String, i64)> = bae_store::statement_rows(
+        sql,
+        &CandidateAudioFilesParams {
+            watched_folder_path: coven::path_bytes(watched_folder_path),
+            candidate_path: candidate_path.clone(),
+        },
+    )?
+    .into_iter()
+    .map(|file| (file.relative_path, file.size))
+    .collect();
     // The reading was taken from the audio the candidate held at this
     // generation and revision, which the match above confirmed it still
     // holds.
@@ -465,6 +480,16 @@ impl StoredSnapshot {
     }
 }
 
+coven::read!(
+    writer StoredEmbeddedCover(candidate_path: CandidateKey, source_file_id: String),
+    r#"
+    SELECT snapshot.embedded_cover_data
+    FROM scan_candidate_tag_snapshot AS snapshot
+    WHERE snapshot.candidate_path = :candidate_path
+      AND snapshot.embedded_cover_source_relative_path = :source_file_id
+"#
+);
+
 /// The bytes of the embedded cover the candidate's tag snapshot stored from
 /// `source_file_id`, or `None` when it stored none from that file.
 pub(crate) fn stored_embedded_cover_bytes(
@@ -472,14 +497,11 @@ pub(crate) fn stored_embedded_cover_bytes(
     candidate_path: &CandidateKey,
     source_file_id: &str,
 ) -> Result<Option<Vec<u8>>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT embedded_cover_data FROM scan_candidate_tag_snapshot \
-             WHERE candidate_path = ? AND embedded_cover_source_relative_path = ?",
-            params![candidate_path, source_file_id],
-            |row| row.get(0),
-        )
-        .optional()?)
+    let stored = StoredEmbeddedCoverParams {
+        candidate_path: candidate_path.clone(),
+        source_file_id: source_file_id.to_owned(),
+    };
+    Ok(bae_store::statement_optional(sql, &stored)?.and_then(|cover| cover.embedded_cover_data))
 }
 
 /// One `scan_candidate_file_tag` row, with the path of its file, as

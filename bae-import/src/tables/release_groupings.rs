@@ -134,6 +134,106 @@ impl GroupingChanges {
     }
 }
 
+// The groupings anchored at, or taking a release from, the folder `root` or
+// a folder below it, each with whether the scan lists its release.
+coven::read!(
+    writer GroupingsAtOrBelow(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
+        key: CandidateKey,
+        listed: bool
+    },
+    r#"
+    SELECT grouping.key,
+           EXISTS (SELECT 1
+                   FROM @crate::tables::folder_scans::row_fragments::HeldCandidates AS held
+                   WHERE held.path = grouping.key) AS listed
+    FROM (SELECT anchored.key
+          FROM release_grouping AS anchored
+          WHERE anchored.anchor_folder = :root
+             OR (anchored.anchor_folder >= :below_first AND anchored.anchor_folder < :below_past)
+          UNION
+          SELECT member.grouping_key AS key
+          FROM release_grouping_member AS member
+          WHERE member.member_folder = :root
+             OR (member.member_folder >= :below_first AND member.member_folder < :below_past))
+        AS grouping
+    ORDER BY grouping.key
+"#
+);
+
+// The groupings that take in one of the releases `touched` names, or sit in
+// one of the folders `sidecars` names, each a JSON array of bytes in hex.
+coven::read!(
+    writer GroupingsTouched(touched: String, sidecars: String) { key: CandidateKey },
+    r#"
+    SELECT member.grouping_key AS key
+    FROM release_grouping_member AS member
+    WHERE member.member_key IN (SELECT unhex(wanted.value) FROM json_each(:touched) AS wanted)
+    UNION
+    SELECT grouping.key
+    FROM release_grouping AS grouping
+    WHERE grouping.parent_folder IN (SELECT unhex(wanted.value) FROM json_each(:sidecars) AS wanted)
+    ORDER BY 1
+"#
+);
+
+// The releases the grouping `key` takes in, in order.
+coven::read!(
+    writer GroupingMembers(key: CandidateKey) { member_key: CandidateKey },
+    r#"
+    SELECT member.member_key
+    FROM release_grouping_member AS member
+    WHERE member.grouping_key = :key
+    ORDER BY member.position
+"#
+);
+
+// The folder the grouping `key` sits in, and whether it reads that folder's
+// files.
+coven::read!(
+    writer GroupingSeat(key: CandidateKey) { reads_parent_files: bool },
+    r#"
+    SELECT grouping.parent_folder, grouping.reads_parent_files
+    FROM release_grouping AS grouping
+    WHERE grouping.key = :key
+"#
+);
+
+// The blocked groupings but `key` that sit in the folder `folder`.
+coven::read!(
+    writer BlockedInFolder(folder: Vec<u8>, key: CandidateKey) { key: CandidateKey },
+    r#"
+    SELECT grouping.key
+    FROM release_grouping AS grouping
+    WHERE grouping.parent_folder = :folder AND grouping.blocked IS NOT NULL
+      AND grouping.key != :key
+    ORDER BY grouping.key
+"#
+);
+
+// Why the grouping `key` cannot be worked on, as its columns say.
+coven::read!(
+    writer StoredGroupingBlock(key: CandidateKey),
+    r#"
+    SELECT grouping.blocked, grouping.blocked_subject, grouping.blocked_holder
+    FROM release_grouping AS grouping
+    WHERE grouping.key = :key
+"#
+);
+
+// Whether a scanned release, or a release this device imported, reads the
+// files that hash to `content_hash`.
+coven::read!(
+    writer ContentInUse(content_hash: String) { in_use: bool },
+    r#"
+    SELECT EXISTS (SELECT 1
+                   FROM @crate::tables::folder_scans::row_fragments::HeldCandidates AS held
+                   WHERE held.content_hash = :content_hash)
+        OR EXISTS (SELECT 1
+                   FROM @crate::tables::import_origin::fragments::ReleaseOrigin AS origin
+                   WHERE origin.origin_hash = :content_hash) AS in_use
+"#
+);
+
 /// Forget every grouping anchored at or taking a release from a folder at or
 /// below `folders`. Returns the keys of the grouping releases that were listed
 /// and went with them.
@@ -141,27 +241,19 @@ pub(super) fn forget_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &super::watched_folders::FoldersAtOrBelow,
 ) -> Result<Vec<CandidateKey>, DbError> {
-    use super::watched_folders::FoldersAtOrBelow;
-    let groupings: Vec<(CandidateKey, bool)> = sql.query(
-        &format!(
-            "SELECT grouping.key, \
-                    EXISTS (SELECT 1 FROM scan_candidate WHERE path = grouping.key) \
-             FROM (SELECT key FROM release_grouping WHERE {anchored} \
-                   UNION \
-                   SELECT grouping_key AS key FROM release_grouping_member \
-                   WHERE {member}) AS grouping \
-             ORDER BY grouping.key",
-            anchored = FoldersAtOrBelow::condition("anchor_folder"),
-            member = FoldersAtOrBelow::condition("member_folder"),
-        ),
-        &folders.params(),
-        |row| Ok((row.get(0)?, row.get(1)?)),
+    let groupings = bae_store::statement_rows(
+        sql,
+        &GroupingsAtOrBelowParams {
+            root: folders.folder.clone(),
+            below_first: folders.below_first.clone(),
+            below_past: folders.below_past.clone(),
+        },
     )?;
     let mut removed = Vec::new();
-    for (key, listed) in groupings {
-        sql.run(&DeleteGroupingParams { key: &key })?;
-        if listed {
-            removed.push(key);
+    for grouping in groupings {
+        sql.run(&DeleteGroupingParams { key: &grouping.key })?;
+        if grouping.listed {
+            removed.push(grouping.key);
         }
     }
     Ok(removed)
@@ -176,15 +268,12 @@ pub(super) fn rebuild_groupings(
     sidecars: &[PathBuf],
 ) -> Result<GroupingChanges, DbError> {
     let touched = crate::tables::key_hex_list(touched.iter());
-    let groupings: Vec<CandidateKey> = sql.query(
-        "SELECT grouping_key FROM release_grouping_member \
-         WHERE member_key IN (SELECT unhex(value) FROM json_each(?)) \
-         UNION SELECT key FROM release_grouping \
-         WHERE parent_folder IN (SELECT unhex(value) FROM json_each(?)) \
-         ORDER BY 1",
-        [touched, path_column::hex_list(sidecars.iter().map(PathBuf::as_path))],
-        |row| row.get(0),
-    )?;
+    let sidecars = path_column::hex_list(sidecars.iter().map(PathBuf::as_path));
+    let groupings: Vec<CandidateKey> =
+        bae_store::statement_rows(sql, &GroupingsTouchedParams { touched, sidecars })?
+            .into_iter()
+            .map(|grouping| grouping.key)
+            .collect();
     let mut changes = GroupingChanges::default();
     for grouping in &groupings {
         changes.extend(rebuild_grouping(sql, grouping)?);
@@ -196,11 +285,11 @@ pub(super) fn rebuild_groupings(
 /// takes in, or record on the grouping why it cannot be built and leave its
 /// release as last built.
 fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<GroupingChanges, DbError> {
-    let member_keys: Vec<CandidateKey> = sql.query(
-        "SELECT member_key FROM release_grouping_member WHERE grouping_key = ? ORDER BY position",
-        [key],
-        |row| row.get(0),
-    )?;
+    let member_keys: Vec<CandidateKey> =
+        bae_store::statement_rows(sql, &GroupingMembersParams { key: key.clone() })?
+            .into_iter()
+            .map(|member| member.member_key)
+            .collect();
     let mut members = Vec::with_capacity(member_keys.len());
     for member in &member_keys {
         match folder_scans::load_item_by_key(sql, member, RowSources::Any)? {
@@ -240,11 +329,8 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
             .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
     );
     let sits_in_bytes = sits_in.as_deref().map(coven::path_bytes);
-    let (sat_in, was_reading): (Option<Vec<u8>>, bool) = sql.query_row(
-        "SELECT parent_folder, reads_parent_files FROM release_grouping WHERE key = ?",
-        [key],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
+    let seat = bae_store::statement_row(sql, &GroupingSeatParams { key: key.clone() })?;
+    let (sat_in, was_reading) = (seat.parent_folder, seat.reads_parent_files);
     let mut changes = GroupingChanges::default();
     if sat_in != sits_in_bytes {
         sql.run(&MoveGroupingParams { parent_folder: sits_in_bytes.as_deref(), key })?;
@@ -404,13 +490,30 @@ impl ParentFiles {
     }
 }
 
-/// The other release reading the files of the folder a grouping sits in, by
-/// its name, found by the index of each folder's one reader.
-pub(super) const PARENT_FILES_READER: &str =
-    "SELECT COALESCE(candidate.name, coven_path_text(other.key)) \
-     FROM release_grouping AS other \
-     LEFT JOIN scan_candidate AS candidate ON candidate.path = other.key \
-     WHERE other.parent_folder = ?1 AND other.reads_parent_files = 1 AND other.key != ?2";
+// The other release reading the files of the folder `folder` that a grouping
+// sits in, by its name, found by the index of each folder's one reader.
+coven::read!(
+    writer ParentFilesReader(folder: Vec<u8>, key: CandidateKey) { reader: String },
+    r#"
+    SELECT COALESCE(candidate.name, coven_path_text(other.key)) AS reader
+    FROM release_grouping AS other
+    LEFT JOIN @crate::tables::folder_scans::row_fragments::HeldCandidates AS candidate
+        ON candidate.path = other.key
+    WHERE other.parent_folder = :folder AND other.reads_parent_files = 1 AND other.key != :key
+"#
+);
+
+// Whether a grouping but `key` sits in the folder `folder`.
+coven::read!(
+    writer FolderContested(folder: Vec<u8>, key: CandidateKey) { contested: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM release_grouping AS other
+        WHERE other.parent_folder = :folder AND other.key != :key
+    ) AS contested
+"#
+);
 
 /// What the grouping `key`, sitting in `folder`, reads of that folder's files,
 /// or why it cannot read them yet; `reading` means it already reads them.
@@ -432,19 +535,15 @@ fn parent_files_on(
     };
     let named = bae_util::path_text::name_text(folder);
     if !reading {
-        let reader: Option<String> = sql
-            .query_row(PARENT_FILES_READER, params![coven::path_bytes(folder), key], |row| {
-                row.get(0)
-            })
-            .optional()?;
+        let reader =
+            ParentFilesReaderParams { folder: coven::path_bytes(folder), key: key.clone() };
+        let reader = bae_store::statement_optional(sql, &reader)?.map(|other| other.reader);
         if let Some(reader) = reader {
             return Ok(Err(GroupingBlock::FolderFilesTaken { folder: named, release: reader }));
         }
-        let contested: bool = sql.query_row(
-            "SELECT EXISTS(SELECT 1 FROM release_grouping WHERE parent_folder = ? AND key != ?)",
-            params![coven::path_bytes(folder), key],
-            |row| row.get(0),
-        )?;
+        let contested =
+            FolderContestedParams { folder: coven::path_bytes(folder), key: key.clone() };
+        let contested = bae_store::statement_row(sql, &contested)?.contested;
         if contested {
             return Ok(Err(GroupingBlock::FolderFilesContested { folder: named }));
         }
@@ -463,12 +562,13 @@ fn rebuild_blocked_in(
     key: &CandidateKey,
     folder: &Path,
 ) -> Result<GroupingChanges, DbError> {
-    let blocked: Vec<CandidateKey> = sql.query(
-        "SELECT key FROM release_grouping \
-         WHERE parent_folder = ? AND blocked IS NOT NULL AND key != ? ORDER BY key",
-        params![coven::path_bytes(folder), key],
-        |row| row.get(0),
-    )?;
+    let blocked: Vec<CandidateKey> = bae_store::statement_rows(
+        sql,
+        &BlockedInFolderParams { folder: coven::path_bytes(folder), key: key.clone() },
+    )?
+    .into_iter()
+    .map(|grouping| grouping.key)
+    .collect();
     let mut changes = GroupingChanges::default();
     for blocked in blocked {
         changes.extend(rebuild_grouping(sql, &blocked)?);
@@ -568,13 +668,9 @@ pub(super) fn load_block_on(
     sql: &impl bae_store::WriterRead,
     key: &CandidateKey,
 ) -> Result<Option<GroupingBlock>, DbError> {
-    let columns: Option<(Option<String>, Option<String>, Option<String>)> = sql
-        .query_row(
-            "SELECT blocked, blocked_subject, blocked_holder FROM release_grouping WHERE key = ?",
-            [key],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )
-        .optional()?;
+    let columns =
+        bae_store::statement_optional(sql, &StoredGroupingBlockParams { key: key.clone() })?
+            .map(|grouping| (grouping.blocked, grouping.blocked_subject, grouping.blocked_holder));
     match columns {
         Some((kind, subject, holder)) => block_of(kind, subject, holder),
         None => Ok(None),
@@ -723,12 +819,8 @@ impl ImportTables {
                 // files another release could share and no layout to start from.
                 if !matches!(parent, ParentFiles::Invalid(_)) {
                     let content_hash = composed.files.content_hash();
-                    let in_use: bool = sql.query_row(
-                        "SELECT EXISTS(SELECT 1 FROM scan_candidate WHERE content_hash = ?1) \
-                     OR EXISTS(SELECT 1 FROM local_release_origin WHERE content_hash = ?1)",
-                        [&content_hash],
-                        |row| row.get(0),
-                    )?;
+                    let in_use = ContentInUseParams { content_hash: content_hash.clone() };
+                    let in_use = bae_store::statement_row(sql, &in_use)?.in_use;
                     if in_use {
                         return Err(CombineRefusal::AlreadyPresent.into());
                     }
@@ -788,20 +880,16 @@ impl ImportTables {
                     &key,
                     &crate::tables::import_state::load_standing_on(sql, &key)?.facts(),
                 )?;
-                let members: Vec<CandidateKey> = sql.query(
-                    "SELECT member_key FROM release_grouping_member \
-                 WHERE grouping_key = ? ORDER BY position",
-                    [&key],
-                    |row| row.get(0),
-                )?;
-                let sat_in: Option<PathBuf> = sql
-                    .query_row(
-                        "SELECT parent_folder FROM release_grouping WHERE key = ?",
-                        [&key],
-                        |row| path_column::get_optional(row, 0),
-                    )
-                    .optional()?
-                    .flatten();
+                let members: Vec<CandidateKey> =
+                    bae_store::statement_rows(sql, &GroupingMembersParams { key: key.clone() })?
+                        .into_iter()
+                        .map(|member| member.member_key)
+                        .collect();
+                let sat_in =
+                    bae_store::statement_optional(sql, &GroupingSeatParams { key: key.clone() })?
+                        .and_then(|seat| seat.parent_folder)
+                        .map(path_column::decode)
+                        .transpose()?;
                 let removed = sql.run(&DeletePickedGroupingParams { key: &key })?;
                 if removed == 0 {
                     return Err(SeparationRefusal::NotPicked(key).into());

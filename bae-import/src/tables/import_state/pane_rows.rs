@@ -315,20 +315,36 @@ impl ImportTables {
 }
 
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
+coven::read!(
+    writer DraftColumns(content_hash: String) { draft_blank: bool, draft_valid: bool },
+    r#"
+    SELECT edit.draft_blank, edit.draft_valid
+    FROM import_candidate_edit AS edit
+    WHERE edit.content_hash = :content_hash
+"#
+);
+
+coven::read!(
+    writer DraftRowHeld(content_hash: String) { held: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1 FROM import_candidate_edit AS edit WHERE edit.content_hash = :content_hash
+    ) AS held
+"#
+);
+
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// Whether the draft of `candidate` is blank and whether it would import, as
 /// its row stores them beside its fields, in the write that stored them.
 fn load_draft_columns_on(
     sql: &impl bae_store::WriterRead,
     candidate: OneCandidate<'_>,
 ) -> Result<(bool, bool), DbError> {
-    let filter = candidate.filter("content_hash");
-    sql.query_row(
-        &format!("SELECT draft_blank, draft_valid FROM import_candidate_edit {}", filter.clause),
-        filter.params().as_slice(),
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )
-    .optional()?
-    .ok_or_else(|| DbError::unreadable("import_candidate_edit of a stored draft", candidate))
+    let OneCandidate::Hash(content_hash) = candidate;
+    let stored = DraftColumnsParams { content_hash: content_hash.to_owned() };
+    bae_store::statement_optional(sql, &stored)?
+        .map(|draft| (draft.draft_blank, draft.draft_valid))
+        .ok_or_else(|| DbError::unreadable("import_candidate_edit of a stored draft", candidate))
 }
 
 /// Whether the candidate `content_hash` holds a draft row.
@@ -336,14 +352,8 @@ pub(super) fn has_draft_row_on(
     sql: &impl bae_store::WriterRead,
     content_hash: &str,
 ) -> Result<bool, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some())
+    let draft = DraftRowHeldParams { content_hash: content_hash.to_owned() };
+    Ok(bae_store::statement_row(sql, &draft)?.held)
 }
 
 /// The draft a pane's read selects, as

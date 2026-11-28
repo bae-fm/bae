@@ -88,13 +88,22 @@ fn require_import_commit_guard(
     }
 }
 
+coven::read!(
+    writer AlbumHeld(album_id: String) { held: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM @bae_records::records::browse_fragments::AlbumRecord AS album
+        WHERE album.album_id = :album_id
+    ) AS held
+"#
+);
+
 /// Whether the library holds the album `album_id`, read inside the commit's
 /// own write, so no write that adds or deletes the album can land between
 /// this read and the release's rows.
 fn album_held_on(sql: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
-    Ok(sql.query_row("SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)", [album_id], |row| {
-        row.get(0)
-    })?)
+    Ok(bae_store::statement_row(sql, &AlbumHeldParams { album_id: album_id.to_owned() })?.held)
 }
 
 /// Refuse the import unless the existing album its release files under is
@@ -228,6 +237,15 @@ pub(crate) struct CommittingCandidate {
     pub file_tag_snapshot: Option<crate::file_tag_snapshot::FileTagSnapshot>,
 }
 
+coven::read!(
+    writer CandidateRevisions(content_hash: String),
+    r#"
+    SELECT state.edit_revision, state.metadata_revision
+    FROM import_candidate_state AS state
+    WHERE state.content_hash = :content_hash
+"#
+);
+
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
 /// when the scan no longer lists one there.
 fn load_committing_candidate(
@@ -241,14 +259,11 @@ fn load_committing_candidate(
     };
     let actionable = stored.entry.actionable();
     let candidate = stored.entry.candidate;
-    let revisions: Option<(i64, i64)> = sql
-        .query_row(
-            "SELECT edit_revision, metadata_revision FROM import_candidate_state \
-             WHERE content_hash = ?",
-            [expectation.candidate.content_hash.as_str()],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()?;
+    let revisions = bae_store::statement_optional(
+        sql,
+        &CandidateRevisionsParams { content_hash: expectation.candidate.content_hash.clone() },
+    )?
+    .map(|state| (state.edit_revision, state.metadata_revision));
     let prepared_revisions = revisions
         .map(|(edit, metadata)| {
             Ok::<_, DbError>((

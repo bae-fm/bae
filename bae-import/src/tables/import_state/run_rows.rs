@@ -279,6 +279,17 @@ pub(crate) fn store_release_run_on(
     store_run_on(sql, key, run, outcome, releases, signals)
 }
 
+coven::read!(
+    writer StandingNamesRun(candidate_key: CandidateKey, run: i64) { named: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM import_candidate_standing AS standing
+        WHERE standing.candidate_key = :candidate_key AND standing.identify_run = :run
+    ) AS named
+"#
+);
+
 /// Store how `run` of the folder candidate `key` stands, with the releases
 /// its rows name, and the signals it last read, if its standing names that
 /// run; whether it did.
@@ -291,12 +302,9 @@ fn publish_candidate_run_on(
     signals: Option<&Signals>,
 ) -> Result<bool, DbError> {
     let run = to_i64(run.number(), "an identify run")?;
-    let named = sql.query_row(
-        "SELECT EXISTS (SELECT 1 FROM import_candidate_standing \
-                        WHERE candidate_key = ? AND identify_run = ?)",
-        params![key, run],
-        |row| row.get::<_, bool>(0),
-    )?;
+    let named =
+        bae_store::statement_row(sql, &StandingNamesRunParams { candidate_key: key.clone(), run })?
+            .named;
     if named {
         store_run_on(sql, key, run, outcome, releases, signals)?;
     }

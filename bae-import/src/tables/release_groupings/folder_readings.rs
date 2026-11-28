@@ -26,6 +26,61 @@ coven::write!(
 "#
 );
 
+// The grouping anchored at the folder `anchor`.
+coven::read!(
+    writer AnchoredGrouping(anchor: Vec<u8>) { key: CandidateKey },
+    r#"
+    SELECT grouping.key
+    FROM release_grouping AS grouping
+    WHERE grouping.anchor_folder = :anchor
+"#
+);
+
+// Whether two releases or more are read from the folder `folder` under the
+// watched folder `root`, or from folders below it.
+coven::read!(
+    writer FolderReadingCombinable(root: Vec<u8>, folder: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
+        combinable: bool
+    },
+    r#"
+    SELECT COUNT(*) >= 2 AS combinable
+    FROM (SELECT 1
+          FROM @crate::tables::folder_scans::row_fragments::HeldFolderReleases AS scan
+          WHERE scan.watched_folder_path = :root
+            AND (scan.folder = :folder
+                 OR (scan.folder >= :below_first AND scan.folder < :below_past))
+          LIMIT 2)
+"#
+);
+
+// Whether the release read from the folder `folder` under the watched folder
+// `root` is a grouping's.
+coven::read!(
+    writer FolderReadingSeparable(root: Vec<u8>, folder: Vec<u8>) { separable: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM @crate::tables::folder_scans::row_fragments::HeldFolderReleases AS scan
+        WHERE scan.watched_folder_path = :root AND scan.folder = :folder
+          AND scan.grouping_key IS NOT NULL
+    ) AS separable
+"#
+);
+
+// The releases read from the folder `folder` under the watched folder `root`,
+// or from folders below it.
+coven::read!(
+    writer ScannedReleasesAtOrBelow(root: Vec<u8>, folder: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
+        path: CandidateKey
+    },
+    r#"
+    SELECT scan.path
+    FROM @crate::tables::folder_scans::row_fragments::HeldFolderReleases AS scan
+    WHERE scan.watched_folder_path = :root
+      AND (scan.folder = :folder OR (scan.folder >= :below_first AND scan.folder < :below_past))
+"#
+);
+
 #[cfg(any(test, feature = "test-utils"))]
 coven::write!(
     PlantUnscannedFolderReading(folder: &'p [u8]),
@@ -101,11 +156,7 @@ pub(crate) fn store_folder_reading(
     }
     let anchor = coven::path_bytes(&anchor);
     sql.run(&StoreAnchoredGroupingParams { grouping, anchor: &anchor, combined, author })?;
-    let stored: CandidateKey = sql.query_row(
-        "SELECT key FROM release_grouping WHERE anchor_folder = ?",
-        [&anchor],
-        |row| row.get(0),
-    )?;
+    let stored = bae_store::statement_row(sql, &AnchoredGroupingParams { anchor })?.key;
     if &stored != grouping {
         return Err(FolderReadingRefusal::GroupedElsewhere {
             folder: key.relative_folder.text().to_string(),
@@ -225,13 +276,9 @@ impl ImportTables {
         ));
         self.store
             .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT key FROM release_grouping WHERE anchor_folder = ?",
-                        [anchor],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
+                let grouping =
+                    bae_store::statement_optional(&sql, &AnchoredGroupingParams { anchor })?;
+                Ok(grouping.map(|grouping| grouping.key))
             })
             .await
     }
@@ -254,30 +301,15 @@ impl ImportTables {
         let root = coven::path_bytes(&key.watched_folder_path);
         self.store
             .read(move |sql| match decision {
-                crate::folder_scanner::FolderReleaseDecision::CombineAsOneRelease => Ok(sql
-                    .query_row(
-                        "SELECT COUNT(*) >= 2 FROM ( \
-                         SELECT 1 FROM scan_candidate \
-                         WHERE watched_folder_path = :root AND source_kind = 'folder' \
-                           AND (folder = :folder \
-                                OR (folder >= :below_first AND folder < :below_past)) \
-                         LIMIT 2)",
-                        rusqlite::named_params! {
-                            ":root": root,
-                            ":folder": folder,
-                            ":below_first": below_first,
-                            ":below_past": below_past,
-                        },
-                        |row| row.get(0),
-                    )?),
-                crate::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases => Ok(sql
-                    .query_row(
-                        "SELECT EXISTS (SELECT 1 FROM scan_candidate \
-                         WHERE watched_folder_path = :root AND source_kind = 'folder' \
-                           AND folder = :folder AND grouping_key IS NOT NULL)",
-                        rusqlite::named_params! { ":root": root, ":folder": folder },
-                        |row| row.get(0),
-                    )?),
+                crate::folder_scanner::FolderReleaseDecision::CombineAsOneRelease => {
+                    let releases =
+                        FolderReadingCombinableParams { root, folder, below_first, below_past };
+                    Ok(bae_store::statement_row(&sql, &releases)?.combinable)
+                }
+                crate::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases => {
+                    let releases = FolderReadingSeparableParams { root, folder };
+                    Ok(bae_store::statement_row(&sql, &releases)?.separable)
+                }
             })
             .await
     }
@@ -285,10 +317,6 @@ impl ImportTables {
     /// The keys of the scanned releases read from `folder` or a folder below
     /// it under the watched folder `watched_folder_path`, by the candidates'
     /// folder index.
-    #[expect(
-        clippy::read_group,
-        reason = "kept finding: collects the release keys the statement returned into a set"
-    )]
     pub async fn scanned_release_keys_at_or_below(
         &self,
         watched_folder_path: &Path,
@@ -298,21 +326,11 @@ impl ImportTables {
         let (root, folder) = (coven::path_bytes(watched_folder_path), coven::path_bytes(folder));
         self.store
             .read(move |sql| {
-                Ok(sql
-                    .query(
-                        "SELECT path FROM scan_candidate \
-                     WHERE watched_folder_path = :root AND source_kind = 'folder' \
-                       AND (folder = :folder \
-                            OR (folder >= :below_first AND folder < :below_past))",
-                        rusqlite::named_params! {
-                            ":root": root,
-                            ":folder": folder,
-                            ":below_first": below_first,
-                            ":below_past": below_past,
-                        },
-                        |row| row.get(0),
-                    )?
+                let releases =
+                    ScannedReleasesAtOrBelowParams { root, folder, below_first, below_past };
+                Ok(bae_store::statement_rows(&sql, &releases)?
                     .into_iter()
+                    .map(|release| release.path)
                     .collect())
             })
             .await

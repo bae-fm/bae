@@ -65,6 +65,59 @@ coven::write!(
 "#
 );
 
+// The candidate whose scan holds the folder image at `source_path`, in that
+// version, with the copy at `step` it keeps of it, if any: with no step the
+// copy matches nothing.
+coven::read!(
+    writer FolderPictureOwner(
+        source_kind: String,
+        source_path: Vec<u8>,
+        source_size: i64,
+        modified_at_ns: i64,
+        step: Option<i64>
+    ),
+    r#"
+    SELECT file.watched_folder_path, file.candidate_path, file.volume, kept.format, kept.bytes
+    FROM @crate::tables::folder_scans::row_fragments::HeldArtworkFiles AS file
+    LEFT JOIN import_picture_copy AS kept
+      ON kept.watched_folder_path = file.watched_folder_path
+     AND kept.candidate_path = file.candidate_path
+     AND kept.source_kind = :source_kind AND kept.source_path = :source_path
+     AND kept.source_size = :source_size AND kept.source_modified_at_ns = :modified_at_ns
+     AND kept.step = :step
+    WHERE file.absolute_path = :source_path AND file.size = :source_size
+      AND file.modified_at_ns = :modified_at_ns
+    LIMIT 1
+"#
+);
+
+// The candidate at `candidate`, whose files hold the embedded art at
+// `source_path`, with the copy at `step` it keeps of it, if any: with no step
+// the copy matches nothing.
+coven::read!(
+    writer EmbeddedPictureOwner(
+        source_kind: String,
+        source_path: Vec<u8>,
+        source_size: i64,
+        modified_at_ns: i64,
+        step: Option<i64>,
+        candidate: crate::CandidateKey
+    ),
+    r#"
+    SELECT candidate.watched_folder_path, candidate.path AS candidate_path, candidate.volume,
+           kept.format, kept.bytes
+    FROM @crate::tables::folder_scans::row_fragments::HeldCandidateVolumes AS candidate
+    LEFT JOIN import_picture_copy AS kept
+      ON kept.watched_folder_path = candidate.watched_folder_path
+     AND kept.candidate_path = candidate.path
+     AND kept.source_kind = :source_kind AND kept.source_path = :source_path
+     AND kept.source_size = :source_size AND kept.source_modified_at_ns = :modified_at_ns
+     AND kept.step = :step
+    WHERE candidate.path = :candidate
+    LIMIT 1
+"#
+);
+
 impl ImportTables {
     /// The candidate whose scan holds the picture's file, or `None` when none
     /// does: a file that is not an image of a stored candidate is no picture
@@ -86,79 +139,48 @@ impl ImportTables {
         let source_path = coven::path_bytes(&path);
         let source_size = to_i64(size, "a picture file's size")?;
         let step = step.map(step_column);
-        // The copy joins on the owner's own columns and the version of the
-        // source; with no step it matches nothing.
-        let kept_join = |owner: &str, candidate: &str| {
-            format!(
-                "LEFT JOIN import_picture_copy AS k \
-                   ON k.watched_folder_path = {owner}.watched_folder_path \
-                  AND k.candidate_path = {owner}.{candidate} \
-                  AND k.source_kind = ? AND k.source_path = ? AND k.source_size = ? \
-                  AND k.source_modified_at_ns = ? AND k.step = ? "
-            )
-        };
         self.store
             .read(move |sql| {
-                let row = |row: &rusqlite::Row<'_>| {
-                    Ok((
-                        row.get::<_, Vec<u8>>(0)?,
-                        row.get::<_, Vec<u8>>(1)?,
-                        row.get::<_, String>(2)?,
-                        row.get::<_, Option<String>>(3)?,
-                        row.get::<_, Option<Vec<u8>>>(4)?,
-                    ))
-                };
                 let found = match &embedded_in {
-                    None => sql
-                        .query_row(
-                            &format!(
-                                "SELECT f.watched_folder_path, f.candidate_path, r.volume, \
-                                        k.format, k.bytes \
-                                 FROM scan_candidate_file AS f \
-                                 JOIN folder_scan_roots AS r \
-                                   ON r.watched_folder_path = f.watched_folder_path \
-                                 {} \
-                                 WHERE f.absolute_path = ? AND f.size = ? \
-                                   AND f.modified_at_ns = ? AND f.role = 'artwork' \
-                                 LIMIT 1",
-                                kept_join("f", "candidate_path")
-                            ),
-                            params![
-                                source_kind,
-                                source_path,
-                                source_size,
-                                modified_at_ns,
-                                step,
-                                source_path,
-                                source_size,
-                                modified_at_ns
-                            ],
-                            row,
+                    None => bae_store::statement_optional(
+                        &sql,
+                        &FolderPictureOwnerParams {
+                            source_kind: source_kind.to_owned(),
+                            source_path: source_path.clone(),
+                            source_size,
+                            modified_at_ns,
+                            step,
+                        },
+                    )?
+                    .map(|found| {
+                        (
+                            found.watched_folder_path,
+                            found.candidate_path,
+                            found.volume,
+                            found.format,
+                            found.bytes,
                         )
-                        .optional()?,
-                    Some(candidate) => sql
-                        .query_row(
-                            &format!(
-                                "SELECT c.watched_folder_path, c.path, r.volume, \
-                                        k.format, k.bytes \
-                                 FROM scan_candidate AS c \
-                                 JOIN folder_scan_roots AS r \
-                                   ON r.watched_folder_path = c.watched_folder_path \
-                                 {} \
-                                 WHERE c.path = ? LIMIT 1",
-                                kept_join("c", "path")
-                            ),
-                            params![
-                                source_kind,
-                                source_path,
-                                source_size,
-                                modified_at_ns,
-                                step,
-                                candidate
-                            ],
-                            row,
+                    }),
+                    Some(candidate) => bae_store::statement_optional(
+                        &sql,
+                        &EmbeddedPictureOwnerParams {
+                            source_kind: source_kind.to_owned(),
+                            source_path: source_path.clone(),
+                            source_size,
+                            modified_at_ns,
+                            step,
+                            candidate: candidate.clone(),
+                        },
+                    )?
+                    .map(|found| {
+                        (
+                            found.watched_folder_path,
+                            found.candidate_path,
+                            found.volume,
+                            found.format,
+                            found.bytes,
                         )
-                        .optional()?,
+                    }),
                 };
                 found
                     .map(|(watched_folder_path, candidate_path, volume, format, bytes)| {

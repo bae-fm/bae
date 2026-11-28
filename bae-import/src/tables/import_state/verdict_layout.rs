@@ -73,6 +73,65 @@ impl VerdictLayout {
     }
 }
 
+// The text lines of the signals the candidate `content_hash` stored, in order.
+coven::read!(
+    writer CandidateTextLines(content_hash: String),
+    r#"
+    SELECT line.text, line.origin
+    FROM import_candidate_signals AS signals
+    JOIN import_candidate_text_line AS line ON line.signals_id = signals.signals_id
+    WHERE signals.content_hash = :content_hash
+    ORDER BY line.position
+"#
+);
+
+// The barcodes of the signals the candidate `content_hash` stored, in order.
+coven::read!(
+    writer CandidateBarcodes(content_hash: String),
+    r#"
+    SELECT listed.value, listed.origin_path
+    FROM import_candidate_signals AS signals
+    JOIN import_candidate_signal_value AS listed ON listed.signals_id = signals.signals_id
+    WHERE signals.content_hash = :content_hash AND listed.list = 'barcode'
+    ORDER BY listed.position
+"#
+);
+
+// The text lines of the signals the run `run` stored, in order.
+coven::read!(
+    writer RunTextLines(run: i64),
+    r#"
+    SELECT line.text, line.origin
+    FROM import_candidate_signals AS signals
+    JOIN import_candidate_text_line AS line ON line.signals_id = signals.signals_id
+    WHERE signals.identify_run = :run
+    ORDER BY line.position
+"#
+);
+
+// The barcodes of the signals the run `run` stored, in order.
+coven::read!(
+    writer RunBarcodes(run: i64),
+    r#"
+    SELECT listed.value, listed.origin_path
+    FROM import_candidate_signals AS signals
+    JOIN import_candidate_signal_value AS listed ON listed.signals_id = signals.signals_id
+    WHERE signals.identify_run = :run AND listed.list = 'barcode'
+    ORDER BY listed.position
+"#
+);
+
+// The catalog numbers the candidate `content_hash`'s lookup choices
+// discounted.
+coven::read!(
+    writer DiscountedCatalogs(content_hash: String),
+    r#"
+    SELECT discounted.value
+    FROM import_candidate_discounted_catalog AS discounted
+    WHERE discounted.content_hash = :content_hash
+"#
+);
+
 /// The text the layout checks and orders `owner`'s rows against: its stored
 /// signals' lines and barcodes, without the discounted catalog numbers. A
 /// candidate's discounted numbers come from its lookup choices; a run's are
@@ -82,17 +141,35 @@ pub(super) fn verdict_text_on(
     owner: Owner<'_>,
     ledger: Option<&IdentifyRunView>,
 ) -> Result<CandidateText, DbError> {
-    let column = owner.column();
-    let pool: Vec<TextLine> = sql
-        .query(
-            &format!(
-                "SELECT line.text, line.origin FROM import_candidate_signals AS signals \
-                 JOIN import_candidate_text_line AS line ON line.signals_id = signals.signals_id \
-                 WHERE signals.{column} = ? ORDER BY line.position"
-            ),
-            params![owner],
-            |row| Ok((row.get::<_, String>("text")?, row.get::<_, String>("origin")?)),
-        )?
+    let (lines, barcodes): (Vec<(String, String)>, Vec<SourcedValue>) = match owner {
+        Owner::Candidate(content_hash) => (
+            bae_store::statement_rows(
+                sql,
+                &CandidateTextLinesParams { content_hash: content_hash.to_owned() },
+            )?
+            .into_iter()
+            .map(|line| (line.text, line.origin))
+            .collect(),
+            bae_store::statement_rows(
+                sql,
+                &CandidateBarcodesParams { content_hash: content_hash.to_owned() },
+            )?
+            .into_iter()
+            .map(|listed| SourcedValue { value: listed.value, origin_path: listed.origin_path })
+            .collect(),
+        ),
+        Owner::Run(run) => (
+            bae_store::statement_rows(sql, &RunTextLinesParams { run })?
+                .into_iter()
+                .map(|line| (line.text, line.origin))
+                .collect(),
+            bae_store::statement_rows(sql, &RunBarcodesParams { run })?
+                .into_iter()
+                .map(|listed| SourcedValue { value: listed.value, origin_path: listed.origin_path })
+                .collect(),
+        ),
+    };
+    let pool: Vec<TextLine> = lines
         .into_iter()
         .map(|(text, origin)| {
             Ok(TextLine {
@@ -103,21 +180,14 @@ pub(super) fn verdict_text_on(
             })
         })
         .collect::<Result<_, DbError>>()?;
-    let barcodes: Vec<SourcedValue> = sql.query(
-        &format!(
-            "SELECT listed.value, listed.origin_path FROM import_candidate_signals AS signals \
-             JOIN import_candidate_signal_value AS listed ON listed.signals_id = signals.signals_id \
-             WHERE signals.{column} = ? AND listed.list = 'barcode' ORDER BY listed.position"
-        ),
-        params![owner],
-        |row| Ok(SourcedValue { value: row.get("value")?, origin_path: row.get("origin_path")? }),
-    )?;
     let struck_out: Vec<String> = match owner {
-        Owner::Candidate(content_hash) => sql.query(
-            "SELECT value FROM import_candidate_discounted_catalog WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )?,
+        Owner::Candidate(content_hash) => bae_store::statement_rows(
+            sql,
+            &DiscountedCatalogsParams { content_hash: content_hash.to_owned() },
+        )?
+        .into_iter()
+        .map(|discounted| discounted.value)
+        .collect(),
         Owner::Run(_) => match ledger.map(|ledger| &ledger.catalog) {
             Some(CatalogStepView::Numbers { rows, .. }) => {
                 rows.iter().filter(|row| row.excluded).map(|row| row.value.clone()).collect()

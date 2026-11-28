@@ -32,11 +32,6 @@ use crate::{Admission, CandidateFiles, SaveFailure};
 use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 use bae_store::WriteStatements as _;
 
-/// Every column of a row but its key, in the order [`StandingColumns`] reads
-/// them.
-pub(super) const COLUMNS: &str = "identification, content_hash, file_edit_revision, admission, \
-     identify_run, import_asked, save_failure_error, import_step, import_id";
-
 /// One row's columns as SQLite holds them.
 pub(crate) struct StandingColumns {
     identification: Option<String>,
@@ -51,20 +46,6 @@ pub(crate) struct StandingColumns {
 }
 
 impl StandingColumns {
-    pub(crate) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        Ok(Self {
-            identification: row.get(first)?,
-            content_hash: row.get(first + 1)?,
-            file_edit_revision: row.get(first + 2)?,
-            admission: row.get(first + 3)?,
-            identify_run: row.get(first + 4)?,
-            import_asked: row.get(first + 5)?,
-            save_failure_error: row.get(first + 6)?,
-            import_step: row.get(first + 7)?,
-            import_id: row.get(first + 8)?,
-        })
-    }
-
     /// The columns of a pane's read, which
     /// [`super::fragments::Standing`] names.
     fn of(standing: super::fragments::Standing) -> Self {
@@ -247,24 +228,24 @@ impl RuntimeFactColumns {
     }
 }
 
+// Where the candidate `candidate_key` stands.
+coven::read!(
+    writer CandidateStanding(candidate_key: CandidateKey),
+    r#"
+    SELECT standing.*
+    FROM @crate::tables::import_state::fragments::Standing(
+        keys: (SELECT :candidate_key AS candidate_key)) AS standing
+"#
+);
+
 /// Where `candidate_key` stands, as its row says, inside a write or outside
 /// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
     sql: &impl bae_store::WriterRead,
     candidate_key: &CandidateKey,
 ) -> Result<StoredStanding, DbError> {
-    let columns = sql
-        .query_row(
-            &format!("SELECT {COLUMNS} FROM import_candidate_standing WHERE candidate_key = ?"),
-            [candidate_key],
-            |row| StandingColumns::read(row, 0),
-        )
-        .optional()?;
-    match columns {
-        // No row is the stored shape of a candidate nothing is running for.
-        None => Ok(StoredStanding::default()),
-        Some(columns) => columns.standing(candidate_key),
-    }
+    let stored = CandidateStandingParams { candidate_key: candidate_key.clone() };
+    standing_of(bae_store::statement_optional(sql, &stored)?.map(|row| row.standing), candidate_key)
 }
 
 // How far the batch of identifications in flight has got, `identified` ended
@@ -362,11 +343,7 @@ fn count_on(
                     "no row of it",
                 ));
             }
-            let over = sql.query_row(
-                "SELECT ended = admitted FROM import_identification_count WHERE singleton = 1",
-                [],
-                |row| row.get::<_, bool>(0),
-            )?;
+            let over = bae_store::statement_row(sql, &IdentificationBatchOverParams {})?.over;
             if over {
                 sql.run(&ClearIdentificationBatchParams {})?;
             }
@@ -375,6 +352,16 @@ fn count_on(
     }
     Ok(())
 }
+
+// Whether every identification the batch admitted has ended.
+coven::read!(
+    writer IdentificationBatchOver { over: bool },
+    r#"
+    SELECT count.ended = count.admitted AS over
+    FROM import_identification_count AS count
+    WHERE count.singleton = 1
+"#
+);
 
 coven::write!(
     DeleteStanding(candidate_key: &'p crate::CandidateKey),

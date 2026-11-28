@@ -166,6 +166,15 @@ pub(crate) fn load_item_by_key_rows(
     }))
 }
 
+coven::read!(
+    writer EntryKind(watched_folder_path: Vec<u8>, path: CandidateKey),
+    r#"
+    SELECT candidate.kind
+    FROM scan_candidate AS candidate
+    WHERE candidate.watched_folder_path = :watched_folder_path AND candidate.path = :path
+"#
+);
+
 /// Whether a valid or invalid entry, rather than a tentative one or none, is
 /// stored at `path`.
 pub(crate) fn settled_entry_is_stored(
@@ -173,13 +182,11 @@ pub(crate) fn settled_entry_is_stored(
     watched_folder_path: &Path,
     path: &CandidateKey,
 ) -> Result<bool, DbError> {
-    let kind: Option<String> = sql
-        .query_row(
-            "SELECT kind FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
-            params![coven::path_bytes(watched_folder_path), path],
-            |row| row.get(0),
-        )
-        .optional()?;
+    let entry = EntryKindParams {
+        watched_folder_path: coven::path_bytes(watched_folder_path),
+        path: path.clone(),
+    };
+    let kind = bae_store::statement_optional(sql, &entry)?.map(|entry| entry.kind);
     Ok(matches!(kind.as_deref(), Some("valid" | "invalid")))
 }
 

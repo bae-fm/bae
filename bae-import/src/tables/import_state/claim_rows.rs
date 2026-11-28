@@ -116,6 +116,23 @@ pub(super) fn store_claims_on(sql: &CovenWrite<'_>, content_hash: &str) -> Resul
     Ok(())
 }
 
+// The candidates whose link, or one of its partners, claims one of the
+// releases `releases` names, a JSON array of `[catalog, release id]` pairs.
+coven::read!(
+    writer LinksClaimingReleases(releases: String) { content_hash: String },
+    r#"
+    WITH stored (catalog, release_id) AS (
+        SELECT wanted.value ->> 0, wanted.value ->> 1 FROM json_each(:releases) AS wanted)
+    SELECT link.content_hash
+    FROM import_candidate_release_link AS link
+    JOIN stored ON (stored.catalog, stored.release_id) = (link.source, link.release_id)
+    UNION
+    SELECT partner.content_hash
+    FROM import_candidate_release_link_partner AS partner
+    JOIN stored ON (stored.catalog, stored.release_id) = (partner.source, partner.release_id)
+"#
+);
+
 /// Store again what every link claiming one of `releases` claims, inside the
 /// write that stored those releases again.
 pub(crate) fn store_claims_of_releases_on(
@@ -131,20 +148,12 @@ pub(crate) fn store_claims_of_releases_on(
             .map(|release| serde_json::json!([release.catalog.as_str(), release.key]))
             .collect(),
     );
-    let claiming = sql.query(
-        "WITH stored (catalog, release_id) AS ( \
-             SELECT value ->> 0, value ->> 1 FROM json_each(?)) \
-         SELECT link.content_hash FROM import_candidate_release_link AS link \
-         JOIN stored ON (stored.catalog, stored.release_id) = (link.source, link.release_id) \
-         UNION \
-         SELECT partner.content_hash FROM import_candidate_release_link_partner AS partner \
-         JOIN stored \
-             ON (stored.catalog, stored.release_id) = (partner.source, partner.release_id)",
-        [releases.to_string()],
-        |row| row.get::<_, String>(0),
+    let claiming = bae_store::statement_rows(
+        sql,
+        &LinksClaimingReleasesParams { releases: releases.to_string() },
     )?;
-    for content_hash in claiming {
-        store_claims_on(sql, &content_hash)?;
+    for link in claiming {
+        store_claims_on(sql, &link.content_hash)?;
     }
     Ok(())
 }

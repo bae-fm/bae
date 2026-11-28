@@ -127,18 +127,34 @@ coven::write!(
 "#
 );
 
+// The candidates whose files were found at the folder `root` or below it.
+coven::read!(
+    writer CandidatesFoundAtOrBelow(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>),
+    r#"
+    SELECT DISTINCT found.content_hash
+    FROM import_candidate_folder AS found
+    WHERE found.folder = :root
+       OR (found.folder >= :below_first AND found.folder < :below_past)
+"#
+);
+
 /// Forget every folder at or below `folders` that files were found at, and
 /// the state of every candidate found only there.
 pub(crate) fn forget_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &crate::tables::watched_folders::FoldersAtOrBelow,
 ) -> Result<(), DbError> {
-    let under = crate::tables::watched_folders::FoldersAtOrBelow::condition("folder");
-    let found: Vec<String> = sql.query(
-        &format!("SELECT DISTINCT content_hash FROM import_candidate_folder WHERE {under}"),
-        &folders.params(),
-        |row| row.get(0),
-    )?;
+    let found: Vec<String> = bae_store::statement_rows(
+        sql,
+        &CandidatesFoundAtOrBelowParams {
+            root: folders.folder.clone(),
+            below_first: folders.below_first.clone(),
+            below_past: folders.below_past.clone(),
+        },
+    )?
+    .into_iter()
+    .map(|found| found.content_hash)
+    .collect();
     sql.run(&ForgetCandidateFoldersParams {
         folder: &folders.folder,
         below_first: &folders.below_first,

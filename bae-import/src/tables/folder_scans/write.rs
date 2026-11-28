@@ -131,6 +131,19 @@ coven::write!(
 "#
 );
 
+coven::read!(
+    writer OtherGenerationEntries(watched_folder_path: Vec<u8>, generation: i64) {
+        path: CandidateKey
+    },
+    r#"
+    SELECT candidate.path
+    FROM scan_candidate AS candidate
+    WHERE candidate.watched_folder_path = :watched_folder_path
+      AND candidate.generation != :generation AND candidate.source_kind = 'folder'
+    ORDER BY candidate.path
+"#
+);
+
 /// Delete every scanned row, not a grouping's, stamped with another
 /// generation than `generation`, ending each candidate's identification, and
 /// return their keys.
@@ -139,13 +152,16 @@ pub(super) fn prune_other_generations(
     watched_folder_path: &Path,
     generation: i64,
 ) -> Result<Vec<CandidateKey>, DbError> {
-    let pruned: Vec<CandidateKey> = sql.query(
-        "SELECT path FROM scan_candidate \
-         WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder' \
-         ORDER BY path",
-        params![coven::path_bytes(watched_folder_path), generation],
-        |row| row.get::<_, CandidateKey>(0),
-    )?;
+    let pruned: Vec<CandidateKey> = bae_store::statement_rows(
+        sql,
+        &OtherGenerationEntriesParams {
+            watched_folder_path: coven::path_bytes(watched_folder_path),
+            generation,
+        },
+    )?
+    .into_iter()
+    .map(|entry| entry.path)
+    .collect();
     sql.run(&DeleteOtherGenerationsParams {
         watched_folder_path: &coven::path_bytes(watched_folder_path),
         generation,

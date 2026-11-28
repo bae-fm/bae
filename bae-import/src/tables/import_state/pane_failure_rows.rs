@@ -267,24 +267,27 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
 }
 
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
+coven::read!(
+    writer StoredPaneFailure(content_hash: String),
+    r#"
+    SELECT failure.command, failure.category, failure.detail
+    FROM import_candidate_pane_failure AS failure
+    WHERE failure.content_hash = :content_hash
+"#
+);
+
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
 /// The failure the pane states for `candidate`'s last command, or `None`
 /// when that command did not fail.
 pub(super) fn load_pane_failure_on(
     sql: &SqlReadContext<'_>,
     candidate: OneCandidate<'_>,
 ) -> Result<Option<PaneFailure>, DbError> {
-    let filter = candidate.filter("content_hash");
-    sql.query_row(
-        &format!(
-            "SELECT command, category, detail FROM import_candidate_pane_failure {}",
-            filter.clause
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
-    )
-    .optional()?
-    .map(|(command, category, detail)| pane_failure_of(&command, &category, detail))
-    .transpose()
+    let OneCandidate::Hash(content_hash) = candidate;
+    let stored = StoredPaneFailureParams { content_hash: content_hash.to_owned() };
+    bae_store::statement_optional(sql, &stored)?
+        .map(|failure| pane_failure_of(&failure.command, &failure.category, failure.detail))
+        .transpose()
 }
 
 /// The failure of the pane's last command that the columns `command`,

@@ -151,3 +151,21 @@ coven::fragment!(
                     AND provenance.kind = 'external_release')
 "#
 );
+
+// Every catalog release a candidate's rows name: a match, the release its
+// draft was made from, its link, or a partner of its link. A release that two
+// rows name is here twice.
+coven::fragment!(
+    NamedReleases { source: Option<String>, release_id: Option<String> },
+    r#"
+    SELECT found.source, found.release_id FROM import_candidate_match AS found
+    UNION ALL
+    SELECT provenance.source, provenance.release_id
+    FROM import_candidate_draft_provenance AS provenance
+    UNION ALL
+    SELECT link.source, link.release_id FROM import_candidate_release_link AS link
+    UNION ALL
+    SELECT partner.source, partner.release_id
+    FROM import_candidate_release_link_partner AS partner
+"#
+);

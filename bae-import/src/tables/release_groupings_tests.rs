@@ -584,7 +584,7 @@ async fn the_folder_files_reader_is_found_by_its_index() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", PARENT_FILES_READER),
+                &format!("EXPLAIN QUERY PLAN {}", super::ParentFilesReader::SQL),
                 ["/music/Album", "grouping"],
                 |row| row.get::<_, String>(3),
             )

@@ -33,14 +33,6 @@ pub(super) enum Owner<'a> {
 }
 
 impl Owner<'_> {
-    /// The column that names this owner on every row it owns.
-    pub(super) fn column(self) -> &'static str {
-        match self {
-            Self::Candidate(_) => "content_hash",
-            Self::Run(_) => "identify_run",
-        }
-    }
-
     pub(super) fn content_hash(self) -> Option<String> {
         match self {
             Self::Candidate(content_hash) => Some(content_hash.to_string()),
@@ -52,15 +44,6 @@ impl Owner<'_> {
         match self {
             Self::Candidate(_) => None,
             Self::Run(run) => Some(run),
-        }
-    }
-}
-
-impl rusqlite::ToSql for Owner<'_> {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        match self {
-            Self::Candidate(content_hash) => content_hash.to_sql(),
-            Self::Run(run) => run.to_sql(),
         }
     }
 }

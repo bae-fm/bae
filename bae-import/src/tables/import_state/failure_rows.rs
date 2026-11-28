@@ -6,24 +6,37 @@ use crate::{ImportFailure, ImportFailureReason};
 use bae_store::WriteStatements as _;
 use bae_util::timestamp::StoredTimestamp as _;
 
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+coven::read!(
+    writer StoredFailure(content_hash: String),
+    r#"
+    SELECT failure.error, failure.failed_at
+    FROM import_candidate_failure AS failure
+    WHERE failure.content_hash = :content_hash
+"#
+);
+
+coven::read!(
+    writer CandidateEditRevision(content_hash: String),
+    r#"
+    SELECT state.edit_revision
+    FROM import_candidate_state AS state
+    WHERE state.content_hash = :content_hash
+"#
+);
+
 /// The failure the last import of `candidate` left.
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
 pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
     candidate: OneCandidate<'_>,
 ) -> Result<Option<ImportFailure>, DbError> {
-    let filter = candidate.filter("failure.content_hash");
-    sql.query_row(
-        &format!(
-            "SELECT failure.error, failure.failed_at \
-             FROM import_candidate_failure failure {}",
-            filter.clause
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )
-    .optional()?
-    .map(|(error, failed_at)| failure_of(error, &failed_at))
+    let OneCandidate::Hash(content_hash) = candidate;
+    bae_store::statement_optional(
+        sql,
+        &StoredFailureParams { content_hash: content_hash.to_owned() },
+    )?
+    .map(|failure| failure_of(failure.error, &failure.failed_at))
     .transpose()
 }
 
@@ -72,14 +85,12 @@ fn save_failure_on(
     edit_revision: u64,
     failure: &ImportFailure,
 ) -> Result<(), crate::ImportError> {
-    let current_revision = sql
-        .query_row(
-            "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get::<_, i64>(0),
-        )
-        .optional()?
-        .ok_or_else(|| CandidateStateRefusal::NoState(content_hash.to_string()))?;
+    let current_revision = bae_store::statement_optional(
+        sql,
+        &CandidateEditRevisionParams { content_hash: content_hash.to_owned() },
+    )?
+    .ok_or_else(|| CandidateStateRefusal::NoState(content_hash.to_string()))?
+    .edit_revision;
     if current_revision != to_i64(edit_revision, "candidate edit revision")? {
         return Err(CandidateStateRefusal::FilesChanged {
             content_hash: content_hash.to_string(),

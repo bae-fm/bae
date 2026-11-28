@@ -8,6 +8,33 @@ use crate::cover_art::{CoverChoice, CoverRefusal, PreparedCover};
 use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::CoverSelection;
 
+coven::read!(
+    writer CoverFile(content_hash: String, file_id: String) { supported: bool },
+    r#"
+    SELECT file.role, bae_supported_cover(file.relative_path) AS supported
+    FROM scan_candidate AS candidate
+    JOIN scan_candidate_file AS file
+      ON file.watched_folder_path = candidate.watched_folder_path
+     AND file.candidate_path = candidate.path
+    WHERE candidate.content_hash = :content_hash AND file.relative_path = :file_id
+    LIMIT 1
+"#
+);
+
+coven::read!(
+    writer TagArtworkHeld(content_hash: String, source_file_id: String) { held: bool },
+    r#"
+    SELECT EXISTS (
+        SELECT 1
+        FROM scan_candidate AS candidate
+        JOIN scan_candidate_tag_snapshot AS snapshot
+          ON snapshot.watched_folder_path = candidate.watched_folder_path
+         AND snapshot.candidate_path = candidate.path
+        WHERE candidate.content_hash = :content_hash
+          AND snapshot.embedded_cover_source_relative_path = :source_file_id) AS held
+"#
+);
+
 /// Why `cover` cannot be the cover of the candidate whose files hash to
 /// `content_hash`, or `None` when it can: a folder image must be a file the
 /// scan stored as one of the folder's images, in a format a cover can be
@@ -24,25 +51,19 @@ pub(crate) fn cover_refusal(
     match cover {
         PreparedCover::Remote { .. } => Ok(None),
         PreparedCover::Local(file_id) => {
-            let file = sql
-                .query_row(
-                    "SELECT file.role, bae_supported_cover(file.relative_path) \
-                     FROM scan_candidate AS candidate \
-                     JOIN scan_candidate_file AS file \
-                       ON file.watched_folder_path = candidate.watched_folder_path \
-                      AND file.candidate_path = candidate.path \
-                     WHERE candidate.content_hash = ? AND file.relative_path = ? \
-                     LIMIT 1",
-                    params![content_hash, file_id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)),
-                )
-                .optional()?;
+            let file = bae_store::statement_optional(
+                sql,
+                &CoverFileParams {
+                    content_hash: content_hash.to_owned(),
+                    file_id: file_id.clone(),
+                },
+            )?;
             let file_id = file_id.clone();
             Ok(match file {
                 None => Some(CoverRefusal::NotInFolder { file_id }),
-                Some((role, _)) if role != "artwork" => Some(CoverRefusal::NotAnImage { file_id }),
-                Some((_, false)) => Some(CoverRefusal::NotACover { file_id }),
-                Some((_, true)) => None,
+                Some(file) if file.role != "artwork" => Some(CoverRefusal::NotAnImage { file_id }),
+                Some(file) if !file.supported => Some(CoverRefusal::NotACover { file_id }),
+                Some(_) => None,
             })
         }
         PreparedCover::Embedded(source_file_id) => {
@@ -51,16 +72,16 @@ pub(crate) fn cover_refusal(
                     .embedded_cover
                     .as_ref()
                     .is_some_and(|cover| cover.source_relative_path == *source_file_id),
-                None => sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM scan_candidate AS candidate \
-                     JOIN scan_candidate_tag_snapshot AS snapshot \
-                       ON snapshot.watched_folder_path = candidate.watched_folder_path \
-                      AND snapshot.candidate_path = candidate.path \
-                     WHERE candidate.content_hash = ? \
-                       AND snapshot.embedded_cover_source_relative_path = ?)",
-                    params![content_hash, source_file_id],
-                    |row| row.get::<_, bool>(0),
-                )?,
+                None => {
+                    bae_store::statement_row(
+                        sql,
+                        &TagArtworkHeldParams {
+                            content_hash: content_hash.to_owned(),
+                            source_file_id: source_file_id.clone(),
+                        },
+                    )?
+                    .held
+                }
             };
             Ok((!held)
                 .then(|| CoverRefusal::NoTagArtwork { source_file_id: source_file_id.clone() }))

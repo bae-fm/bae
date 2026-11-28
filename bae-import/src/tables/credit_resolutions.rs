@@ -15,7 +15,6 @@
 //! rule to the form's credits.
 
 use bae_store::{statement_rows, WriteStatements};
-use rusqlite::{params, OptionalExtension};
 
 pub mod row_fragments;
 
@@ -74,6 +73,17 @@ coven::write!(
     r#"
     INSERT INTO import_credit_resolution (name_key, musicbrainz_artist_id, discogs_artist_id)
     VALUES (:name_key, :musicbrainz, :discogs)
+    RETURNING id
+"#
+);
+
+coven::read!(
+    writer CreditAnswerId(name_key: Option<String>, musicbrainz: Option<String>, discogs: Option<String>),
+    r#"
+    SELECT r.id
+    FROM import_credit_resolution AS r
+    WHERE r.name_key = :name_key AND r.musicbrainz_artist_id IS :musicbrainz
+      AND r.discogs_artist_id IS :discogs
 "#
 );
 
@@ -126,30 +136,29 @@ pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven
     let changed: Vec<_> =
         statement_rows(sql, &request)?.into_iter().map(|row| row.fresh.into_columns()).collect();
     for (name_key, musicbrainz, discogs, artists) in &changed {
-        let key = params![name_key, musicbrainz, discogs];
-        let resolution_of = || {
-            sql.query_row(
-                "SELECT id FROM import_credit_resolution \
-                 WHERE name_key = ?1 AND musicbrainz_artist_id IS ?2 AND discogs_artist_id IS ?3",
-                key,
-                |row| row.get::<_, i64>(0),
-            )
-            .optional()
+        let stored = CreditAnswerIdParams {
+            name_key: name_key.clone(),
+            musicbrainz: musicbrainz.clone(),
+            discogs: discogs.clone(),
         };
-        let resolution = match resolution_of()? {
-            Some(resolution) => {
-                sql.run(&DeleteCreditAnswerArtistsParams { resolution })?;
-                resolution
+        // The table's unique index keeps one answer per credit.
+        let resolution = match statement_rows(sql, &stored)?.into_iter().next() {
+            Some(stored) => {
+                sql.run(&DeleteCreditAnswerArtistsParams { resolution: stored.id })?;
+                stored.id
             }
             None => {
-                sql.run(&InsertCreditAnswerParams {
+                sql.returning(&InsertCreditAnswerParams {
                     name_key: name_key
                         .as_deref()
                         .expect("the rule answers a due credit, whose name key is never NULL"),
                     musicbrainz: musicbrainz.as_deref(),
                     discogs: discogs.as_deref(),
-                })?;
-                resolution_of()?.expect("the answer this function just inserted")
+                })?
+                .into_iter()
+                .next()
+                .expect("an INSERT of one row returns that row")
+                .id
             }
         };
         sql.run(&InsertCreditAnswerArtistsParams { resolution, artists })?;

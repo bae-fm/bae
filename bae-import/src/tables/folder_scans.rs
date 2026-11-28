@@ -117,19 +117,23 @@ impl ScanItemWrite {
     }
 }
 
+coven::read!(
+    writer RootGeneration(watched_folder_path: Vec<u8>),
+    r#"
+    SELECT root.generation
+    FROM folder_scan_roots AS root
+    WHERE root.watched_folder_path = :watched_folder_path
+"#
+);
+
 /// The generation `watched_folder_path` was last scanned under, `None` for a
 /// root never scanned.
 pub(super) fn root_generation_on(
     sql: &impl bae_store::WriterRead,
     watched_folder_path: &Path,
 ) -> Result<Option<i64>, DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [coven::path_bytes(watched_folder_path)],
-            |row| row.get(0),
-        )
-        .optional()?)
+    let root = RootGenerationParams { watched_folder_path: coven::path_bytes(watched_folder_path) };
+    Ok(bae_store::statement_optional(sql, &root)?.map(|root| root.generation))
 }
 
 /// The end of a generation whose tree was read in full: remove the entries

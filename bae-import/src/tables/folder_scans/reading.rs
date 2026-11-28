@@ -8,6 +8,27 @@ use bae_util::timestamp::StoredTimestamp as _;
 use std::ffi::OsString;
 use std::path::Component;
 
+// The scanned entries at or below a folder that a reread of it did not stamp
+// with its generation.
+coven::read!(
+    writer FolderOtherGenerationEntries(
+        root: Vec<u8>,
+        generation: i64,
+        folder: Vec<u8>,
+        below_first: Vec<u8>,
+        below_past: Vec<u8>
+    ) { path: CandidateKey },
+    r#"
+    SELECT candidate.path
+    FROM scan_candidate AS candidate
+    WHERE candidate.watched_folder_path = :root AND candidate.generation != :generation
+      AND candidate.source_kind = 'folder'
+      AND (candidate.folder = :folder
+           OR (candidate.folder >= :below_first AND candidate.folder < :below_past))
+    ORDER BY candidate.path
+"#
+);
+
 /// Why reading one folder of a watched folder again was refused. Nothing of
 /// it was written.
 #[derive(Debug, thiserror::Error)]
@@ -205,22 +226,19 @@ impl ImportTables {
                 let folder_bytes = coven::path_bytes(&folder_path);
                 let (below_first, below_past) =
                     crate::tables::watched_path::paths_below(&folder_path);
-                let pruned: Vec<CandidateKey> = sql.query(
-                    "SELECT path FROM scan_candidate \
-                 WHERE watched_folder_path = :root AND generation != :generation \
-                   AND source_kind = 'folder' \
-                   AND (folder = :folder \
-                        OR (folder >= :below_first AND folder < :below_past)) \
-                 ORDER BY path",
-                    rusqlite::named_params! {
-                        ":root": root,
-                        ":generation": generation,
-                        ":folder": folder_bytes,
-                        ":below_first": below_first,
-                        ":below_past": below_past,
+                let pruned: Vec<CandidateKey> = bae_store::statement_rows(
+                    sql,
+                    &FolderOtherGenerationEntriesParams {
+                        root: root.clone(),
+                        generation,
+                        folder: folder_bytes.clone(),
+                        below_first: below_first.clone(),
+                        below_past: below_past.clone(),
                     },
-                    |row| row.get::<_, CandidateKey>(0),
-                )?;
+                )?
+                .into_iter()
+                .map(|entry| entry.path)
+                .collect();
                 for key in &pruned {
                     delete_entry(sql, &watched_folder_path, key)?;
                 }

@@ -7,6 +7,16 @@ coven::write!(
     r#"DELETE FROM watched_import_folders WHERE path = :path"#
 );
 
+// The candidates the scans hold under the watched folder `root`.
+coven::read!(
+    writer RootCandidates(root: Vec<u8>) { path: CandidateKey },
+    r#"
+    SELECT candidate.path
+    FROM @crate::tables::folder_scans::row_fragments::HeldCandidates AS candidate
+    WHERE candidate.watched_folder_path = :root
+"#
+);
+
 /// What a removal of watched folders changed, as its write left the store.
 #[derive(Debug)]
 pub struct WatchedFoldersRemoved {
@@ -63,11 +73,12 @@ impl ImportTables {
                 let mut removed: Vec<CandidateKey> = Vec::new();
                 for root in &roots {
                     let root_bytes = coven::path_bytes(root);
-                    removed.extend(sql.query(
-                        "SELECT path FROM scan_candidate WHERE watched_folder_path = ?",
-                        [&root_bytes],
-                        |row| row.get::<_, CandidateKey>(0),
-                    )?);
+                    let held = RootCandidatesParams { root: root_bytes.clone() };
+                    removed.extend(
+                        bae_store::statement_rows(sql, &held)?
+                            .into_iter()
+                            .map(|candidate| candidate.path),
+                    );
                     // Checked as watched in this write above.
                     sql.run(&UnwatchFolderParams { path: root_bytes })?;
                 }
