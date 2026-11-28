@@ -250,11 +250,7 @@ coven::fragment!(
                     side_ordinal, json_object('sheet', json((
                 SELECT json
                 FROM sheets
-                -- IS, which matches the rows = does since no sheet's path
-                -- is NULL: coven reads an = from a row that a window
-                -- function computes as an edge it can't follow, and then
-                -- watches every folder's files rather than this one's.
-                WHERE relative_path IS n.sheet_id
+                WHERE relative_path = n.sheet_id
                 )), 'rows', json_group_array(json_object('track', json(track_json), 'artists', json((
                 SELECT field
                 FROM artist_field
