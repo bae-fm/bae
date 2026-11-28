@@ -35,11 +35,11 @@ coven::fragment!(
     r#"
     WITH matched(draft_track_id, draft_unit_position) AS (
     SELECT t.track_id, u.position
-    FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS t
+    FROM @crate::tables::import_state::row_fragments::DraftTrackRows AS t
     LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateUnits AS u ON u.candidate_key = :key AND
         u.file_kind IS t.file_kind AND u.file_id IS t.file_id AND u.sheet_id IS t.sheet_id
         AND u.slice_index IS t.slice_index
-    WHERE t.content_hash =(
+    WHERE t.candidate_key = :key AND t.content_hash =(
         SELECT scan.content_hash
         FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
         LIMIT 1
@@ -94,7 +94,12 @@ coven::fragment!(
             WITH artist_field AS MATERIALIZED (
             SELECT part, track_id, field
             FROM @bae_records::records::artist_standing::ArtistFieldStanding(
-                raw: @crate::tables::import_state::row_fragments::DraftCreditRows(key: :key),
+                raw: (SELECT credit.part, credit.track_id, credit.position, credit.assignment_kind,
+                           credit.artist_id, credit.name, credit.sort_name,
+                           credit.musicbrainz_artist_id, credit.discogs_artist_id,
+                           credit.credit_key, credit.credited_as, credit.join_phrase
+                       FROM @crate::tables::import_state::row_fragments::DraftCreditRows AS credit
+                       WHERE credit.candidate_key = :key),
                 credit_answer:
                     @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers
                 ) AS standing
@@ -113,15 +118,16 @@ coven::fragment!(
             ), drafted_mediums AS (
             SELECT drafted.position AS id, drafted.content_hash AS release_id,
                 drafted.position, drafted.medium, drafted.side_count
-            FROM @crate::tables::import_state::row_fragments::DraftMediumRows(key: :key) AS drafted
-            WHERE drafted.content_hash =(
+            FROM @crate::tables::import_state::row_fragments::DraftMediumRows AS drafted
+            WHERE drafted.candidate_key = :key AND drafted.content_hash =(
                 SELECT content_hash
                 FROM candidate
             )
             ), drafted_places AS (
             SELECT drafted.track_id, drafted.content_hash, drafted.medium, drafted.side,
                 drafted.track_number, drafted.stated_length_ms, drafted.position
-            FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS drafted
+            FROM @crate::tables::import_state::row_fragments::DraftTrackRows AS drafted
+            WHERE drafted.candidate_key = :key
             ), place AS (
             SELECT placed.*
             FROM @bae_records::records::place_fragments::TrackPlaces(
@@ -135,7 +141,7 @@ coven::fragment!(
                 AS cue_start_ms, CASE WHEN t.stated_length_ms IS NOT NULL AND u.duration_ms IS
                 NOT NULL AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms) THEN
                 t.stated_length_ms END AS listed_ms
-            FROM @crate::tables::import_state::row_fragments::DraftTrackRows(key: :key) AS t
+            FROM @crate::tables::import_state::row_fragments::DraftTrackRows AS t
             JOIN place AS p ON p.track_id = t.track_id AND p.release_id = t.content_hash
                 LEFT JOIN @crate::tables::import_list::fragments::DraftUnits(key: :key) AS matched
                 ON matched.draft_track_id = t.track_id
@@ -144,7 +150,7 @@ coven::fragment!(
             LEFT JOIN audio_json AS a ON a.relative_path = u.file_id
                 LEFT JOIN @crate::tables::folder_scans::row_fragments::CandidateCueTracks AS ct ON ct.candidate_key = :key AND
                 ct.sheet_relative_path = u.sheet_id AND ct.position = u.cue_track_position
-                WHERE t.content_hash =(
+                WHERE t.candidate_key = :key AND t.content_hash =(
                 SELECT content_hash
                 FROM candidate
             )
@@ -335,7 +341,12 @@ coven::fragment!(
             WITH artist_field AS MATERIALIZED (
             SELECT part, track_id, field
             FROM @bae_records::records::artist_standing::ArtistFieldStanding(
-                raw: @crate::tables::import_state::row_fragments::DraftCreditRows(key: :key),
+                raw: (SELECT credit.part, credit.track_id, credit.position, credit.assignment_kind,
+                           credit.artist_id, credit.name, credit.sort_name,
+                           credit.musicbrainz_artist_id, credit.discogs_artist_id,
+                           credit.credit_key, credit.credited_as, credit.join_phrase
+                       FROM @crate::tables::import_state::row_fragments::DraftCreditRows AS credit
+                       WHERE credit.candidate_key = :key),
                 credit_answer:
                     @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers
                 ) AS standing

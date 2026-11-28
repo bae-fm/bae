@@ -26,8 +26,11 @@ coven::fragment!(
     WHERE held.assignment_kind = 'credit'
 "#);
 
+// The artist credits of each scanned candidate's draft, under its key: the
+// album's, then each track's that names its own.
 coven::fragment!(
-    DraftCreditRows(key: crate::CandidateKey) {
+    DraftCreditRows {
+        candidate_key: crate::CandidateKey,
         part: i64,
         track_id: Option<String>,
         position: i64,
@@ -42,24 +45,19 @@ coven::fragment!(
         join_phrase: Option<String>
     },
     r#"
-    SELECT 0 AS part, NULL AS track_id, a.position AS position,
+    SELECT scan.candidate_key, 0 AS part, NULL AS track_id, a.position AS position,
         a.assignment_kind, a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id,
         a.discogs_artist_id, a.credit_key, a.credited_as, a.join_phrase
-    FROM import_candidate_album_artist_assignment AS a
-    WHERE a.content_hash = (
-        SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
-    )
-    UNION ALL SELECT 1, t.track_id, a.position, a.assignment_kind,
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+    JOIN import_candidate_album_artist_assignment AS a ON a.content_hash = scan.content_hash
+    UNION ALL SELECT scan.candidate_key, 1, t.track_id, a.position, a.assignment_kind,
         a.artist_id, a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id,
         a.credit_key, a.credited_as, a.join_phrase
-    FROM import_candidate_track_artist_assignment AS a
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+    JOIN import_candidate_track_artist_assignment AS a ON a.content_hash = scan.content_hash
     JOIN import_candidate_track AS t ON t.content_hash = a.content_hash AND t.track_id =
         a.track_id
-    WHERE a.content_hash = (
-        SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
-    ) AND t.artist_assignment_kind = 'explicit'
+    WHERE t.artist_assignment_kind = 'explicit'
 "#);
 
 coven::fragment!(
@@ -111,32 +109,27 @@ coven::fragment!(
             ))) AS record
 "#);
 
+// The tracks of each scanned candidate's draft, under its key.
 coven::fragment!(
-    DraftTrackRows(key: crate::CandidateKey),
+    DraftTrackRows,
     r#"
-    SELECT track.content_hash, track.track_id, track.position, track.title, track.medium,
-        track.side, track.track_number, track.stated_length_ms, track.file_kind, track.file_id,
-        track.sheet_id, track.slice_index,
+    SELECT scan.candidate_key, track.content_hash, track.track_id, track.position,
+        track.title, track.medium, track.side, track.track_number, track.stated_length_ms,
+        track.file_kind, track.file_id, track.sheet_id, track.slice_index,
         @crate::tables::import_state::row_fragments::DraftTrackRecord(parent: track) AS track_json
-    FROM import_candidate_track AS track
-    WHERE track.content_hash = (
-        SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
-        LIMIT 1
-    )
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+    JOIN import_candidate_track AS track ON track.content_hash = scan.content_hash
 "#
 );
 
+// The mediums of each scanned candidate's draft, under its key.
 coven::fragment!(
-    DraftMediumRows(key: crate::CandidateKey),
+    DraftMediumRows,
     r#"
-    SELECT medium.position, medium.content_hash, medium.medium, medium.side_count
-    FROM import_candidate_medium AS medium
-    WHERE medium.content_hash = (
-        SELECT scan.content_hash
-        FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
-        LIMIT 1
-    )
+    SELECT scan.candidate_key, medium.position, medium.content_hash, medium.medium,
+        medium.side_count
+    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+    JOIN import_candidate_medium AS medium ON medium.content_hash = scan.content_hash
 "#
 );
 

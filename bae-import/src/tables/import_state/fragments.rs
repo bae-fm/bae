@@ -23,13 +23,15 @@ coven::fragment!(
     JOIN import_candidate_standing AS standing ON standing.candidate_key = keys.candidate_key
 "#);
 
+// The values each scanned candidate of `keys` read from its files that name
+// the file they came from: its disc IDs, then its barcodes.
 coven::fragment!(
-    FileEvidence(key: crate::CandidateKey) {
+    FileEvidence with keys(candidate_key BLOB) {
         file_evidence_key: crate::CandidateKey,
         file_evidence: String
     },
     r#"
-    SELECT :key AS file_evidence_key,
+    SELECT scan.candidate_key AS file_evidence_key,
            COALESCE(
                (SELECT json_group_array(json_object(
                            'list', listed.list, 'value', listed.value,
@@ -39,37 +41,41 @@ coven::fragment!(
                 WHERE listed.signals_id = (
                           SELECT signals.signals_id
                           FROM import_candidate_signals AS signals
-                          WHERE signals.content_hash = (
-                              SELECT owner.content_hash
-                              FROM @crate::tables::import_state::current_owner::CurrentOwner(
-                                  keys: (SELECT :key AS candidate_key)) AS owner))
+                          WHERE signals.content_hash = owner.content_hash)
                   AND listed.list IN ('disc_id', 'barcode')
                   AND listed.origin_path IS NOT NULL),
                '[]') AS file_evidence
-    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key
+    FROM keys
+    JOIN @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+        ON scan.candidate_key = keys.candidate_key
+    LEFT JOIN @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT * FROM keys)) AS owner
+        ON owner.owner_key = scan.candidate_key
 "#);
 
+// Which library albums hold the pressing each scanned candidate of `keys`
+// links its draft to; no row for a candidate whose draft links no pressing.
+// Each link is checked once, numbered by its row.
 coven::fragment!(
-    PickedLibraryStatus(key: crate::CandidateKey) {
+    PickedLibraryStatus with keys(candidate_key BLOB) {
         picked_status_key: crate::CandidateKey,
         picked_status_release_id: Option<String>,
         picked_status_albums: Option<String>
     },
     r#"
-    WITH status(release_id, albums) AS (
-        SELECT found.release_id, found.albums
-        FROM @bae_records::records::fragments::LibraryStatusRows(checks: (
-            SELECT 0, link.release_id, link.source,
-                   @crate::tables::source_releases::row_fragments::LinkedAlbumGroup(parent: link)
-                       AS source_group_id
-            FROM import_candidate_release_link AS link
-            WHERE link.content_hash = (
-                      SELECT scan.content_hash
-                      FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
-              AND link.kind = 'pressing')) AS found)
-    SELECT :key AS picked_status_key, release_id AS picked_status_release_id,
-           albums AS picked_status_albums
-    FROM status
+    WITH linked(candidate_key, position, release_id, source, source_group_id) AS (
+        SELECT scan.candidate_key, link.rowid, link.release_id, link.source,
+               @crate::tables::source_releases::row_fragments::LinkedAlbumGroup(parent: link)
+        FROM keys
+        JOIN @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+            ON scan.candidate_key = keys.candidate_key
+        JOIN import_candidate_release_link AS link
+            ON link.content_hash = scan.content_hash AND link.kind = 'pressing')
+    SELECT linked.candidate_key AS picked_status_key,
+           found.release_id AS picked_status_release_id, found.albums AS picked_status_albums
+    FROM linked
+    JOIN @bae_records::records::fragments::LibraryStatusRows(checks: (
+        SELECT DISTINCT position, release_id, source, source_group_id FROM linked)) AS found
+        ON found.position = linked.position
 "#);
 
 coven::fragment!(
@@ -219,80 +225,71 @@ coven::fragment!(
 "#);
 
 coven::fragment!(
-    DraftFlags(key: crate::CandidateKey) {
+    DraftFlags with keys(candidate_key BLOB) {
         draft_flags_key: crate::CandidateKey,
         draft_blank: bool,
         draft_valid: bool
     },
     r#"
-    WITH statement(draft_blank, draft_valid) AS (
-        SELECT draft_blank, draft_valid
-        FROM import_candidate_edit
-            WHERE content_hash =(
-                SELECT scan.content_hash
-                FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
-    )
-    SELECT :key AS draft_flags_key, draft_blank, draft_valid
-    FROM statement
+    SELECT scan.candidate_key AS draft_flags_key, edit.draft_blank, edit.draft_valid
+    FROM keys
+    JOIN @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+        ON scan.candidate_key = keys.candidate_key
+    JOIN import_candidate_edit AS edit ON edit.content_hash = scan.content_hash
 "#);
 
 coven::fragment!(
-    Failure(key: crate::CandidateKey) {
+    Failure with keys(candidate_key BLOB) {
         failure_key: crate::CandidateKey,
         failure_error: String,
         failed_at: String
     },
     r#"
-    WITH statement(failure_error, failed_at) AS (
-        SELECT failure.error AS failure_error, failure.failed_at
-        FROM import_candidate_failure failure
-            WHERE failure.content_hash =(
-                SELECT scan.content_hash
-                FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
-    )
-    SELECT :key AS failure_key, failure_error, failed_at
-    FROM statement
+    SELECT scan.candidate_key AS failure_key, failure.error AS failure_error, failure.failed_at
+    FROM keys
+    JOIN @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+        ON scan.candidate_key = keys.candidate_key
+    JOIN import_candidate_failure AS failure ON failure.content_hash = scan.content_hash
 "#);
 
 coven::fragment!(
-    PaneFailure(key: crate::CandidateKey) {
+    PaneFailure with keys(candidate_key BLOB) {
         pane_failure_key: crate::CandidateKey,
         pane_failure_command: String,
         pane_failure_category: String,
         pane_failure_detail: String
     },
     r#"
-    WITH statement(pane_failure_command, pane_failure_category, pane_failure_detail) AS (
-        SELECT command, category, detail
-        FROM import_candidate_pane_failure
-            WHERE content_hash =(
-                SELECT scan.content_hash
-                FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
-    )
-    SELECT :key AS pane_failure_key, pane_failure_command, pane_failure_category, pane_failure_detail
-    FROM statement
+    SELECT scan.candidate_key AS pane_failure_key, failure.command AS pane_failure_command, failure.category AS pane_failure_category,
+        failure.detail AS pane_failure_detail
+    FROM keys
+    JOIN @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+        ON scan.candidate_key = keys.candidate_key
+    JOIN import_candidate_pane_failure AS failure ON failure.content_hash = scan.content_hash
 "#);
 
+// The records each scanned candidate of `keys` claims for its draft, as a JSON
+// array; empty while the candidate has no current state.
 coven::fragment!(
-    ClaimedRecords(key: crate::CandidateKey) {
+    ClaimedRecords with keys(candidate_key BLOB) {
         claimed_key: crate::CandidateKey,
         claimed_records: Option<String>
     },
     r#"
-    SELECT :key AS claimed_key, (
-            SELECT CASE WHEN EXISTS (
-            SELECT 1
-            FROM @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT :key AS candidate_key)) AS owner
-            ) THEN (
+    SELECT scan.candidate_key AS claimed_key, (
+            SELECT CASE WHEN owner.owner_key IS NOT NULL THEN (
             SELECT json_group_array(json_object('catalog', claimed.catalog, 'kind',
                 claimed.kind, 'key', claimed.key, 'album', claimed.album) ORDER BY
                 claimed.position)
             FROM import_candidate_claimed_record AS claimed
-                WHERE claimed.content_hash =(
-                    SELECT scan.content_hash
-                    FROM @crate::tables::folder_scans::row_fragments::ScanContent AS scan WHERE scan.candidate_key = :key)
+                WHERE claimed.content_hash = scan.content_hash
         ) ELSE '[]' END
     ) AS claimed_records
+    FROM keys
+    JOIN @crate::tables::folder_scans::row_fragments::ScanContent AS scan
+        ON scan.candidate_key = keys.candidate_key
+    LEFT JOIN @crate::tables::import_state::current_owner::CurrentOwner(keys: (SELECT * FROM keys)) AS owner
+        ON owner.owner_key = scan.candidate_key
 "#);
 
 coven::fragment!(
