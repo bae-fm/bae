@@ -391,7 +391,6 @@ impl TrackTags {
     }
 }
 
-// A FLAC audio format of the track `:track_id`, at 44.1 kHz in two channels.
 // Each audio segment's scrub points, which other domains' tests compare
 // across devices.
 #[cfg(any(test, feature = "test-utils"))]
@@ -403,6 +402,7 @@ coven::fragment!(
 "#
 );
 
+// A FLAC audio format of the track `:track_id`, at 44.1 kHz in two channels.
 #[cfg(test)]
 coven::write!(
     PlantAudioFormat(id: &'p str, track_id: &'p str, created_at: &'p str),
