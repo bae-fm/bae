@@ -54,14 +54,18 @@ impl LaneOrder {
         })
     }
 
-    /// The playing row's place in the order, among `cursors`; Up Next has no
-    /// playing row.
-    fn cursor(self, cursors: &QueueCursors) -> Option<i64> {
-        match self {
-            Self::UpNext => None,
-            Self::Ordered => Some(cursors.ordered),
-            Self::Shuffled => Some(cursors.shuffled),
-        }
+    /// The playing row's place in the order, read in `sql`; Up Next has no
+    /// playing row. A context lane read here holds entries, so it has one.
+    fn cursor_on(self, sql: &impl WriterRead) -> Result<Option<i64>, DbError> {
+        let place: fn(&QueueCursors) -> i64 = match self {
+            Self::UpNext => return Ok(None),
+            Self::Ordered => |cursors| cursors.ordered,
+            Self::Shuffled => |cursors| cursors.shuffled,
+        };
+        let cursors = queue_row_on(sql)?.cursors.ok_or_else(|| {
+            DbError::unreadable("the cursors of a context lane holding an entry", "NULL")
+        })?;
+        Ok(Some(place(&cursors)))
     }
 
     /// Move the rows at places `low..=high` up by `lift`.
@@ -360,17 +364,7 @@ fn move_entry_on(
             (to - 1, Some((from + 1, to - 1, -1)))
         }
     };
-    // A context lane that holds the moved entry has a playing row.
-    let cursor = match order {
-        LaneOrder::UpNext => None,
-        LaneOrder::Ordered | LaneOrder::Shuffled => {
-            let cursors = queue_row_on(sql)?.cursors.ok_or_else(|| {
-                DbError::unreadable("the cursors of a context lane holding an entry", "NULL")
-            })?;
-            order.cursor(&cursors)
-        }
-    };
-    if let Some(cursor) = cursor {
+    if let Some(cursor) = order.cursor_on(sql)? {
         let moved_cursor = if cursor == from {
             landing
         } else {
