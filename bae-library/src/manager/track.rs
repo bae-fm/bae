@@ -94,6 +94,7 @@ impl LibraryManager {
     }
 
     /// What surfaces show of a track, as the library holds it now.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_track_display(
         &self,
         track_id: &str,

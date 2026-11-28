@@ -211,6 +211,7 @@ sqlive_compose::read!(
 
 // The artist list's rows at the places from `offset`, at most `limit` of
 // them, for each first term.
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer ArtistRowsByName(field_2: Option<String>, offset: i64, limit: i64),
     r#"
@@ -226,6 +227,7 @@ sqlive_compose::read!(
 "#
 );
 
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer ArtistRowsByNameDescending(field_2: Option<String>, offset: i64, limit: i64),
     r#"
@@ -241,6 +243,7 @@ sqlive_compose::read!(
 "#
 );
 
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer ArtistRowsByAlbums(field_2: Option<String>, offset: i64, limit: i64),
     r#"
@@ -256,6 +259,7 @@ sqlive_compose::read!(
 "#
 );
 
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer ArtistRowsByAlbumsDescending(field_2: Option<String>, offset: i64, limit: i64),
     r#"
@@ -518,6 +522,7 @@ pub(crate) fn artist_window_on(
 }
 
 /// The artist list's rows at `page`'s places under `sort`.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn artist_page_on(
     sql: &SqlReadContext<'_>,
     sort: &ListSort<ArtistSortField, 2>,

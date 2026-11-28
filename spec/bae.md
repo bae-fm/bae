@@ -6988,9 +6988,9 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `getArtists`, `getIndexes` | every artist, by first letter |
 | `getArtist` | an artist and their releases |
 | `getAlbum` | a release and its tracks |
-| `getAlbumList2` | releases by `alphabeticalByName`, `newest`, `byYear` or `random`; other types return none |
+| `getAlbumList2` | releases by `alphabeticalByName` (album title in the device's name order, then when each was added), `newest`, `byYear` (only releases whose year is in the range, running from `fromYear` to `toYear`) or `random`; other types return none |
 | `getSong` | one track |
-| `search3` | artists, releases and tracks; an empty query returns the whole library, paged |
+| `search3` | the artists, releases and tracks library search finds (§2.3), artists by name, releases by album title and tracks by title, each paged by its own count and offset; an empty query returns the whole library in the same orders |
 | `stream` | a track's audio (§8.1) |
 | `getCoverArt` | a release's cover or an artist's image |
 | `scrobble` | success, recording nothing |

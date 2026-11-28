@@ -281,17 +281,6 @@ pub struct DbTrackPlace {
     pub on: bae_types::mediums::TrackSide,
 }
 
-/// A track with how a surface outside bae numbers it: a saved file's track
-/// and disc tags and file name, and a Subsonic song.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbNumberedTrack {
-    pub track: DbTrack,
-    /// The track's number among its medium's tracks, from one.
-    pub number: u32,
-    /// Its medium's position, for a release of several mediums.
-    pub disc: Option<u32>,
-}
-
 /// One row of a release's credits: a role, the names of the artists who hold
 /// it over the same tracks, and those tracks.
 #[derive(Debug, Clone, PartialEq, Eq)]

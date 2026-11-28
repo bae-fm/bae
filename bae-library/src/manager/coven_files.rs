@@ -4,7 +4,6 @@
 //! file references / pins through the [`CovenHandle`] and [`Database`], distinct
 //! from the sync-provider control in `sync.rs`.
 
-use super::release::cover_ref_for;
 use super::*;
 
 impl LibraryManager {
@@ -106,8 +105,9 @@ impl LibraryManager {
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
     /// cover's version — or `None` when the release has no cover row.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn cover_ref(&self, release_id: &str) -> Result<Option<ImageRef>, LibraryError> {
-        cover_ref_for(&self.records, release_id).await
+        Ok(bae_records::cover_ref(release_id, self.records.cover_version(release_id).await?))
     }
 
     /// Read a library image's bytes through coven's locality-aware read. The

@@ -175,6 +175,7 @@ sqlive_compose::read!(
 );
 
 // Every album, in the flat grid's order.
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer EveryAlbum(first: String, second: String, third: String, fourth: String),
     r#"

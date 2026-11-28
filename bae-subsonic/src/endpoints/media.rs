@@ -64,14 +64,11 @@ async fn stream_inner(
     let services = &state.services;
     let track_id = SubId::parse(params.require("id")?)?.expect_track()?.to_string();
 
-    let existing = services
-        .filter_existing_track_ids(std::slice::from_ref(&track_id))
+    let audio = services
+        .resolve_track_audio(&track_id)
         .await
-        .map_err(lib_err)?;
-    if existing.is_empty() {
-        return Err(SubError::not_found());
-    }
-    let audio = services.resolve_track_audio(&track_id).await.map_err(lib_err)?;
+        .map_err(lib_err)?
+        .ok_or_else(SubError::not_found)?;
 
     let requested_format = params.get("format");
     let max_bitrate = params.int("maxBitRate")?.filter(|&b| b > 0);
@@ -81,7 +78,9 @@ async fn stream_inner(
     if wants_original {
         match audio.whole_file() {
             Some(file) => stream_file(state, file, headers).await,
-            None => stream_encoded(state, &audio, wav_stream_format(&audio), None).await,
+            None => {
+                stream_encoded(state, &audio, wav_stream_format(audio.bits_per_sample), None).await
+            }
         }
     } else {
         let format = transcode_format(&audio, requested_format, max_bitrate);
@@ -302,7 +301,7 @@ fn transcode_format(
 ) -> StreamEncodeFormat {
     let bitrate = requested_kbps(max_bitrate);
     match requested_format {
-        Some("wav") => wav_stream_format(audio),
+        Some("wav") => wav_stream_format(audio.bits_per_sample),
         Some("opus") | Some("ogg") => StreamEncodeFormat::OpusOgg {
             bitrate_kbps: bitrate.clamp(*OPUS_STREAM_KBPS.start(), *OPUS_STREAM_KBPS.end()),
         },

@@ -29,6 +29,7 @@ impl Records {
     /// album's, each the artist it shows after merges. The rule is
     /// [`super::query::track_credits_json_sql`]'s, which every read of a
     /// track's shown credits goes through. None for an unknown track.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_shown_artists_for_track(
         &self,
         track_id: &str,

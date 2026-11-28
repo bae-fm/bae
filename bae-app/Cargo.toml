@@ -87,9 +87,9 @@ serde_json = { workspace = true }
 default = []
 # OAuth cloud providers (Dropbox, OneDrive) through bae-library's sign-in.
 oauth-providers = ["bae-library/oauth-providers"]
-# A library's services started over a device a test supplies, and the test
-# library they start over.
-test-utils = ["bae-library/test-utils", "bae-playback/test-utils"]
+# A library's services started over a device a test supplies, the test
+# library they start over, and the views' reads a test checks it with.
+test-utils = ["bae-library/test-utils", "bae-playback/test-utils", "bae-views/test-utils"]
 
 # bae-app's integration tests, one binary of modules (tests/integration/).
 [[test]]

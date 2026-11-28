@@ -38,6 +38,7 @@ pub mod release;
 #[cfg(desktop)]
 mod release_files;
 mod search;
+pub mod served;
 pub mod storage;
 pub mod storage_actions;
 mod storage_browse;

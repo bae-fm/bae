@@ -460,6 +460,7 @@ pub(crate) fn albums_in_order_on(
 }
 
 /// Every album, in the order of the flat grid under `order`.
+#[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn every_album_on(
     sql: &SqlReadContext<'_>,
     order: &AlbumOrder,

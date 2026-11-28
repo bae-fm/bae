@@ -8,9 +8,11 @@ use bae_records::records::track_display::DisplayedTrack;
 #[cfg(test)]
 pub(crate) use card::ArtistAlbums;
 pub(crate) use card::{artist_albums_on, AlbumAppearanceRow};
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) use listing::every_album_on;
 pub(crate) use listing::{
     album_counts_on, album_key_at_on, album_page_on, album_sections_on, album_window_on,
-    albums_before_on, albums_in_order_on, every_album_on, unshown_albums_on,
+    albums_before_on, albums_in_order_on, unshown_albums_on,
 };
 use order::grouped_artist_direction;
 pub(crate) use order::AlbumOrder;
@@ -74,6 +76,7 @@ impl LibraryViews {
 
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
     /// `sort` is empty.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
         let order = AlbumOrder::new(sort, false);
         self.store.read(move |sql| every_album_on(&sql, &order)).await

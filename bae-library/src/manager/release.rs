@@ -123,6 +123,7 @@ impl LibraryManager {
     /// Every file of a release — audio files, and the metadata files (cover art,
     /// CUE sheets) that no track owns. Files belong to releases, not to albums or
     /// tracks; a track reaches its audio file through its `audio_segments`.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_files_for_release(
         &self,
         release_id: &str,
@@ -154,16 +155,6 @@ impl LibraryManager {
 
         Ok(())
     }
-}
-
-/// The cover [`ImageRef`] for one release from its cover's version, or `None`
-/// when it has no cover row. Free function so the manager's `cover_ref`,
-/// the release-edit context, and one track's detail share one construction.
-pub(crate) async fn cover_ref_for(
-    records: &bae_records::Records,
-    release_id: &str,
-) -> Result<Option<ImageRef>, LibraryError> {
-    Ok(bae_records::cover_ref(release_id, records.cover_version(release_id).await?))
 }
 
 #[cfg(test)]

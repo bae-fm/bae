@@ -1,6 +1,7 @@
 use super::*;
 
 // Each track the library holds among those the JSON array `ids` names.
+#[cfg(any(test, feature = "test-utils"))]
 sqlive_compose::read!(
     writer HeldTrackIds(ids: String),
     r#"
@@ -88,30 +89,6 @@ impl Records {
         self.store.read(move |sql| release_mediums_on(&sql, &release_id)).await
     }
 
-    /// Each track of `release_id` in playing order, with how a surface
-    /// outside bae numbers it.
-    pub async fn get_numbered_tracks_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<DbNumberedTrack>, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                super::export_numbers::numbered_tracks_of_release_on(&sql, &release_id)
-            })
-            .await
-    }
-
-    /// The track `track_id`, with how a surface outside bae numbers it, or
-    /// `None` when the library holds no such track.
-    pub async fn get_numbered_track(
-        &self,
-        track_id: &str,
-    ) -> Result<Option<DbNumberedTrack>, DbError> {
-        let track_id = track_id.to_string();
-        self.store.read(move |sql| super::export_numbers::numbered_track_on(&sql, &track_id)).await
-    }
-
     /// Where each of `track_ids` sits on its release, in their order, leaving
     /// out a track the library does not hold.
     pub async fn track_places(&self, track_ids: &[String]) -> Result<Vec<DbTrackPlace>, DbError> {
@@ -192,6 +169,7 @@ impl Records {
     /// order across calls, so a listing pages through a stable list): by
     /// release, then stored position, id — the order the playback queue's
     /// library play unshuffles into.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
         self.store
             .read(move |sql| {
@@ -205,6 +183,7 @@ impl Records {
 
     /// The subset of `track_ids` that exist in the tracks table. The returned
     /// order is unspecified; a caller that needs one must re-derive it.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn filter_existing_track_ids(
         &self,
         track_ids: &[String],

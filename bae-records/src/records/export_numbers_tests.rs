@@ -1,19 +1,19 @@
-use super::*;
 use crate::test_fixtures::library::RecordsFixture;
 use bae_types::mediums::ReleaseMedium;
 use bae_types::pressing::Medium;
 
 const RELEASE: &str = "0d6f3b52-7c41-4f0e-9a1b-2c3d4e5f6a01";
 
-/// The export numbers of a release whose tracks sit, in playing order, on
-/// the places `places` ((medium, side, number on the side)) of `records`
-/// two-sided records.
+/// The numbers a Subsonic album and song state of a release whose tracks
+/// sit, in playing order, on the places `places` ((medium, side, number on
+/// the side)) of `records` two-sided records.
 async fn numbers_of(records: u16, places: &[(u16, u8, u32)]) -> Vec<(u32, Option<u32>)> {
-    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let (db, temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let ids: Vec<String> = (0..places.len())
         .map(|index| bae_util::test_ids::test_uuid(&format!("export-track-{index}")))
         .collect();
     let tracks: Vec<(&str, &str)> = ids.iter().map(|id| (id.as_str(), "Track Title")).collect();
+    let library = crate::test_fixtures::test_records(&db);
     let medium_id = |position: u16| format!("{RELEASE}-medium-{position}");
     RecordsFixture::new()
         .artist("0d6f3b52-7c41-4f0e-9a1b-2c3d4e5f6a02", "Artist Name")
@@ -44,13 +44,19 @@ async fn numbers_of(records: u16, places: &[(u16, u8, u32)]) -> Vec<(u32, Option
                 track.track_number = std::num::NonZeroU32::new(*number).unwrap();
             }
         })
-        .write(&crate::test_fixtures::test_records(&db))
+        .write(&library)
         .await;
-    let numbered = db.read(|sql| numbered_tracks_of_release_on(&sql, RELEASE)).await.unwrap();
+    for id in &ids {
+        crate::test_fixtures::audio::store_audio(&library, &temp, RELEASE, id, false).await;
+    }
+    let numbered = library.served_album(RELEASE).await.unwrap().unwrap().tracks;
     for track in &numbered {
-        let id = track.track.id.clone();
-        let one = db.read(move |sql| numbered_track_on(&sql, &id)).await.unwrap();
-        assert_eq!(one.as_ref(), Some(track), "one track reads as its release's list has it");
+        let one = library.served_song(&track.track.id).await.unwrap().unwrap().track;
+        assert_eq!(
+            (one.number, one.disc),
+            (track.number, track.disc),
+            "one track reads as its release's list has it"
+        );
     }
     assert_eq!(
         numbered.iter().map(|track| track.track.id.clone()).collect::<Vec<_>>(),

@@ -504,9 +504,6 @@ impl AppServices {
         self.inner.records.set_sort_language(tag).await
     }
 
-    delegate_view!(get_artist_count => get_artist_count() -> u64);
-    delegate_view!(get_artist_page => get_artist_page(sort: &[bae_views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_views::DbArtistSummary>);
-    delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<bae_views::album_detail::ArtistDetail>);
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> ());
@@ -514,38 +511,37 @@ impl AppServices {
     delegate_view!(album_ids_between => album_ids_between(sort: &[bae_views::AlbumSortCriterion], group_by_artist: bool, from: bae_views::album::AlbumCard<'_>, to: bae_views::album::AlbumCard<'_>) -> Vec<String>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
     delegate_lib!(records, track_ids_between => track_ids_between(anchor_id: String, target_id: String) -> Vec<String>);
-    delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_views::album_detail::AlbumDetail>);
     delegate_view!(find_album_item => find_album_item(album_id: &str) -> Option<bae_views::album_detail::AlbumSummary>);
     delegate_view!(find_composer_item => find_composer_item(artist_id: &str) -> Option<bae_views::DbComposerSummary>);
     delegate_view!(find_work_item => find_work_item(work_id: &str) -> Option<bae_views::DbWorkSummary>);
     delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<bae_views::album_detail::ReleaseDetail>);
-    delegate_view!(get_albums => get_albums(sort: &[bae_views::AlbumSortCriterion]) -> Vec<bae_records::DbAlbum>);
-    delegate_lib!(records, get_releases_for_album => get_releases_for_album(album_id: &str) -> Vec<bae_records::DbRelease>);
-    delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<bae_records::DbRelease>, bae_library::LibraryError>);
+    delegate_view!(#[cfg(any(test, feature = "test-utils"))] get_albums => get_albums(sort: &[bae_views::AlbumSortCriterion]) -> Vec<bae_records::DbAlbum>);
 
-    delegate_lib!(records, get_release_records => get_release_records(release_id: &str) -> Vec<bae_catalogs::records::ReleaseRecord>);
-    delegate_lib!(records, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Vec<bae_records::DbTrack>);
-    delegate_lib!(records, get_numbered_tracks_for_release => get_numbered_tracks_for_release(release_id: &str) -> Vec<bae_records::DbNumberedTrack>);
-    delegate_lib!(records, get_numbered_track => get_numbered_track(track_id: &str) -> Option<bae_records::DbNumberedTrack>);
-    delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_records::DbFile>, bae_library::LibraryError>);
-    delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_records::ImageRef>, bae_library::LibraryError>);
+    delegate_lib!(records, served_album => served_album(release_id: &str) -> Option<bae_records::records::served::DbServedAlbum>);
+    delegate_lib!(records, served_song => served_song(track_id: &str) -> Option<bae_records::records::served::DbServedSong>);
+    delegate_view!(served_artists => served_artists() -> Vec<bae_views::served::DbServedArtist>);
+    delegate_view!(served_artist => served_artist(artist_id: &str) -> Option<(bae_views::served::DbServedArtist, Vec<bae_records::records::served::DbServedRelease>)>);
+    delegate_view!(served_album_list => served_album_list(order: bae_views::served::ServedAlbumOrder, page: bae_views::served::ServedPage) -> Vec<bae_records::records::served::DbServedRelease>);
+    delegate_view!(served_search => served_search(request: bae_views::served::ServedSearchRequest) -> bae_views::served::DbServedSearch);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_records::ImageRef, pixels: Option<u32>) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
     delegate_async!(manager, read_library_image => read_library_image(id: &str, image_type: &bae_records::LibraryImageType) -> Result<Option<bae_library::LibraryImage>, bae_library::LibraryError>);
     delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_records::GallerySource, pixels: u32) -> Result<Vec<u8>, bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, read_release_document => read_release_document(release_id: &str, file_id: &str) -> Result<String, bae_library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);
-    delegate_lib!(records, get_shown_artists_for_track => get_shown_artists_for_track(track_id: &str) -> Vec<bae_records::credits::LibraryCredit>);
-    delegate_lib!(records, get_all_track_ids => get_all_track_ids() -> Vec<String>);
-    delegate_lib!(records, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Vec<String>);
+    /// The audio of the track `track_id`; `None` when the library holds no
+    /// such track.
     pub async fn resolve_track_audio(
         &self,
         track_id: &str,
-    ) -> Result<bae_records::ResolvedTrackAudio, bae_library::LibraryError> {
-        Ok(bae_records::ResolvedTrackAudio::resolve(&self.inner.records, track_id).await?)
+    ) -> Result<Option<bae_records::ResolvedTrackAudio>, bae_library::LibraryError> {
+        match bae_records::ResolvedTrackAudio::resolve(&self.inner.records, track_id).await {
+            Ok(audio) => Ok(Some(audio)),
+            Err(bae_records::TrackAudioError::TrackNotFound(_)) => Ok(None),
+            Err(error) => Err(error.into()),
+        }
     }
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, bae_library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<bae_playback::PlaybackTrackInfo, bae_library::LibraryError>);
-    delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<bae_playback::TrackDisplay, bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, change_cover => change_cover(release_id: &str, selection: bae_library::CoverSelection) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> ());
     delegate_async!(manager, unpin_releases => unpin_releases(release_ids: &[String]) -> Result<(), bae_library::LibraryError>);

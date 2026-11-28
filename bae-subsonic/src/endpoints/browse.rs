@@ -3,15 +3,10 @@
 
 use std::collections::BTreeMap;
 
-use bae_store::SortDirection;
-use bae_views::{ArtistSortCriterion, ArtistSortField};
-
 use crate::envelope::Element;
 use crate::error::SubError;
 use crate::id::SubId;
-use crate::library_map::{
-    artist_id3, artist_release_ids, lib_err, release_album_id3, release_album_id3_with, track_child,
-};
+use crate::library_map::{album_id3, artist_id3, lib_err, track_child};
 use crate::model::ArtistId3;
 use crate::params::Params;
 use crate::AppState;
@@ -31,27 +26,15 @@ async fn artist_index(
     state: &AppState,
     payload_name: &'static str,
 ) -> Result<Option<Element>, SubError> {
-    let services = &state.services;
-    let count = services.get_artist_count().await.map_err(lib_err)?;
-    let sort =
-        [ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Ascending }];
-    let summaries = services.get_artist_page(&sort, 0, count).await.map_err(lib_err)?;
+    let artists = state.services.served_artists().await.map_err(lib_err)?;
 
     // Bucket by first sort letter, keeping buckets ordered.
     let mut buckets: BTreeMap<String, Vec<ArtistId3>> = BTreeMap::new();
-    for summary in summaries {
-        let artist = &summary.artist;
-        // Album count is this artist's release total (a Subsonic album is a
-        // release), summed over the artist's bae albums.
-        let release_count = crate::library_map::artist_release_count(services, &artist.id).await?;
-        let id3 = artist_id3(
-            &artist.id,
-            &artist.name,
-            release_count,
-            artist.musicbrainz_artist_id.clone(),
-            summary.image.as_ref(),
-        );
-        buckets.entry(index_letter(&artist.name)).or_default().push(id3);
+    for artist in &artists {
+        buckets
+            .entry(index_letter(&artist.artist.artist.name))
+            .or_default()
+            .push(artist_id3(artist));
     }
 
     let mut payload = Element::new(payload_name).attr("ignoredArticles", "");
@@ -81,30 +64,16 @@ pub(crate) async fn get_artist(
     state: AppState,
     params: Params,
 ) -> Result<Option<Element>, SubError> {
-    let services = &state.services;
     let artist_id = SubId::parse(params.require("id")?)?.expect_artist()?.to_string();
-    let detail = services
-        .get_artist_detail(&artist_id)
+    let (artist, releases) = state
+        .services
+        .served_artist(&artist_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-
-    let artist = &detail.artist.artist;
-    let release_ids = artist_release_ids(&detail);
-
-    let mut element = artist_id3(
-        &artist.id,
-        &artist.name,
-        release_ids.len() as i64,
-        artist.musicbrainz_artist_id.clone(),
-        detail.artist.image.as_ref(),
-    )
-    .to_element();
-
-    for release_id in release_ids {
-        let album = release_album_id3(services, &release_id).await?;
-        element = element.child(album.to_element());
-    }
+    let element = artist_id3(&artist)
+        .to_element()
+        .children(releases.iter().map(|release| album_id3(release).to_element()));
     Ok(Some(element))
 }
 
@@ -113,22 +82,15 @@ pub(crate) async fn get_album(
     state: AppState,
     params: Params,
 ) -> Result<Option<Element>, SubError> {
-    let services = &state.services;
     let release_id = SubId::parse(params.require("id")?)?.expect_album()?.to_string();
-    let release = services
-        .get_release_by_id(&release_id)
+    let served = state
+        .services
+        .served_album(&release_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-
-    let album = release_album_id3_with(services, &release).await?;
-
-    let tracks = services.get_numbered_tracks_for_release(&release_id).await.map_err(lib_err)?;
-    let files = services.get_files_for_release(&release_id).await.map_err(lib_err)?;
-
-    let mut songs = Vec::with_capacity(tracks.len());
-    for track in &tracks {
-        songs.push(track_child(services, track, &release, &album, &files).await?);
-    }
+    let album = album_id3(&served.release);
+    let songs =
+        served.tracks.iter().map(|track| track_child(track, &served.release, &album)).collect();
     Ok(Some(album.with_songs(songs)))
 }

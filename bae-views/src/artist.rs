@@ -9,17 +9,20 @@ use bae_records::records::files::ArtistImageVersion;
 use bae_store::statement_optional;
 
 mod list;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) use list::artist_page_on;
 pub(crate) use list::{
-    artist_key_at_on, artist_list_length_on, artist_page_on, artist_sort, artist_window_on,
-    artists_before_on,
+    artist_key_at_on, artist_list_length_on, artist_sort, artist_window_on, artists_before_on,
 };
 
 impl LibraryViews {
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {
         self.store.read(|sql| artist_list_length_on(&sql)).await
     }
 
     /// The artist list's rows at the places from `offset`, at most `limit`.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_artist_page(
         &self,
         sort: &[ArtistSortCriterion],
@@ -77,6 +80,7 @@ impl LibraryViews {
 
     /// The artist's page as its view shows it. `None` when the artist
     /// doesn't exist or has no album links.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_artist_detail(
         &self,
         artist_id: &str,
@@ -89,6 +93,7 @@ impl LibraryViews {
     /// title in the device's name order, then id. `None` when the artist
     /// doesn't exist or has no album links, exactly the artists
     /// `get_artist_page` never lists.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn find_artist_detail(
         &self,
         artist_id: &str,

@@ -100,6 +100,8 @@ bae-library = { workspace = true, features = ["test-utils"] }
 bae-import = { workspace = true, features = ["test-utils"] }
 # The tests read the cards the identify rules fold in memory.
 bae-identify = { workspace = true, features = ["test-utils"] }
+# The tests read a library's albums through the views' test reads.
+bae-views = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed, and whether a diagnostics
 # setting sends events.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }

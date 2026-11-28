@@ -108,6 +108,7 @@ mod release_file;
 mod release_locality;
 mod release_tracks;
 pub mod release_with_files;
+pub mod served;
 pub mod track_display;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
 pub use release_tracks::{track_places_on, track_position_of, track_side_of};
