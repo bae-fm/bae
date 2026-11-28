@@ -229,6 +229,18 @@ impl SyncStatus {
     }
 }
 
+// The storage setups `coven_operations` lists, oldest first.
+#[cfg(test)]
+coven::read!(
+    writer ListedSetups,
+    r#"
+    SELECT setup.operation
+    FROM coven_operations AS setup
+    WHERE setup.kind = 'StorageSetup'
+    ORDER BY setup.operation
+"#
+);
+
 #[cfg(test)]
 #[path = "storage_setup_tests.rs"]
 mod tests;

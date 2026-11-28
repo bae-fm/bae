@@ -71,17 +71,8 @@ async fn state(store: &Store) -> Option<StorageSetupState> {
 
 /// The storage setups `coven_operations` lists, oldest first.
 async fn listed(store: &Store) -> Vec<coven::OperationId> {
-    store
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT operation FROM coven_operations \
-                 WHERE kind = 'StorageSetup' ORDER BY operation",
-                [],
-                |row| Ok(coven::OperationId(row.get(0)?)),
-            )?)
-        })
-        .await
-        .unwrap()
+    let setups = store.read_rows(ListedSetupsParams {}).await.unwrap();
+    setups.into_iter().map(|setup| coven::OperationId(setup.operation)).collect()
 }
 
 /// A setup that fails before its point of no return is undone, and shows
