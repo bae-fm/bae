@@ -35,7 +35,7 @@ pub(super) struct FormParams {
     linked: bool,
     album_artists: String,
     track_artists: String,
-    /// The form's tracks, as [`FormDraftTracks`] binds them.
+    /// The form's tracks, as [`FormDraftTrackRows`] binds them.
     form_tracks: String,
     /// The applied catalog's mediums and places, and the discs picked for
     /// CUE sheets, as the layout binds them.
@@ -201,32 +201,6 @@ coven::fragment!(
 "#
 );
 
-// The album a save of the form files its release under ([`FiledAlbum`]),
-// beside each of the form's tracks in their order ([`FormDraftTrackRows`]);
-// one row with no track when the form lays out none, and none once the
-// library no longer holds the release. The album is read with the tracks, not
-// with the rest of the draft, because one statement of them all opens more
-// tables than SQLite allows.
-coven::read!(
-    writer FormDraftTracks(
-        release: String, applied: bool, mediums: String, places: String, moves: String,
-        edits: String, album_artists: String, track_artists: String, form_tracks: String,
-        pick_kind: String, pick_album: Option<String>, linked: bool, records: String
-    ),
-    r#"
-    SELECT filed.*, track.*
-    FROM @crate::tables::release_edit::draft::FiledAlbum(
-        release: :release, pick_kind: :pick_kind, pick_album: :pick_album, linked: :linked,
-        records: :records) AS filed
-    LEFT JOIN @crate::tables::release_edit::draft::FormDraftTrackRows(
-        release: :release, applied: :applied, mediums: :mediums, places: :places,
-        moves: :moves, edits: :edits, album_artists: :album_artists,
-        track_artists: :track_artists, form_tracks: :form_tracks) AS track
-      ON 1
-    ORDER BY track.placed_medium, track.placed_position
-"#
-);
-
 // Whether a track the save of the edits `edits` deletes from the release
 // `release` has a rating, a play in the history or a playlist entry.
 coven::fragment!(
@@ -242,17 +216,22 @@ coven::fragment!(
 "#
 );
 
-// The draft of a form beside its tracks: the release as its editor shows it,
-// with no row once the library holds no such release; the album's artist
-// field, none when the album has none; whether a track the save deletes has
-// kept data; the files a save reads first; and the release's files.
+// The draft of a form: the release as its editor shows it, with no row once
+// the library holds no such release; the album's artist field, none when the
+// album has none; whether a track the save deletes has kept data; the files a
+// save reads first; the release's files; and the album a save files the
+// release under ([`FiledAlbum`]), beside each of the form's tracks in their
+// order ([`FormDraftTrackRows`]), with one row with no track when the form
+// lays out none.
 coven::read!(
-    writer EditorDraftHead(
+    writer EditorDraft(
         release: String, relinked: bool, form_records: String, album_artists: String,
-        track_artists: String, applied: bool, mediums: String, edits: String
+        track_artists: String, applied: bool, mediums: String, places: String, moves: String,
+        edits: String, form_tracks: String, pick_kind: String, pick_album: Option<String>,
+        linked: bool, records: String
     ),
     r#"
-    SELECT head.*, artist.*, kept.*, sheets.*, listed.*
+    SELECT head.*, artist.*, kept.*, sheets.*, listed.*, filed.*, track.*
     FROM @bae_records::records::release::EditedHead(
         release: :release, relinked: :relinked, records: :form_records) AS head
     LEFT JOIN @crate::tables::release_edit::artist_fields::FormArtistFields(
@@ -267,6 +246,16 @@ coven::read!(
     JOIN @bae_records::records::editor_files::EditorFiles(
         release: :release, applied: :applied, mediums: :mediums, edits: :edits) AS listed
       ON 1
+    LEFT JOIN @crate::tables::release_edit::draft::FiledAlbum(
+        release: :release, pick_kind: :pick_kind, pick_album: :pick_album, linked: :linked,
+        records: :records) AS filed
+      ON 1
+    LEFT JOIN @crate::tables::release_edit::draft::FormDraftTrackRows(
+        release: :release, applied: :applied, mediums: :mediums, places: :places,
+        moves: :moves, edits: :edits, album_artists: :album_artists,
+        track_artists: :track_artists, form_tracks: :form_tracks) AS track
+      ON 1
+    ORDER BY track.placed_medium, track.placed_position
 "#
 );
 
@@ -311,7 +300,7 @@ struct DraftTrackRow {
     form: Option<String>,
 }
 
-/// The form row of a track as [`FormDraftTracks`] writes it.
+/// The form row of a track as [`FormDraftTrackRows`] writes it.
 #[derive(serde::Deserialize)]
 struct FormTrackRow {
     id: String,
@@ -320,7 +309,7 @@ struct FormTrackRow {
     own: Option<OwnArtists>,
 }
 
-/// A form track's own artists as [`FormDraftTracks`] writes them: its
+/// A form track's own artists as [`FormDraftTrackRows`] writes them: its
 /// assignments as the library holds them, and how they stand to the library.
 #[derive(serde::Deserialize)]
 struct OwnArtists {
@@ -347,53 +336,45 @@ impl FormTrackRow {
     }
 }
 
-/// The reads of `form`'s draft: its head and its tracks.
+/// The read of `form`'s draft.
 pub(crate) fn release_edit_draft_read(
     form: &ReleaseEditForm,
-) -> Result<coven::Both<EditorDraftHeadParams, FormDraftTracksParams>, DbError> {
+) -> Result<EditorDraftParams, DbError> {
     let form = FormParams::of(form)?;
-    let head = EditorDraftHeadParams {
-        release: form.release.clone(),
+    Ok(EditorDraftParams {
+        release: form.release,
         relinked: form.relinked,
         form_records: if form.relinked { form.records.clone() } else { "[]".to_string() },
-        album_artists: form.album_artists.clone(),
-        track_artists: form.track_artists.clone(),
-        applied: form.applied,
-        mediums: form.mediums.clone(),
-        edits: form.edits.clone(),
-    };
-    let tracks = FormDraftTracksParams {
-        release: form.release,
+        album_artists: form.album_artists,
+        track_artists: form.track_artists,
         applied: form.applied,
         mediums: form.mediums,
         places: form.places,
         moves: form.moves,
         edits: form.edits,
-        album_artists: form.album_artists,
-        track_artists: form.track_artists,
         form_tracks: form.form_tracks,
         pick_kind: form.pick_kind.to_string(),
         pick_album: form.pick_album,
         linked: form.linked,
         records: form.records,
-    };
-    Ok(coven::Both(head, tracks))
+    })
 }
 
 /// The rows of `form`'s draft as [`release_edit_draft_read`] returned them;
 /// `None` once the library no longer holds the form's release.
 pub(crate) fn release_edit_draft_rows_of(
     form: &ReleaseEditForm,
-    (head, tracks): (Vec<EditorDraftHeadRow>, Vec<FormDraftTracksRow>),
+    rows: Vec<EditorDraftRow>,
 ) -> Result<Option<ReleaseEditDraftRows>, DbError> {
-    let Some(row) = bae_store::at_most_one::<EditorDraftHeadParams, _>(head)? else {
+    let mut rows = rows.into_iter();
+    // Every row holds the release's head and the album a save files it
+    // under, beside one of its tracks.
+    let Some(first) = rows.next() else {
         return Ok(None);
     };
-    let EditorDraftHeadRow { head, artist, kept, sheets, listed } = row;
+    let EditorDraftRow { head, artist, kept, sheets, listed, filed, track } = first;
     let release_id = &form.release_id;
-    // Every row of the tracks' read holds the album a save files the release
-    // under.
-    let filed = tracks.first().map(|row| row.filed.clone()).ok_or_else(|| {
+    let filed = filed.ok_or_else(|| {
         DbError::unreadable(
             format!("the album a save of release {release_id} files it under"),
             None::<String>,
@@ -406,9 +387,9 @@ pub(crate) fn release_edit_draft_rows_of(
         album: DraftAlbumRow::of_choice(filed.kind, filed.album)?
             .album(&format!("the editor of release {release_id}"))?,
         cover_version: edited.cover_version,
-        tracks: tracks
-            .into_iter()
-            .filter_map(|row| row.track)
+        tracks: std::iter::once(track)
+            .chain(rows.map(|row| row.track))
+            .flatten()
             .map(draft_row_of)
             .collect::<Result<_, _>>()?,
         files_to_read: bae_records::records::sheet_files::sheet_files_to_read_of(sheets)?,
