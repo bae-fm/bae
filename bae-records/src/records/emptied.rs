@@ -194,6 +194,27 @@ impl Emptiable {
     }
 }
 
+// Whether the library holds the album `:id`.
+#[cfg(test)]
+coven::read!(
+    writer AlbumIdHeld(id: String) { held: bool },
+    "SELECT EXISTS (SELECT 1 FROM albums AS album WHERE album.id = :id) AS held"
+);
+
+// Whether the library holds the work `:id`.
+#[cfg(test)]
+coven::read!(
+    writer WorkIdHeld(id: String) { held: bool },
+    "SELECT EXISTS (SELECT 1 FROM works AS work WHERE work.id = :id) AS held"
+);
+
+// Whether the library holds the artist `:id`.
+#[cfg(test)]
+coven::read!(
+    writer ArtistIdHeld(id: String) { held: bool },
+    "SELECT EXISTS (SELECT 1 FROM artists AS artist WHERE artist.id = :id) AS held"
+);
+
 #[cfg(test)]
 #[path = "emptied_tests.rs"]
 mod tests;

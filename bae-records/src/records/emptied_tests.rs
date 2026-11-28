@@ -8,8 +8,16 @@ use bae_store::test_fixtures::temp_db;
 const ALBUM_B: &str = "5d0b1a0e-2b44-4a37-9d51-0a9e7a2b6c01";
 const WORK_PART: &str = "b1e4c7d2-9a3f-4c5e-8d6b-3f2a1e0d9c88";
 
-async fn count(db: &bae_store::Store, table: &str, id: &str) -> i64 {
-    db.count_rows_for_test(table, "id", id).await.unwrap()
+async fn album_held(db: &bae_store::Store, id: &str) -> bool {
+    db.read_row(super::AlbumIdHeldParams { id: id.to_string() }).await.unwrap().held
+}
+
+async fn work_held(db: &bae_store::Store, id: &str) -> bool {
+    db.read_row(super::WorkIdHeldParams { id: id.to_string() }).await.unwrap().held
+}
+
+async fn artist_held(db: &bae_store::Store, id: &str) -> bool {
+    db.read_row(super::ArtistIdHeldParams { id: id.to_string() }).await.unwrap().held
 }
 
 /// One album by `ARTIST_PRIMARY` with one release of one track performing
@@ -31,10 +39,10 @@ async fn deleting_the_last_release_deletes_its_album_work_and_artists() {
 
     delete_release(&records, RELEASE_A).await;
 
-    assert_eq!(count(&db, "albums", ALBUM_A).await, 0, "the album");
-    assert_eq!(count(&db, "works", WORK_A).await, 0, "the work");
-    assert_eq!(count(&db, "artists", ARTIST_PRIMARY).await, 0, "the album's artist");
-    assert_eq!(count(&db, "artists", ARTIST_COMPOSER).await, 0, "the composer");
+    assert!(!album_held(&db, ALBUM_A).await, "the album");
+    assert!(!work_held(&db, WORK_A).await, "the work");
+    assert!(!artist_held(&db, ARTIST_PRIMARY).await, "the album's artist");
+    assert!(!artist_held(&db, ARTIST_COMPOSER).await, "the composer");
 }
 
 #[tokio::test]
@@ -45,8 +53,8 @@ async fn a_release_left_in_the_album_keeps_it_and_what_it_holds() {
 
     delete_release(&records, RELEASE_A).await;
 
-    assert_eq!(count(&db, "albums", ALBUM_A).await, 1, "the album");
-    assert_eq!(count(&db, "artists", ARTIST_PRIMARY).await, 1, "the album's artist");
+    assert!(album_held(&db, ALBUM_A).await, "the album");
+    assert!(artist_held(&db, ARTIST_PRIMARY).await, "the album's artist");
 }
 
 #[tokio::test]
@@ -63,11 +71,11 @@ async fn what_another_album_still_uses_stays() {
 
     delete_release(&records, RELEASE_A).await;
 
-    assert_eq!(count(&db, "albums", ALBUM_A).await, 0, "the emptied album");
-    assert_eq!(count(&db, "albums", ALBUM_B).await, 1, "the other album");
-    assert_eq!(count(&db, "works", WORK_A).await, 1, "the work its track performs");
-    assert_eq!(count(&db, "artists", ARTIST_PRIMARY).await, 1, "credited on the other album");
-    assert_eq!(count(&db, "artists", ARTIST_COMPOSER).await, 1, "composer of the kept work");
+    assert!(!album_held(&db, ALBUM_A).await, "the emptied album");
+    assert!(album_held(&db, ALBUM_B).await, "the other album");
+    assert!(work_held(&db, WORK_A).await, "the work its track performs");
+    assert!(artist_held(&db, ARTIST_PRIMARY).await, "credited on the other album");
+    assert!(artist_held(&db, ARTIST_COMPOSER).await, "composer of the kept work");
 }
 
 /// A symphony no track performs itself is performed through its movement.
@@ -83,12 +91,12 @@ async fn a_work_stays_while_a_part_of_it_is_performed_and_goes_with_it() {
         .performs(TRACK_A, WORK_PART)
         .write(&records)
         .await;
-    assert_eq!(count(&db, "works", WORK_A).await, 1, "the symphony is written");
+    assert!(work_held(&db, WORK_A).await, "the symphony is written");
 
     delete_release(&records, RELEASE_A).await;
 
-    assert_eq!(count(&db, "works", WORK_PART).await, 0, "the movement");
-    assert_eq!(count(&db, "works", WORK_A).await, 0, "the symphony");
+    assert!(!work_held(&db, WORK_PART).await, "the movement");
+    assert!(!work_held(&db, WORK_A).await, "the symphony");
 }
 
 #[tokio::test]
@@ -103,8 +111,8 @@ async fn deleting_every_release_of_an_album_deletes_it() {
 
     records.delete_album_with_cleanup(ALBUM_A, plans).await.unwrap();
 
-    assert_eq!(count(&db, "albums", ALBUM_A).await, 0, "the album");
-    assert_eq!(count(&db, "artists", ARTIST_PRIMARY).await, 0, "its artist");
+    assert!(!album_held(&db, ALBUM_A).await, "the album");
+    assert!(!artist_held(&db, ARTIST_PRIMARY).await, "its artist");
 }
 
 /// A release moving to another album empties the album it left.
@@ -126,13 +134,9 @@ async fn a_release_moving_out_deletes_the_album_it_left() {
         .await
         .unwrap();
 
-    assert_eq!(count(&db, "albums", ALBUM_A).await, 0, "the album it left");
-    assert_eq!(count(&db, "albums", &target.id).await, 1, "the album it joined");
-    assert_eq!(
-        count(&db, "artists", ARTIST_PRIMARY).await,
-        1,
-        "the copy of the credits keeps the artist"
-    );
+    assert!(!album_held(&db, ALBUM_A).await, "the album it left");
+    assert!(album_held(&db, &target.id).await, "the album it joined");
+    assert!(artist_held(&db, ARTIST_PRIMARY).await, "the copy of the credits keeps the artist");
 }
 
 /// An edit that credits someone else leaves the old artist credited nowhere.
@@ -144,6 +148,6 @@ async fn an_edit_crediting_another_artist_deletes_the_one_nothing_credits() {
 
     records.credit_album_for_test(ALBUM_A, &[ARTIST_B]).await.unwrap();
 
-    assert_eq!(count(&db, "artists", ARTIST_PRIMARY).await, 0, "no longer credited");
-    assert_eq!(count(&db, "artists", ARTIST_B).await, 1, "credited now");
+    assert!(!artist_held(&db, ARTIST_PRIMARY).await, "no longer credited");
+    assert!(artist_held(&db, ARTIST_B).await, "credited now");
 }

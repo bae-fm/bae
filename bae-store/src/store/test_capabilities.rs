@@ -25,21 +25,6 @@ impl Store {
         Ok(log)
     }
 
-    /// How many rows of `table` have `column` equal to `value`.
-    pub async fn count_rows_for_test(
-        &self,
-        table: &str,
-        column: &str,
-        value: &str,
-    ) -> Result<i64, DbError> {
-        let query = format!("SELECT COUNT(*) FROM \"{table}\" WHERE \"{column}\" = ?");
-        let value = value.to_string();
-        self.read(move |sql| {
-            sql.query_row(&query, rusqlite::params![value], |row| row.get(0)).map_err(DbError::from)
-        })
-        .await
-    }
-
     pub fn store_id_for_test(&self) -> coven::StoreId {
         self.store_id()
     }
@@ -145,15 +130,6 @@ impl Store {
                 [namespace],
                 |row| row.get(0),
             )?)
-        })
-        .await
-    }
-
-    /// Answer one text-valued query against this device's library.
-    pub async fn query_texts_for_test(&self, query: &str) -> Result<Vec<String>, DbError> {
-        let query = query.to_string();
-        self.read(move |sql| {
-            sql.query(&query, [], |row| row.get::<_, String>(0)).map_err(DbError::from)
         })
         .await
     }

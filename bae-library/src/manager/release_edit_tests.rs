@@ -392,11 +392,9 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     )
     .await;
 
-    let mut left = Vec::new();
-    for table in ["track_works", "track_artist_roles"] {
-        left.push(manager.store.count_rows_for_test(table, "track_id", &track.id).await.unwrap());
-    }
-    assert_eq!(left, [0, 0]);
+    let left =
+        bae_records::test_fixtures::library_rows::track_links(&manager.store, &track.id).await;
+    assert_eq!(left, (0, 0));
     assert_eq!(
         manager.records.get_tracks_for_release(&release.id).await.unwrap()[0].title,
         "Track One"

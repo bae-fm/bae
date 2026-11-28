@@ -5,6 +5,27 @@
 use bae_store::test_devices::ComparedRead;
 use bae_store::Store;
 
+// How many pins coven holds on the file `:file`.
+coven::read!(
+    writer PinsOfFile(file: String) { pins: i64 },
+    "SELECT COUNT(*) AS pins FROM coven_pins AS pin WHERE pin.file = :file"
+);
+
+// Whether coven records the file `:file`.
+coven::read!(
+    writer CovenFileHeld(file: String) { held: bool },
+    "SELECT EXISTS (SELECT 1 FROM coven_files AS stored WHERE stored.id = :file) AS held"
+);
+
+// How many work links and role credits the track `:track` holds.
+coven::read!(
+    writer TrackLinks(track: String) { works: i64, roles: i64 },
+    r#"
+    SELECT (SELECT COUNT(*) FROM track_works AS link WHERE link.track_id = :track) AS works,
+           (SELECT COUNT(*) FROM track_artist_roles AS role WHERE role.track_id = :track) AS roles
+"#
+);
+
 // Every release's id.
 coven::read!(writer EveryRelease, "SELECT release.id FROM releases AS release");
 
@@ -166,6 +187,22 @@ pub async fn coven_files_of_releases(store: &Store, releases: &[&str]) -> Vec<St
         files.extend(rows.into_iter().map(|row| row.file));
     }
     files
+}
+
+/// How many pins coven holds on the file `file` in `store`.
+pub async fn pins_of_file(store: &Store, file: &str) -> i64 {
+    store.read_row(PinsOfFileParams { file: file.to_string() }).await.unwrap().pins
+}
+
+/// Whether coven records the file `file` in `store`.
+pub async fn coven_file_held(store: &Store, file: &str) -> bool {
+    store.read_row(CovenFileHeldParams { file: file.to_string() }).await.unwrap().held
+}
+
+/// How many work links and role credits the track `track` holds in `store`.
+pub async fn track_links(store: &Store, track: &str) -> (i64, i64) {
+    let row = store.read_row(TrackLinksParams { track: track.to_string() }).await.unwrap();
+    (row.works, row.roles)
 }
 
 /// Every release's id.

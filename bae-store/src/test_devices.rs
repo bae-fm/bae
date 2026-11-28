@@ -350,21 +350,6 @@ where
     texts
 }
 
-/// Run sync on both devices until they answer `query` with the same rows
-/// and neither holds anything back: each has pulled what the other wrote.
-pub async fn converge(a: (&Store, &SyncCycles), b: (&Store, &SyncCycles), query: &str) {
-    settle(a, b, &format!("the rows of {query:?}"), || async {
-        sorted_rows(a.0, query).await == sorted_rows(b.0, query).await
-    })
-    .await;
-}
-
-async fn sorted_rows(store: &Store, query: &str) -> Vec<String> {
-    let mut rows = store.query_texts_for_test(query).await.expect("read the compared rows");
-    rows.sort();
-    rows
-}
-
 /// Run `body` to its end on its own thread and multi-threaded runtime, both
 /// with deep stacks: restoration and snapshot installation recurse further
 /// than a default test thread allows.
@@ -499,11 +484,6 @@ impl TwoStores {
     {
         let (a, b) = ((&self.a.store, &self.a.cycles), (&self.b.store, &self.b.cycles));
         converge_rows(a, b, statement).await;
-    }
-
-    /// Run sync on both until they answer `query` with the same rows.
-    pub async fn converge(&self, query: &str) {
-        converge((&self.a.store, &self.a.cycles), (&self.b.store, &self.b.cycles), query).await;
     }
 
     /// Run sync on both until `settled` holds on each, named by its letter,

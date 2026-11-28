@@ -102,7 +102,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     assert_eq!(deleted_files.len(), 8, "two files and two covers of three files each");
     let mut pinned = 0;
     for file in &deleted_files {
-        pinned += manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap();
+        pinned += library_rows::pins_of_file(&manager.store, file).await;
     }
     assert!(pinned > 0, "the pinned release's file is pinned here");
     let kept_files = library_rows::coven_files_of_releases(&manager.store, &[&other.id]).await;
@@ -151,8 +151,8 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         assert!(manager.records.cover_source_for_test(release_id).await.unwrap().is_none());
     }
     for file in &deleted_files {
-        assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 0);
-        assert_eq!(manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap(), 0);
+        assert!(!library_rows::coven_file_held(&manager.store, file).await);
+        assert_eq!(library_rows::pins_of_file(&manager.store, file).await, 0);
     }
     assert_eq!(temp.read(local_dir.join("a.flac")), b"local audio");
     assert_eq!(temp.read("kept/track.flac"), b"track-bytes");
@@ -161,7 +161,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     assert_eq!(manager.records.get_tracks_for_release(&other.id).await.unwrap().len(), 1);
     assert!(manager.records.cover_source_for_test(&other.id).await.unwrap().is_some());
     for file in &kept_files {
-        assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 1);
+        assert!(library_rows::coven_file_held(&manager.store, file).await);
     }
     let queued: Vec<String> = bae_playback::tables::queue_value(test.library.store())
         .await
