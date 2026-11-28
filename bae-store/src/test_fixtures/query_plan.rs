@@ -37,10 +37,49 @@ pub fn plan_steps_of<S: coven::Statement>(
     sql: &impl WriterRead,
     statement: &S,
 ) -> rusqlite::Result<Vec<PlanStep>> {
-    sql.query(&format!("EXPLAIN QUERY PLAN {}", S::SQL), statement.params().as_slice(), |row| {
-        Ok(PlanStep { id: row.get(0)?, parent: row.get(1)?, detail: row.get(3)? })
-    })
+    sql.query(&format!("EXPLAIN QUERY PLAN {}", S::SQL), statement.params().as_slice(), plan_step)
 }
+
+/// The step a row of `EXPLAIN QUERY PLAN` names.
+fn plan_step(row: &rusqlite::Row<'_>) -> rusqlite::Result<PlanStep> {
+    Ok(PlanStep { id: row.get(0)?, parent: row.get(1)?, detail: row.get(3)? })
+}
+
+impl PlanStep {
+    /// Whether the statement's own SELECT takes the step, rather than a
+    /// subquery or a table the statement builds first.
+    pub fn own(&self) -> bool {
+        self.parent == 0
+    }
+}
+
+/// Each step of SQLite's plan for `statement` on `store`, run with the
+/// statement's parameters, in plan order.
+pub async fn query_plan_steps<Q>(store: &crate::Store, statement: Q) -> Vec<PlanStep>
+where
+    Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+{
+    store
+        .read(move |sql| Ok(plan_steps_of(&sql, &statement)?))
+        .await
+        .expect("SQLite plans the statement")
+}
+
+/// The steps of SQLite's plan for the generated statement `Q` on `sql`, in
+/// plan order, with its parameters unbound, for a statement whose plan no
+/// bound value changes. A test that checks a list of statements of different
+/// types holds each as `plan_steps::<Q>`.
+pub fn plan_steps<Q: coven::Statement>(
+    sql: &coven::SqlReadContext<'_>,
+) -> rusqlite::Result<Vec<PlanStep>> {
+    let explain = format!("EXPLAIN QUERY PLAN {}", <Q as coven::Statement>::SQL);
+    let unbound: &[(&str, &dyn rusqlite::ToSql)] = &[];
+    sql.query(&explain, unbound, plan_step)
+}
+
+/// [`plan_steps`] of one statement type, as a list of statements of
+/// different types holds it.
+pub type PlanOf = for<'a, 'b> fn(&'a coven::SqlReadContext<'b>) -> rusqlite::Result<Vec<PlanStep>>;
 
 /// [`plan_of`] on a bare library a test opened on `conn`
 /// (`Schema::open_bare_library`).
