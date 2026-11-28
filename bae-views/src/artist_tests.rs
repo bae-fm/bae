@@ -340,7 +340,7 @@ fn artist_detail_follows_the_primary_releases_audio_location() {
             .release(ALBUM_1999, RELEASE)
             .write(&test_records(a))
             .await;
-        devices.converge("SELECT id FROM releases").await;
+        devices.converge_rows(|| crate::album::EveryReleaseParams {}).await;
         let unplayable = |store: Store| async move {
             let detail = artist_page(&store, ARTIST_A).await.expect("the artist has an album");
             detail.albums.iter().map(|album| album.primary_release_unplayable).collect::<Vec<_>>()
@@ -348,8 +348,8 @@ fn artist_detail_follows_the_primary_releases_audio_location() {
         assert_eq!(unplayable(b.clone()).await, vec![false]);
 
         import_file(a, &folder, RELEASE, "track.flac", Flac).await;
-        devices.converge("SELECT id, release_id, file FROM release_files").await;
-        devices.converge("SELECT id, coordinates FROM coven_files").await;
+        devices.converge_rows(|| crate::album::EveryReleaseFileParams {}).await;
+        devices.converge_rows(|| crate::album::EveryCovenFileParams {}).await;
 
         assert_eq!(unplayable(b.clone()).await, vec![true]);
         assert_eq!(unplayable(a.clone()).await, vec![false]);

@@ -748,7 +748,7 @@ fn a_media_edit_from_another_device_sorts_its_release() {
             .await
             .unwrap();
         assert!(changed, "the library holds the release");
-        devices.converge("SELECT id, position, medium, count FROM release_media ORDER BY id").await;
+        devices.converge_rows(|| crate::storage::EveryReleaseMediaParams {}).await;
 
         let (_, key) = listed_media(devices.b(), release).await;
         assert_eq!(key.as_deref(), Some("vinyl:00002,cd:00001"));

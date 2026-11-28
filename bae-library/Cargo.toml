@@ -47,6 +47,9 @@ bae-views = { workspace = true }
 coven = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+# Names the handle a generated read runs on, in the two-device fixtures'
+# check that both devices return a read's rows.
+sqlive-reads = { workspace = true, optional = true }
 # Reads the dev reset's profile file.
 toml = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["full"] }
@@ -130,6 +133,9 @@ axum = { workspace = true, features = ["http1", "tokio", "json", "form"] }
 # builds), and the S3 prefix emptying the bench examples delete their library
 # from storage with.
 coven = { workspace = true, features = ["test-utils", "dev-tools"] }
+# Names the handle a generated read runs on, in the two-device fixtures'
+# check that both devices return a read's rows.
+sqlive-reads = { workspace = true }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = { workspace = true }
@@ -180,8 +186,9 @@ dev-reset = ["bae-app-dir/dev-reset", "dep:toml"]
 # test codec helpers, bae-import's so they get the fixture audio and the import
 # service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
-# and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-sync-status/test-utils", "bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils", "bae-pictures/test-utils"]
+# and the image cache's test constructors, and sqlive-reads so the two-device
+# fixtures name the handle a generated read runs on.
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-sync-status/test-utils", "bae-store/test-utils", "bae-people/test-utils", "bae-records/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils", "bae-pictures/test-utils", "dep:sqlive-reads"]
 
 [lints]
 workspace = true

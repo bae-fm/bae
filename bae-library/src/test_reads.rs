@@ -1,6 +1,7 @@
 //! The reads bae-library's tests and integration tests check a library with:
-//! the releases, albums, works and tracks it holds, through the records'
-//! fragments, and the names coven gives its circles.
+//! the releases, albums, works, tracks, catalog records and artist merges it
+//! holds, through the records' fragments, and the names coven gives its
+//! circles.
 
 use bae_store::Store;
 
@@ -112,3 +113,77 @@ pub async fn circle_names(store: &Store, circle: coven::CircleId) -> Vec<String>
         .map(|row| row.name)
         .collect()
 }
+
+// Each release's catalog records.
+coven::read!(
+    writer EveryCatalogRecord,
+    r#"
+    SELECT record.id, record.release_id, record.catalog
+    FROM @bae_records::records::release_records::CatalogRecords AS record
+"#
+);
+
+// Each artist merge.
+coven::read!(
+    writer EveryArtistMerge,
+    r#"
+    SELECT merge.id, merge.into_artist_id
+    FROM @bae_records::records::identity_merges::ArtistMerges AS merge
+"#
+);
+
+/// Run sync on both `devices` until both hold the same catalog records.
+#[cfg(desktop)]
+pub async fn converge_catalog_records(devices: &crate::test_libraries::TwoDevices) {
+    devices.converge_rows(|| EveryCatalogRecordParams {}).await;
+}
+
+/// Run sync on both `devices` until both hold the same artist merges.
+#[cfg(desktop)]
+pub async fn converge_artist_merges(devices: &crate::test_libraries::TwoDevices) {
+    devices.converge_rows(|| EveryArtistMergeParams {}).await;
+}
+
+// Each release file's coven file, and the hash and place coven records for
+// it.
+#[cfg(test)]
+coven::read!(
+    writer ReleaseFilesStored,
+    r#"
+    SELECT file.file_id, file.stored_file, stored.hash, stored.coordinates
+    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
+    LEFT JOIN coven_files AS stored ON stored.id = file.stored_file
+"#
+);
+
+// Each release file that coven records, with its coven file and its place.
+#[cfg(test)]
+coven::read!(
+    writer ReleaseFilesPlaced,
+    r#"
+    SELECT file.file_id, file.stored_file, stored.coordinates
+    FROM @bae_records::records::spread_fragments::ReleaseFileRow AS file
+    JOIN coven_files AS stored ON stored.id = file.stored_file
+"#
+);
+
+// The album `album`'s releases and their places among its releases.
+#[cfg(test)]
+coven::read!(
+    writer AlbumReleaseOrders(album: String),
+    r#"
+    SELECT release.release_id, release.album_order
+    FROM @bae_records::records::fragments::ReleaseAlbumOrder AS release
+    WHERE release.album_id = :album
+"#
+);
+
+// Each audio segment's scrub points.
+#[cfg(test)]
+coven::read!(
+    writer EveryScrubPoints,
+    r#"
+    SELECT scrubbed.audio_format_segment_id, scrubbed.points
+    FROM @bae_records::records::track_audio::SegmentScrubPoints AS scrubbed
+"#
+);

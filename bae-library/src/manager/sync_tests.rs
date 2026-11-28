@@ -362,7 +362,7 @@ fn a_blocked_slot_shows_as_syncs_failure() {
         let manager = devices.a().manager();
         let album = create_test_album();
         manager.records.insert_album(&album).await.unwrap();
-        devices.converge("SELECT id FROM albums").await;
+        devices.converge_rows(|| crate::test_reads::EveryAlbumParams {}).await;
 
         let mut raised = crate::SCHEMA.migrations();
         raised.push(coven::Migration::breaking(

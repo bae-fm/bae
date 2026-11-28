@@ -258,10 +258,15 @@ impl TwoDevices {
         .await;
     }
 
-    /// Run cycles until both devices answer `query` with the same rows and
-    /// neither holds anything back: each has pulled what the other wrote.
-    pub async fn converge(&self, query: &str) {
-        stores::converge(synced(self.a()), synced(&self.b), query).await;
+    /// Run cycles until the generated read each `statement()` makes returns
+    /// the same rows on both devices and neither holds anything back: each
+    /// has pulled what the other wrote.
+    pub async fn converge_rows<Q>(&self, statement: impl Fn() -> Q)
+    where
+        Q: coven::Read<Handle = sqlive_reads::Writer> + Send + 'static,
+        Q::Row: std::fmt::Debug + Send + 'static,
+    {
+        stores::converge_rows(synced(self.a()), synced(&self.b), statement).await;
     }
 }
 

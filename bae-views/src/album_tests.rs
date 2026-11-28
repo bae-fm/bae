@@ -81,15 +81,15 @@ fn album_window_follows_the_primary_releases_audio_location() {
         let (a, b) = (devices.a(), devices.b());
         let folder = bae_util::test_files::TestFolder::new();
         write_library(&test_records(a)).await;
-        devices.converge("SELECT id FROM releases").await;
+        devices.converge_rows(|| crate::album::EveryReleaseParams {}).await;
 
         let mut remote = LibraryViews::new(b.clone()).subscribe_album_window(&[], false, top(10));
         let initial = remote.next_inline().await.unwrap().result.unwrap();
         assert!(initial.rows.iter().all(|(row, _)| !row.primary_release_unplayable));
 
         import_file(a, &folder, RELEASE_EARLY, "track.flac", Flac).await;
-        devices.converge("SELECT id, release_id, file FROM release_files").await;
-        devices.converge("SELECT id, coordinates FROM coven_files").await;
+        devices.converge_rows(|| crate::album::EveryReleaseFileParams {}).await;
+        devices.converge_rows(|| crate::album::EveryCovenFileParams {}).await;
 
         let updated = tokio::time::timeout(HANG_GUARD, remote.next_inline())
             .await

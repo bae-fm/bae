@@ -383,12 +383,7 @@ async fn check_scrub_points_sync(devices: &mut crate::test_libraries::TwoDevices
         .await
         .unwrap();
 
-    devices
-        .converge(
-            "SELECT audio_format_segment_id || ' ' || hex(points) \
-             FROM audio_segment_scrub_points",
-        )
-        .await;
+    devices.converge_rows(|| crate::test_reads::EveryScrubPointsParams {}).await;
     let resolved =
         bae_records::ResolvedTrackAudio::resolve(devices.b().records(), &track.id).await.unwrap();
     assert_eq!(resolved.segments[0].scrub_points.as_slice(), points);

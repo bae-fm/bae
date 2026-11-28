@@ -250,6 +250,28 @@ pub(crate) fn total_bytes(release_id: &str, files: &[DbFile]) -> Result<u64, Lib
     })
 }
 
+// Each release's cover's browse copy, and the hash and place coven records
+// for it.
+#[cfg(test)]
+coven::read!(
+    writer CoverBrowseCopies,
+    r#"
+    SELECT cover.release_id, cover.browse_file, stored.hash, stored.coordinates
+    FROM @bae_records::records::files::CoverFiles AS cover
+    LEFT JOIN coven_files AS stored ON stored.id = cover.browse_file
+"#
+);
+
+// Each release's cover's browse copy.
+#[cfg(test)]
+coven::read!(
+    writer CoverBrowseFiles,
+    r#"
+    SELECT cover.release_id, cover.browse_file
+    FROM @bae_records::records::files::CoverFiles AS cover
+"#
+);
+
 #[cfg(test)]
 #[path = "coven_files_tests.rs"]
 mod tests;

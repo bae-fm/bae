@@ -322,9 +322,7 @@ fn the_same_record_set_on_two_devices_merges() {
         }
         devices.resume().await;
 
-        devices
-            .converge("SELECT id || ' ' || release_id || ' ' || catalog FROM release_records")
-            .await;
+        bae_library::test_reads::converge_catalog_records(devices).await;
         assert_eq!(records_of(devices.a().store(), &release_id).await.len(), 2);
         assert_nothing_held(devices).await;
     });
@@ -428,7 +426,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         let credited = credited_artist(devices.a(), catalog_artist(Some(MB_ARTIST), None)).await;
         assert_eq!(credited, survivor, "the write keeps the artist with the smaller id");
 
-        devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
+        bae_library::test_reads::converge_artist_merges(devices).await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
                 album_artist_ids(&bae_records::test_fixtures::test_records(db), &album_id).await,
@@ -455,7 +453,7 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
 
         releases.push(new_release);
         releases_on_both(devices, &releases.iter().map(String::as_str).collect::<Vec<_>>()).await;
-        devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
+        bae_library::test_reads::converge_artist_merges(devices).await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
                 album_artist_ids(&bae_records::test_fixtures::test_records(db), &new_album).await,

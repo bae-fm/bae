@@ -278,16 +278,15 @@ async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevi
     for release in &releases {
         insert_release(manager, release).await;
     }
-    let orders =
-        format!("SELECT id || ':' || album_order FROM releases WHERE album_id = '{}'", album.id);
-    devices.converge(&orders).await;
+    let orders = || crate::test_reads::AlbumReleaseOrdersParams { album: album.id.clone() };
+    devices.converge_rows(orders).await;
     assert_eq!(primary_of(devices.b().store(), &album.id).await, releases[0].id);
 
     devices.pause().await;
     devices.a().records().set_album_primary_release(&album.id, &releases[1].id).await.unwrap();
     devices.b().records().set_album_primary_release(&album.id, &releases[2].id).await.unwrap();
     devices.resume().await;
-    devices.converge(&orders).await;
+    devices.converge_rows(orders).await;
 
     let lower = std::cmp::min(&releases[1].id, &releases[2].id).clone();
     assert_eq!(primary_of(devices.a().store(), &album.id).await, lower);

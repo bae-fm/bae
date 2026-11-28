@@ -430,12 +430,7 @@ pub(super) async fn release_on_the_first_device(
         &[("track1.flac", b"audio")],
     )
     .await;
-    devices
-        .converge(
-            "SELECT f.id, f.file, c.coordinates FROM release_files AS f \
-             JOIN coven_files AS c ON c.id = f.file",
-        )
-        .await;
+    devices.converge_rows(|| crate::test_reads::ReleaseFilesPlacedParams {}).await;
     release
 }
 
