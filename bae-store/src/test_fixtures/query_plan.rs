@@ -19,9 +19,7 @@ pub fn plan_of<S: coven::Statement>(
     sql: &impl WriterRead,
     statement: &S,
 ) -> rusqlite::Result<Vec<String>> {
-    sql.query(&format!("EXPLAIN QUERY PLAN {}", S::SQL), statement.params().as_slice(), |row| {
-        row.get::<_, String>(3)
-    })
+    Ok(plan_steps_of(sql, statement)?.into_iter().map(|step| step.detail).collect())
 }
 
 /// One step of a plan: its id, the id of the step it runs under, and what

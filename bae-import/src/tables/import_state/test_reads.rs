@@ -354,6 +354,15 @@ coven::read!(
 "#
 );
 
+/// How many draft and cover rows `hash` has in `db`.
+#[cfg(test)]
+pub(crate) async fn draft_rows(db: &bae_store::Store, hash: &str) -> DraftRowCountsRow {
+    let content_hash = hash.to_string();
+    db.read(move |sql| bae_store::statement_row(&sql, &DraftRowCountsParams { content_hash }))
+        .await
+        .unwrap()
+}
+
 // Whether a candidate's link, or a partner of one, claims the release
 // `:release_id` of `:source`.
 #[cfg(test)]

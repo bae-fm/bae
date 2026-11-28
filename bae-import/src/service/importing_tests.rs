@@ -5,6 +5,7 @@
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::service::tests::*;
+use crate::tables::import_state::test_reads::draft_rows;
 
 fn local_import_command(
     import_id: &str,
@@ -341,23 +342,6 @@ async fn candidate_placements(test: &TestService) -> Vec<String> {
         .unwrap()
 }
 
-/// How many draft and cover rows `content_hash` has.
-async fn draft_rows(
-    test: &TestService,
-    content_hash: &str,
-) -> crate::tables::import_state::test_reads::DraftRowCountsRow {
-    let content_hash = content_hash.to_string();
-    test.db
-        .read(move |sql| {
-            bae_store::statement_row(
-                &sql,
-                &crate::tables::import_state::test_reads::DraftRowCountsParams { content_hash },
-            )
-        })
-        .await
-        .unwrap()
-}
-
 /// A three-track folder with a front cover image, stored as a scanned
 /// candidate named "Box Set".
 async fn spent_rows_candidate(
@@ -511,11 +495,11 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
         )
         .await
         .expect("the import lands");
-    let drafts = || async { draft_rows(&test, &content_hash).await.edits };
+    let drafts = || async { draft_rows(&test.db, &content_hash).await.edits };
     // Under another name, so the scan writes the folder's row anew.
     rescan_folder(&test, &folder, "Box Set Renamed").await;
     assert_eq!(drafts().await, 0, "a scan seeds no draft for files imported here");
-    let covers = || async { draft_rows(&test, &content_hash).await.covers };
+    let covers = || async { draft_rows(&test.db, &content_hash).await.covers };
     assert_eq!(covers().await, 0, "a scan seeds no cover for files imported here");
 
     let release_id = imported_release(&test, &candidate_key).await.expect("the import is recorded");

@@ -845,24 +845,8 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     assert_eq!(stored.metadata.draft.album_title, "Typed album");
     assert_eq!(stored.metadata.cover, Some(folder_cover));
     assert_eq!(
-        draft_rows(&lib.db, &hash).await.covers,
+        crate::tables::import_state::test_reads::draft_rows(&lib.db, &hash).await.covers,
         1,
         "the table holds only the cover row that the deletion wrote"
     );
-}
-
-/// How many draft and cover rows `hash` has.
-async fn draft_rows(
-    db: &bae_store::Store,
-    hash: &str,
-) -> crate::tables::import_state::test_reads::DraftRowCountsRow {
-    let content_hash = hash.to_string();
-    db.read(move |sql| {
-        bae_store::statement_row(
-            &sql,
-            &crate::tables::import_state::test_reads::DraftRowCountsParams { content_hash },
-        )
-    })
-    .await
-    .unwrap()
 }
