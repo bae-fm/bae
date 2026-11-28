@@ -1,4 +1,5 @@
 use super::*;
+use bae_store::test_fixtures::bare_statements;
 use coven::{RecordedInviteStage as Stage, RecordedJoiner as Joiner};
 
 /// Open an in-memory library, where coven makes the views `ListedInvites`
@@ -15,21 +16,21 @@ fn views() -> rusqlite::Connection {
 type Shown = (i64, String, Option<bool>, Option<String>, Option<Vec<u8>>);
 
 fn rows(conn: &rusqlite::Connection) -> Vec<Shown> {
-    conn.prepare(ListedInvites::SQL)
+    bare_statements::rows(conn, &ListedInvitesParams {})
         .unwrap()
-        .query_map([], |row| {
-            let refused = row.get::<_, Option<coven::InviteOutcome>>("outcome")?.is_some();
-            Ok((
-                row.get("listed_operation")?,
+        .into_iter()
+        .map(|row| {
+            let refused = row.outcome.is_some();
+            let open = row.open;
+            (
+                row.listed_operation,
                 if refused { "refused" } else { "open" }.to_string(),
-                row.get("has_request")?,
-                row.get("requester")?,
-                row.get("record")?,
-            ))
+                open.as_ref().map(|open| open.has_request),
+                open.as_ref().and_then(|open| open.requester.clone()),
+                open.and_then(|open| open.record),
+            )
         })
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap()
+        .collect()
 }
 
 /// The id of the invite a test builds from `n`.
@@ -187,13 +188,10 @@ fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
 fn waiting_request(conn: &rusqlite::Connection, closed: &[u8]) -> Option<i64> {
     let closed: Vec<String> = closed.iter().map(|&n| invite_id(n).0.to_string()).collect();
     let closed = serde_json::Value::from(closed).to_string();
-    conn.prepare(FirstWaitingRequest::SQL)
-        .unwrap()
-        .query_map([closed], |row| row.get("operation"))
-        .unwrap()
-        .collect::<Result<Vec<_>, _>>()
+    bare_statements::rows(conn, &FirstWaitingRequestParams { closed })
         .unwrap()
         .pop()
+        .map(|row| row.open.operation)
 }
 
 /// The join request dialog shows the first invite whose request waits for
@@ -221,13 +219,10 @@ fn an_invite_is_read_by_its_id_while_it_is_open() {
     invite(&conn, 1, Stage::Waiting { joiner: None });
     let dan = invite(&conn, 2, dan_waiting());
     let by_id = |n: u8| -> Option<i64> {
-        conn.prepare(InviteOfId::SQL)
-            .unwrap()
-            .query_map([invite_id(n).0.to_string()], |row| row.get("operation"))
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
+        bare_statements::rows(&conn, &InviteOfIdParams { invite: invite_id(n).0.to_string() })
             .unwrap()
             .pop()
+            .map(|row| row.open.operation)
     };
     assert_eq!(by_id(2), Some(dan.0));
     refuse(&conn, dan);

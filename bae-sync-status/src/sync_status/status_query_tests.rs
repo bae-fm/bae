@@ -2,7 +2,6 @@
 
 use super::*;
 use bae_store::test_fixtures::temp_db;
-use coven::Returning as _;
 
 #[tokio::test]
 async fn a_library_with_nothing_recorded_reads_as_not_synced() {
@@ -36,7 +35,8 @@ fn connected_library() -> rusqlite::Connection {
 /// The status the statement gives `connection`.
 fn status_of(connection: &rusqlite::Connection) -> SyncStatusSnapshot {
     let row =
-        connection.query_row(LibrarySyncStatus::SQL, [], LibrarySyncStatusParams::read).unwrap();
+        bae_store::test_fixtures::bare_statements::row(connection, &LibrarySyncStatusParams {})
+            .unwrap();
     row.current.into_snapshot().unwrap()
 }
 
