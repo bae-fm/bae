@@ -148,10 +148,10 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |work_id| {
-                Ok(coven::Maybe(work_id.as_deref().map(work_detail_read)))
+                Ok(coven::Maybe::new(work_id.clone(), |work_id| work_detail_read(work_id)))
             })
             .process(|_, rows| {
-                let detail = rows.map(work_detail_rows_of).transpose()?.flatten();
+                let detail = rows.map(|(_, rows)| work_detail_rows_of(rows)).transpose()?.flatten();
                 Ok(WorkDetailProjection { detail })
             })
     }

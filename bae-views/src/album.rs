@@ -256,13 +256,14 @@ impl LibraryViews {
     > {
         self.store
             .subscribe_reconfigurable(initial, |request| {
-                Ok(coven::Maybe(
-                    request.as_ref().map(|request| album_detail_read(&request.album_id)),
-                ))
+                Ok(coven::Maybe::new(request.clone(), |request| {
+                    album_detail_read(&request.album_id)
+                }))
             })
-            .process(|request, reads| {
-                let chosen = request.as_ref().and_then(|request| request.chosen_release_id.clone());
-                let rows = reads.map(|reads| album_detail_of(reads, chosen)).transpose()?;
+            .process(|_, reads| {
+                let rows = reads
+                    .map(|(request, reads)| album_detail_of(reads, request.chosen_release_id))
+                    .transpose()?;
                 let detail = rows.map(AlbumDetailRows::process).transpose()?.flatten();
                 Ok(AlbumDetailProjection { detail })
             })

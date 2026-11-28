@@ -55,13 +55,15 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |release_id| {
-                Ok(coven::Maybe(
-                    release_id.clone().map(|release| ViewedReleaseDetailParams { release }),
-                ))
+                Ok(coven::Maybe::new(release_id.clone(), |release| ViewedReleaseDetailParams {
+                    release: release.clone(),
+                }))
             })
             .process(|_, rows| {
-                let rows =
-                    rows.map(at_most_one::<ViewedReleaseDetailParams, _>).transpose()?.flatten();
+                let rows = rows
+                    .map(|(_, rows)| at_most_one::<ViewedReleaseDetailParams, _>(rows))
+                    .transpose()?
+                    .flatten();
                 let context = rows.map(|row| ReleaseDetailRows(row.viewed).process_context());
                 Ok(ReleaseDetailProjection { context: context.transpose()? })
             })

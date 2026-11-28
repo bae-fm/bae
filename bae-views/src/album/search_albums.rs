@@ -99,9 +99,11 @@ impl LibraryViews {
         page: ListPage,
     ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
-        let read = pattern.map(|pattern| search_albums_read(pattern, LISTED, page));
-        self.store.subscribe(coven::Maybe(read)).process(|rows| {
-            let albums = rows.unwrap_or_default().into_iter().map(|row| row.shown).collect();
+        let read =
+            coven::Maybe::new(pattern, |pattern| search_albums_read(pattern.clone(), LISTED, page));
+        self.store.subscribe(read).process(|rows| {
+            let rows = rows.map(|(_, rows)| rows).unwrap_or_default();
+            let albums = rows.into_iter().map(|row| row.shown).collect();
             Ok(crate::ListRows::SearchAlbums(
                 album_summaries(albums)?.into_iter().map(AlbumSearchResult::from_raw).collect(),
             ))
@@ -116,12 +118,14 @@ impl LibraryViews {
         query: Option<crate::LibrarySearchQuery>,
     ) -> coven::LiveQuery<u64, DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
-        let read = pattern.map(|pattern| SearchAlbumCountParams {
-            pattern: Some(pattern),
+        let read = coven::Maybe::new(pattern, |pattern| SearchAlbumCountParams {
+            pattern: Some(pattern.clone()),
             cap: bae_store::list_windows::sql_bound(LISTED),
         });
-        self.store.subscribe(coven::Maybe(read)).process(|rows| match rows {
-            Some(rows) => Ok(bae_store::exactly_one::<SearchAlbumCountParams, _>(rows)?.albums),
+        self.store.subscribe(read).process(|rows| match rows {
+            Some((_, rows)) => {
+                Ok(bae_store::exactly_one::<SearchAlbumCountParams, _>(rows)?.albums)
+            }
             None => Ok(0),
         })
     }

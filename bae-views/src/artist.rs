@@ -70,10 +70,10 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |artist_id| {
-                Ok(coven::Maybe(artist_id.as_deref().map(artist_detail_read)))
+                Ok(coven::Maybe::new(artist_id.clone(), |artist_id| artist_detail_read(artist_id)))
             })
             .process(|_, reads| {
-                let rows = reads.map(artist_detail_rows_of).transpose()?;
+                let rows = reads.map(|(_, reads)| artist_detail_rows_of(reads)).transpose()?;
                 let detail = rows.map(ArtistDetailRows::process).transpose()?.flatten();
                 Ok(ArtistDetailProjection { detail })
             })

@@ -178,9 +178,9 @@ impl LibraryViews {
     > {
         self.store
             .subscribe_reconfigurable(initial, |request| {
-                Ok(coven::Maybe(request.as_ref().map(release_files_read)))
+                Ok(coven::Maybe::new(request.clone(), release_files_read))
             })
-            .process(|_, rows| Ok(rows.map(release_files).transpose()?.flatten()))
+            .process(|_, rows| Ok(rows.map(|(_, rows)| release_files(rows)).transpose()?.flatten()))
     }
 }
 

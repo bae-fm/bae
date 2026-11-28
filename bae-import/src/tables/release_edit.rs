@@ -153,13 +153,13 @@ impl ImportTables {
     > {
         self.store
             .subscribe_reconfigurable(None, |form| {
-                Ok(coven::Maybe(form.as_ref().map(release_edit_draft_read).transpose()?))
+                coven::Maybe::try_new(form.clone(), release_edit_draft_read)
             })
-            .process(|form, reads| {
-                let Some((form, reads)) = bae_store::requested(form, reads) else {
+            .process(|_, reads| {
+                let Some((form, reads)) = reads else {
                     return Ok(None);
                 };
-                let rows = release_edit_draft_rows_of(form, reads)?;
+                let rows = release_edit_draft_rows_of(&form, reads)?;
                 Ok(Some(rows.map(ReleaseEditDraftRows::draft).transpose()?))
             })
     }

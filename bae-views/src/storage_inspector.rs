@@ -423,14 +423,15 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |release_id| {
-                Ok(coven::Maybe(release_id.as_deref().map(storage_inspector_read)))
+                Ok(coven::Maybe::new(release_id.clone(), |release_id| {
+                    storage_inspector_read(release_id)
+                }))
             })
-            .process(|release_id, rows| {
-                let Some((release_id, (release, files))) = bae_store::requested(release_id, rows)
-                else {
+            .process(|_, rows| {
+                let Some((release_id, (release, files))) = rows else {
                     return Ok(None);
                 };
-                let rows = InspectorRows { release_id: release_id.clone(), release, files };
+                let rows = InspectorRows { release_id, release, files };
                 Ok(rows.process()?.map(StorageInspector::read))
             })
     }
@@ -446,11 +447,15 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |file_id| {
-                Ok(coven::Maybe(file_id.clone().map(|file| ReleaseFileByIdParams { file })))
+                Ok(coven::Maybe::new(file_id.clone(), |file| ReleaseFileByIdParams {
+                    file: file.clone(),
+                }))
             })
             .process(|_, rows| {
-                let Some(row) =
-                    rows.map(at_most_one::<ReleaseFileByIdParams, _>).transpose()?.flatten()
+                let Some(row) = rows
+                    .map(|(_, rows)| at_most_one::<ReleaseFileByIdParams, _>(rows))
+                    .transpose()?
+                    .flatten()
                 else {
                     return Ok(None);
                 };

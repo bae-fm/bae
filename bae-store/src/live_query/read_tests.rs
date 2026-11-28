@@ -12,7 +12,12 @@ struct Held {
 }
 
 /// Reads of nothing, for a query whose answer is its request.
-type NoReads = coven::Maybe<coven::CovenRead<(), ()>>;
+type NoReads = coven::Maybe<(), coven::CovenRead<(), ()>>;
+
+/// No request, which reads nothing.
+fn no_reads() -> NoReads {
+    coven::Maybe::new(None, |()| unreachable!("a query with no request reads nothing"))
+}
 
 /// A query answering each request with the request itself, whose read for
 /// `held` waits until [`Held::release`] lets it finish.
@@ -30,7 +35,7 @@ fn holding<Request: LiveRequest>(
                 started_tx.send(()).expect("the test waits for the held read");
                 released.lock().unwrap().recv().expect("the test lets the held read go");
             }
-            Ok::<NoReads, crate::DbError>(coven::Maybe(None))
+            Ok::<NoReads, crate::DbError>(no_reads())
         })
         .process(|request, _| Ok(request.clone()));
     (
@@ -90,7 +95,7 @@ async fn a_read_whose_query_ended_takes_a_new_request_and_reads_nothing() {
     let (store, _tmp) = crate::test_fixtures::temp_db(Schema::new(&[])).await;
     let query = store
         .subscribe_reconfigurable(None::<String>, |_: &Option<String>| {
-            Ok::<NoReads, crate::DbError>(coven::Maybe(None))
+            Ok::<NoReads, crate::DbError>(no_reads())
         })
         .process(|request, _| Ok(request.clone()));
     let read = LiveRead::new(

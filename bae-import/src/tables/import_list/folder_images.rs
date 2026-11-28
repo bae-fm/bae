@@ -123,10 +123,10 @@ impl ImportTables {
     {
         self.store
             .subscribe_reconfigurable(initial, |request| {
-                Ok(coven::Maybe(request.as_ref().map(folder_images_read)))
+                Ok(coven::Maybe::new(request.clone(), folder_images_read))
             })
             .process(|_, rows| {
-                let Some(rows) = rows else {
+                let Some((_, rows)) = rows else {
                     return Ok(None);
                 };
                 let row = bae_store::exactly_one::<LightboxImagesParams, _>(rows)?;

@@ -30,10 +30,15 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, |artist_id| {
-                Ok(coven::Maybe(artist_id.clone().map(|artist| ComposerHeadParams { artist })))
+                Ok(coven::Maybe::new(artist_id.clone(), |artist| ComposerHeadParams {
+                    artist: artist.clone(),
+                }))
             })
             .process(|_, rows| {
-                let row = rows.map(at_most_one::<ComposerHeadParams, _>).transpose()?.flatten();
+                let row = rows
+                    .map(|(_, rows)| at_most_one::<ComposerHeadParams, _>(rows))
+                    .transpose()?
+                    .flatten();
                 Ok(ComposerDetailProjection { detail: composer_detail_rows_of(row)? })
             })
     }

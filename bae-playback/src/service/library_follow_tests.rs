@@ -93,7 +93,7 @@ async fn a_failed_read_is_reported_as_a_bug() {
     // The request's reads fail as they are made, so the query's run fails.
     let query = db.subscribe_reconfigurable(Vec::<String>::new(), |_| {
         let failed = bae_store::DbError::unreadable("the test's request", "no_such_table");
-        Err::<coven::Maybe<coven::CovenRead<(), ()>>, _>(failed)
+        Err::<coven::Maybe<(), coven::CovenRead<(), ()>>, _>(failed)
     });
     let _follow = LibraryFollow::new(query, Vec::new(), "the missing table", &diagnostics);
 

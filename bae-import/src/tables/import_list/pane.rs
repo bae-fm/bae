@@ -464,10 +464,10 @@ impl ImportTables {
     > {
         self.store
             .subscribe_reconfigurable(initial, |key| {
-                Ok(coven::Maybe(key.as_ref().map(folder_scans::invalid_detail_read)))
+                Ok(coven::Maybe::new(key.clone(), folder_scans::invalid_detail_read))
             })
-            .process(|key, reads| match bae_store::requested(key, reads) {
-                Some((key, reads)) => folder_scans::invalid_detail_of(key, reads),
+            .process(|_, reads| match reads {
+                Some((key, reads)) => folder_scans::invalid_detail_of(&key, reads),
                 None => Ok(None),
             })
     }

@@ -58,12 +58,13 @@ impl LibraryViews {
     > {
         self.store
             .subscribe_reconfigurable(initial, move |request| {
-                Ok(coven::Maybe(
-                    request.as_ref().map(|query| library_search(query.as_str(), limit)),
-                ))
+                Ok(coven::Maybe::new(request.clone(), |query| {
+                    library_search(query.as_str(), limit)
+                }))
             })
             .process(|_, rows| {
-                let results = rows.map(search_results).transpose()?.unwrap_or_default();
+                let results =
+                    rows.map(|(_, rows)| search_results(rows)).transpose()?.unwrap_or_default();
                 Ok(LibrarySearchProjection { results })
             })
     }

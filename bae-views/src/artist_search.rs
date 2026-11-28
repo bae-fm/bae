@@ -200,10 +200,13 @@ impl LibraryViews {
     {
         self.store
             .subscribe_reconfigurable(initial, move |window| {
-                let read = query.as_ref().map(|query| artist_search_window_read(query, window));
-                Ok(coven::Maybe(read.transpose()?))
+                coven::Maybe::try_new(query.clone(), |query| {
+                    artist_search_window_read(query, window)
+                })
             })
-            .process(|window, rows| artist_search_window_of(window, rows.unwrap_or_default()))
+            .process(|window, rows| {
+                artist_search_window_of(window, rows.map(|(_, rows)| rows).unwrap_or_default())
+            })
     }
 
     /// Follow how many artists the text finds. The count runs as a separate
@@ -212,12 +215,12 @@ impl LibraryViews {
         &self,
         query: Option<crate::LibrarySearchQuery>,
     ) -> coven::LiveQuery<u64, bae_store::DbError> {
-        let count = query.map(|query| ArtistSearchCountParams {
+        let count = coven::Maybe::new(query, |query| ArtistSearchCountParams {
             text: query.as_str().to_string(),
             pattern: search_pattern(query.as_str()),
         });
-        self.store.subscribe(coven::Maybe(count)).process(|rows| match rows {
-            Some(rows) => Ok(exactly_one::<ArtistSearchCountParams, _>(rows)?.artists),
+        self.store.subscribe(count).process(|rows| match rows {
+            Some((_, rows)) => Ok(exactly_one::<ArtistSearchCountParams, _>(rows)?.artists),
             None => Ok(0),
         })
     }
@@ -231,11 +234,14 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         self.store
             .subscribe_reconfigurable(initial, move |key| {
-                let read = query.as_ref().map(|query| artist_search_rows_before_read(query, key));
-                Ok(coven::Maybe(read.transpose()?))
+                coven::Maybe::try_new(query.clone(), |query| {
+                    artist_search_rows_before_read(query, key)
+                })
             })
             .process(|_, rows| match rows {
-                Some(rows) => Ok(exactly_one::<ArtistSearchBeforeParams, _>(rows)?.artists_before),
+                Some((_, rows)) => {
+                    Ok(exactly_one::<ArtistSearchBeforeParams, _>(rows)?.artists_before)
+                }
                 None => Ok(0),
             })
     }

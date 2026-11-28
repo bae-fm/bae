@@ -271,10 +271,10 @@ impl ImportTables {
     > {
         self.store
             .subscribe_reconfigurable(initial, |request| {
-                Ok(coven::Maybe(request.as_ref().map(cover_gallery_read)))
+                Ok(coven::Maybe::new(request.clone(), cover_gallery_read))
             })
-            .process(|request, galleries| {
-                let Some((request, galleries)) = bae_store::requested(request, galleries) else {
+            .process(|_, galleries| {
+                let Some((request, galleries)) = galleries else {
                     return Ok(None);
                 };
                 let (walk, fetched) =
@@ -284,7 +284,7 @@ impl ImportTables {
                     CoverGalleryOwner::Candidate(_) => None,
                 };
                 let gallery = walk.gallery(fetched, release_id)?;
-                Ok(Some(CoverGallerySnapshot { request: request.clone(), gallery }))
+                Ok(Some(CoverGallerySnapshot { request, gallery }))
             })
     }
 
