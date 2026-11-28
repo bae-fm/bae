@@ -79,18 +79,17 @@ async fn the_storage_manager_and_links_follow_the_albums_language() {
     let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     retitle(&db, ["Öl", "Zebra", "Åke"]).await;
     test_records(&db).set_sort_language("sv").await.unwrap();
-    let ordered: (Vec<String>, Vec<String>) = db
-        .read(|sql| {
-            let ids = |query: &str| -> Result<Vec<String>, DbError> {
-                Ok(sql.query(query, [], |row| row.get(0))?)
-            };
-            Ok((
-                ids("SELECT album_id FROM release_listing ORDER BY album_title_sort_key")?,
-                ids("SELECT album_id FROM album_artist_link WHERE artist_id = '4309b580-a6bf-455e-92ea-ec58ee7129e7' ORDER BY title_sort_key")?,
-            ))
+    let by_title = db.read_rows(crate::test_reads::ListingAlbumsByTitleParams {}).await.unwrap();
+    let linked = db
+        .read_rows(crate::test_reads::ArtistLinkAlbumsByTitleParams {
+            artist: "4309b580-a6bf-455e-92ea-ec58ee7129e7".into(),
         })
         .await
         .unwrap();
+    let ordered: (Vec<String>, Vec<String>) = (
+        by_title.into_iter().map(|row| row.album_id).collect(),
+        linked.into_iter().map(|row| row.album_id).collect(),
+    );
     assert_eq!(ordered.0, [ALBUM_TWO, ALBUM_THREE, ALBUM_ONE]);
     assert_eq!(ordered.1, [ALBUM_TWO, ALBUM_THREE]);
 }
@@ -107,27 +106,9 @@ async fn keys_written_with_other_collation_data_are_written_again_when_a_library
 
     records.settle_name_keys().await.unwrap();
 
-    let (stale_titles, stale_names, stale_links, version): (i64, i64, i64, i64) = db
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT (SELECT COUNT(*) FROM album_listing l JOIN albums a ON a.id = l.album_id
-                         WHERE l.title_sort_key IS NOT bae_name_key(a.title, 'und')),
-                        (SELECT COUNT(*) FROM artist_listing l JOIN artists a ON a.id = l.artist_id
-                         WHERE l.name_sort_key IS NOT bae_name_key(a.name, 'und')
-                            OR l.sort_name_sort_key
-                               IS NOT bae_name_key(COALESCE(a.sort_name, a.name), 'und')),
-                        (SELECT COUNT(*) FROM album_artist_link l JOIN artists a ON a.id = l.artist_id
-                         WHERE l.artist_sort_key
-                               IS NOT bae_name_key(COALESCE(a.sort_name, a.name), 'und')),
-                        (SELECT data_version FROM name_sort)",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-            )?)
-        })
-        .await
-        .unwrap();
-    assert_eq!(stale_titles, 0, "every title key is the current data's");
-    assert_eq!(stale_names, 0, "every artist name key is the current data's");
-    assert_eq!(stale_links, 0, "every album link's artist key is the current data's");
-    assert_eq!(version, i64::from(bae_util::name_key::DATA_VERSION));
+    let keys = db.read_row(crate::test_reads::KeysOtherThanUndeterminedParams {}).await.unwrap();
+    assert_eq!(keys.stale_titles, 0, "every title key is the current data's");
+    assert_eq!(keys.stale_names, 0, "every artist name key is the current data's");
+    assert_eq!(keys.stale_links, 0, "every album link's artist key is the current data's");
+    assert_eq!(keys.data_version, bae_util::name_key::DATA_VERSION);
 }

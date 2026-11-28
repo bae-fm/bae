@@ -216,15 +216,10 @@ fn the_page_keeps_its_order_as_titles_and_credits_change() {
         devices.resume().await;
         devices
             .settle("the later title", async |_, db| {
-                db.read(|sql| {
-                    Ok(sql.query_row(
-                        "SELECT title FROM works WHERE id = ?1",
-                        [ALPHA_PARENT],
-                        |row| row.get::<_, String>(0),
-                    )?)
-                })
-                .await
-                .unwrap()
+                db.read_row(crate::test_reads::WorkTitleParams { work: ALPHA_PARENT.into() })
+                    .await
+                    .unwrap()
+                    .title
                     == "Zeta Parent"
             })
             .await;

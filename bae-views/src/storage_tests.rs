@@ -493,18 +493,15 @@ async fn renaming_an_album_renames_its_releases_listing_rows() {
         .await
         .unwrap();
     let renamed: Vec<bool> = db
-        .call(|conn| {
-            Ok(conn.query(
-                "SELECT album_title_sort_key = bae_name_key('Album Title Renamed', \
-                                                       (SELECT language FROM name_sort)) \
-                 FROM release_listing \
-                 WHERE album_id = '07d22f7d-3980-4c81-9d27-8fcd50ee3464'",
-                [],
-                |row| row.get(0),
-            )?)
+        .read_rows(crate::test_reads::ListingTitleKeyIsParams {
+            album: bae_records::test_fixtures::album_listing::ALBUM_ONE.into(),
+            title: "Album Title Renamed".into(),
         })
         .await
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(|row| row.current)
+        .collect();
     assert_eq!(renamed, vec![true; 2]);
 }
 
@@ -569,16 +566,10 @@ async fn counting_refreshes(
 
 /// The album `release`'s listing row names, None while it has none.
 async fn listed_album(db: &Store, release: &str) -> Option<String> {
-    let release = release.to_string();
-    db.read(move |sql| {
-        Ok(sql.query_row(
-            "SELECT (SELECT album_id FROM release_listing WHERE release_id = ?1)",
-            [&release],
-            |row| row.get(0),
-        )?)
-    })
-    .await
-    .unwrap()
+    db.read_row(crate::test_reads::ListedAlbumParams { release: release.into() })
+        .await
+        .unwrap()
+        .album_id
 }
 
 /// Album A, holding the early release.
@@ -679,16 +670,11 @@ async fn a_release_moving_refreshes_its_listing_once() {
 
 /// `release`'s listing row's media columns.
 async fn listed_media(db: &Store, release: &str) -> (bool, Option<String>) {
-    let release = release.to_string();
-    db.read(move |sql| {
-        Ok(sql.query_row(
-            "SELECT media_empty, media_key FROM release_listing WHERE release_id = ?1",
-            [&release],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?)
-    })
-    .await
-    .unwrap()
+    let media = db
+        .read_row(crate::test_reads::ListedMediaParams { release: release.into() })
+        .await
+        .unwrap();
+    (media.media_empty, media.media_key)
 }
 
 /// `count` of `medium`.
@@ -765,17 +751,7 @@ fn a_media_edit_from_another_device_sorts_its_release() {
         assert!(changed, "the library holds the release");
         devices.converge("SELECT id, position, medium, count FROM release_media ORDER BY id").await;
 
-        let key: Option<String> = devices
-            .b()
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT media_key FROM release_listing WHERE release_id = ?1",
-                    [release],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
-            .unwrap();
+        let (_, key) = listed_media(devices.b(), release).await;
         assert_eq!(key.as_deref(), Some("vinyl:00002,cd:00001"));
     });
 }
@@ -808,16 +784,10 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     let sole = one.sole.expect("the list holds one of the asked releases");
     assert_eq!(sole.release_id, RELEASE_EARLY);
     let title = db
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT album.title FROM releases release \
-                 JOIN albums album ON album.id = release.album_id WHERE release.id = ?1",
-                [RELEASE_EARLY],
-                |row| row.get::<_, String>(0),
-            )?)
-        })
+        .read_row(crate::test_reads::AlbumTitleOfReleaseParams { release: RELEASE_EARLY.into() })
         .await
-        .unwrap();
+        .unwrap()
+        .title;
     assert_eq!(sole.album_title, title, "the sole release carries its album's title");
 
     let unknown = answer(StorageFilter::All, ids(&[RELEASE_LATE, "no-such-release"])).await;

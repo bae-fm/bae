@@ -4,9 +4,11 @@
 
 use super::*;
 use crate::sync_activity::tests::{queue_upload, run_on_library_with_storage};
+use crate::test_reads::{StoredTotalsAllParams, StoredTotalsLocalParams, StoredTotalsRemoteParams};
 use bae_records::test_fixtures::storage_listing::{
     insert_file, write_library, RELEASE_EARLY, RELEASE_LATE,
 };
+use bae_store::statement_row;
 
 /// The count and size the list shows under All, Local and Remote, in that
 /// order.
@@ -22,21 +24,20 @@ async fn checked_totals(store: &Store, after: &'static str) -> Totals {
     let (read, counted) = store
         .read(|sql| {
             let mut read = Vec::new();
-            let mut counted = Vec::new();
-            for (filter, kept) in FILTERS.into_iter().zip(["1", "stored = 0", "stored = 1"]) {
+            for filter in FILTERS {
                 read.push(crate::storage::storage_counts_on(
                     &sql,
                     &crate::storage::StorageScope::new(filter, ""),
                 )?);
-                counted.push(sql.query_row(
-                    &format!(
-                        "SELECT COUNT(*), COALESCE(SUM(total_size), 0) FROM release_storage \
-                         WHERE {kept}"
-                    ),
-                    [],
-                    |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
-                )?);
             }
+            let all = statement_row(&sql, &StoredTotalsAllParams {})?;
+            let local = statement_row(&sql, &StoredTotalsLocalParams {})?;
+            let remote = statement_row(&sql, &StoredTotalsRemoteParams {})?;
+            let counted = vec![
+                (all.releases, all.size),
+                (local.releases, local.size),
+                (remote.releases, remote.size),
+            ];
             Ok((read, counted))
         })
         .await

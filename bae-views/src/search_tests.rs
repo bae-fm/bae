@@ -59,22 +59,8 @@ mod stored_title_keys {
     /// their title's in the device's language, and how many entries there
     /// are of each.
     async fn stale_keys(db: &Store) -> [i64; 4] {
-        db.read(|sql| {
-            Ok(sql.query_row(
-                "SELECT (SELECT COUNT(*) FROM track_search_entry e JOIN tracks t ON t.id = e.track_id
-                         WHERE e.title_sort_key
-                               IS NOT bae_name_key(t.title, (SELECT language FROM name_sort))),
-                        (SELECT COUNT(*) FROM track_search_entry),
-                        (SELECT COUNT(*) FROM work_search_entry e JOIN works w ON w.id = e.work_id
-                         WHERE e.title_sort_key
-                               IS NOT bae_name_key(w.title, (SELECT language FROM name_sort))),
-                        (SELECT COUNT(*) FROM work_search_entry)",
-                [],
-                |row| Ok([row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?]),
-            )?)
-        })
-        .await
-        .unwrap()
+        let keys = db.read_row(crate::test_reads::StaleSearchKeysParams {}).await.unwrap();
+        [keys.stale_tracks, keys.tracks, keys.stale_works, keys.works]
     }
 
     /// The ids of the tracks and of the works a search for `query` lists, in
@@ -132,15 +118,10 @@ mod stored_title_keys {
             devices.resume().await;
             devices
                 .settle("the later title", async |_, db| {
-                    db.read(|sql| {
-                        Ok(sql.query_row(
-                            "SELECT title FROM works WHERE id = ?1",
-                            [WORK_Z],
-                            |row| row.get::<_, String>(0),
-                        )?)
-                    })
-                    .await
-                    .unwrap()
+                    db.read_row(crate::test_reads::WorkTitleParams { work: WORK_Z.into() })
+                        .await
+                        .unwrap()
+                        .title
                         == "Abacus Work"
                 })
                 .await;

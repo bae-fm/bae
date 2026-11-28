@@ -489,16 +489,7 @@ fn uploading_counts_releases_and_no_cover() {
             .write(&records)
             .await;
         write_image(&records, bae_records::test_fixtures::ARTIST_A).await;
-        let queued: i64 = store
-            .read(|sql| {
-                Ok::<_, bae_store::DbError>(sql.query_row(
-                    "SELECT COUNT(*) FROM coven_upload_queue",
-                    [],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
-            .unwrap();
+        let queued = store.queued_upload_count_for_test().await.unwrap();
         assert_eq!(queued, 1, "the picture waits in the queue");
         assert_eq!(activity_now(store).await.uploads, None);
     });

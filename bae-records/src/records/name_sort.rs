@@ -29,6 +29,17 @@ coven::fragment!(
 "#
 );
 
+// The version of the collation data this device's name keys were written
+// with, which other domains' tests compare their keys' version to.
+#[cfg(any(test, feature = "test-utils"))]
+coven::fragment!(
+    NameSortDataVersion,
+    r#"
+    SELECT sort.data_version
+    FROM name_sort AS sort
+"#
+);
+
 // The language this device orders names in, and the collation data its keys
 // were written with.
 coven::read!(
