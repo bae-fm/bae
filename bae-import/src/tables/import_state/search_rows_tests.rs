@@ -9,7 +9,6 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::MetadataRef;
 use bae_preferences::{CatalogAvailability, SourceAvailability};
 use bae_store::test_fixtures::empty_db;
-use rusqlite::OptionalExtension;
 
 /// A library that asks every catalog it can — what these tests search from
 /// unless they are about a catalog that is not asked.
@@ -54,13 +53,8 @@ async fn is_current(tables: &ImportTables, key: &CandidateKey, run: SearchRun) -
     let current = tables
         .store
         .read(move |sql| {
-            Ok(sql
-                .query_row(
-                    "SELECT search_run FROM import_candidate_search WHERE candidate_key = ?",
-                    [&key],
-                    |row| row.get::<_, i64>(0),
-                )
-                .optional()?)
+            Ok(bae_store::statement_optional(&sql, &super::test_reads::SearchRunOfParams { key })?
+                .map(|row| row.search_run))
         })
         .await
         .unwrap();

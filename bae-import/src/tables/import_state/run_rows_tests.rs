@@ -367,26 +367,18 @@ async fn a_run_s_rows_go_with_it() {
     let count = |table: &'static str| {
         let tables = tables.clone();
         async move {
-            let query = match table {
-                "import_candidate_verdict" | "import_candidate_signals" => {
-                    format!("SELECT COUNT(*) FROM {table} WHERE identify_run = 1")
-                }
-                "import_candidate_signal_value" | "import_candidate_text_line" => format!(
-                    "SELECT COUNT(*) FROM {table} AS owned \
-                     JOIN import_candidate_signals AS header \
-                         ON header.signals_id = owned.signals_id \
-                     WHERE header.identify_run = 1"
-                ),
-                _ => format!(
-                    "SELECT COUNT(*) FROM {table} AS owned \
-                     JOIN import_candidate_verdict AS header \
-                         ON header.verdict_id = owned.verdict_id \
-                     WHERE header.identify_run = 1"
-                ),
-            };
             tables
                 .store
-                .read(move |sql| Ok(sql.query_row(&query, [], |row| row.get::<_, i64>(0))?))
+                .read(move |sql| {
+                    Ok(bae_store::statement_rows(
+                        &sql,
+                        &super::test_reads::RunRowCountsParams { run: 1 },
+                    )?
+                    .into_iter()
+                    .find(|row| row.table_name == table)
+                    .map(|row| row.held)
+                    .expect("each owned table has its count"))
+                })
                 .await
                 .unwrap()
         }
@@ -503,15 +495,14 @@ async fn a_run_s_cell_under_way_names_the_run_that_asks_it() {
     let asking: Vec<(String, i64, i64)> = tables
         .store
         .read(|sql| {
-            Ok(sql.query(
-                "SELECT cell.answer, cell.asked_by, verdict.identify_run \
-                 FROM import_candidate_lookup AS cell \
-                 JOIN import_candidate_verdict AS verdict \
-                     ON verdict.verdict_id = cell.verdict_id \
-                 WHERE cell.answer IN ('queued', 'looking_up')",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-            )?)
+            Ok(bae_store::statement_rows(&sql, &super::test_reads::AskingCellsParams {})?
+                .into_iter()
+                .map(|cell| {
+                    let asked_by = cell.asked_by.expect("an asked cell names the run that asked");
+                    let run = cell.identify_run.expect("a lookup's verdict has its run");
+                    (cell.answer, asked_by, run)
+                })
+                .collect())
         })
         .await
         .unwrap();

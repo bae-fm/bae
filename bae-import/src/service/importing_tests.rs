@@ -80,7 +80,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the failure names the file that would not open: {detail}"
     );
     assert!(
-        bae_store::test_fixtures::row_count(&test.db, "albums").await == 0,
+        crate::test_fixtures::library_rows::library_counts(&test.db).await.albums == 0,
         "a failed import writes no album"
     );
     assert!(
@@ -105,11 +105,11 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .expect("the retried import lands");
 
     assert_eq!(
-        bae_store::test_fixtures::row_count(&test.db, "albums").await,
+        crate::test_fixtures::library_rows::library_counts(&test.db).await.albums,
         1,
         "the retry writes the release once"
     );
-    assert_eq!(bae_store::test_fixtures::row_count(&test.db, "releases").await, 1);
+    assert_eq!(crate::test_fixtures::library_rows::library_counts(&test.db).await.releases, 1);
     let release = imported_release(&test, &candidate_key)
         .await
         .expect("the retried import records the release of its files");
@@ -181,7 +181,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .do_import(local_import_command("import-again", &candidate_key, &folder), stored)
         .await;
     assert_eq!(
-        bae_store::test_fixtures::row_count(&test.db, "albums").await,
+        crate::test_fixtures::library_rows::library_counts(&test.db).await.albums,
         1,
         "the next import lands the release"
     );
@@ -301,48 +301,61 @@ async fn seed_spent_rows(
 }
 
 /// How many rows each spent table holds under `content_hash`.
-async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'static str, i64)> {
-    let mut counts = Vec::new();
-    // The rows under the verdict name it by its id, so they are counted
-    // through it.
-    for table in [
-        "import_candidate_match",
-        "import_candidate_lookup_provider",
-        "import_candidate_lookup_value",
-        "import_candidate_lookup",
-        "import_candidate_lookup_release",
-    ] {
-        let query = format!(
-            "SELECT COUNT(*) FROM {table} AS owned \
-             JOIN import_candidate_verdict AS verdict ON verdict.verdict_id = owned.verdict_id \
-             WHERE verdict.content_hash = ?"
-        );
-        let content_hash = content_hash.to_string();
-        let count = test
-            .db
-            .read(move |sql| Ok(sql.query_row(&query, [content_hash], |row| row.get::<_, i64>(0))?))
-            .await
-            .unwrap();
-        counts.push((table, count));
-    }
-    for table in [
-        "import_candidate_verdict",
-        "import_candidate_lookup_choices",
-        "import_candidate_chosen_catalog",
-        "import_candidate_pane_failure",
-        "import_candidate_album_pick",
-        "import_candidate_edit",
-        "import_candidate_album_artist_assignment",
-        "import_candidate_track",
-        "import_candidate_release_link",
-        "import_candidate_release_link_album",
-        "import_candidate_claimed_record",
-        "import_candidate_cover",
-    ] {
-        let count = test.db.count_rows_for_test(table, "content_hash", content_hash).await.unwrap();
-        counts.push((table, count));
-    }
-    counts
+async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(String, i64)> {
+    let content_hash = content_hash.to_string();
+    test.db
+        .read(move |sql| {
+            Ok(bae_store::statement_rows(
+                &sql,
+                &crate::tables::import_state::test_reads::SpentRowCountsParams { content_hash },
+            )?
+            .into_iter()
+            .map(|row| (row.table_name, row.held))
+            .collect())
+        })
+        .await
+        .unwrap()
+}
+
+/// The tab, title and artists of the candidate's row, as `tab|title|artists`,
+/// with `-` for no artists.
+async fn candidate_placements(test: &TestService) -> Vec<String> {
+    test.db
+        .read(|sql| {
+            Ok(bae_store::statement_rows(
+                &sql,
+                &crate::tables::import_list::test_reads::CandidatePlacementsParams {},
+            )?
+            .into_iter()
+            .map(|row| {
+                format!(
+                    "{}|{}|{}",
+                    row.tab,
+                    row.shown_title.unwrap_or_default(),
+                    row.shown_artists.as_deref().unwrap_or("-")
+                )
+            })
+            .collect())
+        })
+        .await
+        .unwrap()
+}
+
+/// How many draft and cover rows `content_hash` has.
+async fn draft_rows(
+    test: &TestService,
+    content_hash: &str,
+) -> crate::tables::import_state::test_reads::DraftRowCountsRow {
+    let content_hash = content_hash.to_string();
+    test.db
+        .read(move |sql| {
+            bae_store::statement_row(
+                &sql,
+                &crate::tables::import_state::test_reads::DraftRowCountsParams { content_hash },
+            )
+        })
+        .await
+        .unwrap()
 }
 
 /// A three-track folder with a front cover image, stored as a scanned
@@ -404,14 +417,7 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
         Vec::new(),
         "the import's write leaves none of what it spent"
     );
-    let done = test
-        .db
-        .query_texts_for_test(
-            "SELECT tab || '|' || shown_title || '|' || shown_artists \
-             FROM import_list_placement WHERE item = 'candidate'",
-        )
-        .await
-        .unwrap();
+    let done = candidate_placements(&test).await;
     assert_eq!(
         done,
         vec!["done|Picked Album|Picked Artist".to_string()],
@@ -477,13 +483,7 @@ async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
 
 /// What the folder's row shows: its tab, title and artists.
 async fn shown_row(test: &TestService) -> Vec<String> {
-    test.db
-        .query_texts_for_test(
-            "SELECT tab || '|' || shown_title || '|' || COALESCE(shown_artists, '-') \
-             FROM import_list_placement WHERE item = 'candidate'",
-        )
-        .await
-        .unwrap()
+    candidate_placements(test).await
 }
 
 /// An imported candidate holds no draft, and a scan seeds none for it. The
@@ -511,21 +511,11 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
         )
         .await
         .expect("the import lands");
-    let drafts = || async {
-        test.db
-            .count_rows_for_test("import_candidate_edit", "content_hash", &content_hash)
-            .await
-            .unwrap()
-    };
+    let drafts = || async { draft_rows(&test, &content_hash).await.edits };
     // Under another name, so the scan writes the folder's row anew.
     rescan_folder(&test, &folder, "Box Set Renamed").await;
     assert_eq!(drafts().await, 0, "a scan seeds no draft for files imported here");
-    let covers = || async {
-        test.db
-            .count_rows_for_test("import_candidate_cover", "content_hash", &content_hash)
-            .await
-            .unwrap()
-    };
+    let covers = || async { draft_rows(&test, &content_hash).await.covers };
     assert_eq!(covers().await, 0, "a scan seeds no cover for files imported here");
 
     let release_id = imported_release(&test, &candidate_key).await.expect("the import is recorded");

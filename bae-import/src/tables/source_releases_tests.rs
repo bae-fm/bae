@@ -687,14 +687,11 @@ fn read_from(key: &str) -> Option<MetadataProvenance> {
 async fn stored(db: &Store, release: &LookupRef) -> (bool, i64) {
     let (catalog, key) = (release.catalog.as_str(), release.key.clone());
     db.read(move |sql| {
-        Ok(sql.query_row(
-            "SELECT EXISTS (SELECT 1 FROM source_release \
-                            WHERE catalog = ?1 AND release_id = ?2), \
-                    (SELECT COUNT(*) FROM source_release_barcode \
-                     WHERE catalog = ?1 AND release_id = ?2)",
-            [catalog, key.as_str()],
-            |row| Ok((row.get::<_, bool>(0)?, row.get::<_, i64>(1)?)),
-        )?)
+        let row = bae_store::statement_row(
+            &sql,
+            &super::StoredReleaseRowsParams { catalog: catalog.to_string(), release_id: key },
+        )?;
+        Ok((row.stored, row.barcodes))
     })
     .await
     .unwrap()

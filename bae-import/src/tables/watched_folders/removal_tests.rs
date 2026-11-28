@@ -28,12 +28,30 @@ async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
     assert!(tables.load_folder_scan_snapshots().await.unwrap()[0].items.is_empty());
 }
 
-async fn rows_in(db: &Store, table: &'static str) -> i64 {
-    db.read(move |sql| {
-        Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))?)
-    })
-    .await
-    .unwrap()
+/// How many rows each table of [`FOLDER_TABLES`] holds, in its order.
+async fn folder_table_rows(db: &Store) -> Vec<(&'static str, i64)> {
+    use crate::tables::{folder_scans, import_state, release_groupings, skipped_candidates};
+    use bae_store::statement_row;
+    let counts = db
+        .read(|sql| {
+            let skipped = statement_row(&sql, &skipped_candidates::SkippedCountParams {})?.held;
+            let found =
+                statement_row(&sql, &folder_scans::test_reads::DiscoveryCountParams {})?.held;
+            let grouped = statement_row(&sql, &release_groupings::GroupingRowCountsParams {})?;
+            let candidates =
+                statement_row(&sql, &import_state::test_reads::FolderStateCountsParams {})?;
+            Ok([
+                skipped,
+                found,
+                grouped.groupings,
+                grouped.members,
+                candidates.folders,
+                candidates.states,
+            ])
+        })
+        .await
+        .unwrap();
+    FOLDER_TABLES.into_iter().zip(counts).collect()
 }
 
 /// The tables holding what is known about folders, and candidate state.
@@ -129,8 +147,8 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     );
     assert!(removed.watched.is_empty(), "the write leaves nothing watched");
     assert!(tables.load_watched_import_folders().await.unwrap().is_empty());
-    for table in FOLDER_TABLES {
-        assert_eq!(rows_in(&db, table).await, 0, "{table} still holds rows");
+    for (table, rows) in folder_table_rows(&db).await {
+        assert_eq!(rows, 0, "{table} still holds rows");
     }
     assert_eq!(
         crate::tables::tests::known_of_root(&tables, root)
@@ -196,10 +214,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
     )
     .await
     .unwrap();
-    let mut decided = Vec::new();
-    for table in FOLDER_TABLES {
-        decided.push(rows_in(&db, table).await);
-    }
+    let decided = folder_table_rows(&db).await;
 
     let removal = tables
         .remove_watched_import_folders(vec![one.clone(), two.clone()], Some(music.clone()))
@@ -222,9 +237,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         vec![crate::WatchedFolder::from_path(music.clone())]
     );
     assert!(tables.load_folder_scan_snapshots().await.unwrap().is_empty());
-    for (table, before) in FOLDER_TABLES.into_iter().zip(decided) {
-        assert_eq!(rows_in(&db, table).await, before, "{table} lost rows");
-    }
+    assert_eq!(folder_table_rows(&db).await, decided, "the tables lost rows");
     assert_eq!(
         tables.load_skipped_import_candidates(&music).await.unwrap(),
         std::collections::HashSet::from([crate::RelativeFolder::test("one/Album")])

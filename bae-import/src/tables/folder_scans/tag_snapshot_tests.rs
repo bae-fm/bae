@@ -9,7 +9,6 @@ use crate::tables::tests::*;
 use bae_store::Store;
 use bae_store::WriteStatements as _;
 use bae_util::content_type::ContentType;
-use rusqlite::params;
 
 pub(crate) fn tagged_candidate(root: &std::path::Path) -> FolderCandidate {
     let candidate_path = root.join("candidate-a");
@@ -118,18 +117,9 @@ pub(crate) async fn stored_reading_rows(
     let root = coven::path_bytes(root);
     let key = key.clone();
     db.read(move |sql| {
-        let readings = sql.query_row(
-            "SELECT count(*) FROM scan_candidate_tag_snapshot \
-             WHERE watched_folder_path = ? AND candidate_path = ?",
-            params![root, key],
-            |row| row.get::<_, i64>(0),
-        )?;
-        let facts = sql.query_row(
-            "SELECT count(*) FROM scan_candidate_file_tag \
-             WHERE watched_folder_path = ? AND candidate_path = ?",
-            params![root, key],
-            |row| row.get::<_, i64>(0),
-        )?;
+        let counts = super::super::test_reads::TagReadingCountsParams { root, candidate_path: key };
+        let counts = bae_store::statement_row(&sql, &counts)?;
+        let (readings, facts) = (counts.readings, counts.facts);
         Ok((readings, facts))
     })
     .await

@@ -4,7 +4,6 @@ use crate::tables::import_state::tests::*;
 use crate::CandidateEditField;
 use bae_store::test_fixtures::empty_db;
 use bae_store::Store;
-use rusqlite::params;
 
 /// The list places a row by whether its draft is blank and valid, read off two
 /// columns rather than the draft whole; every draft write keeps them current.
@@ -18,12 +17,11 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
         let hash = hash.to_string();
         async move {
             db.read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT draft_blank, draft_valid FROM import_candidate_edit \
-                     WHERE content_hash = ?1",
-                    params![hash],
-                    |row| Ok((row.get::<_, bool>(0)?, row.get::<_, bool>(1)?)),
-                )?)
+                let row = bae_store::statement_row(
+                    &sql,
+                    &super::test_reads::StoredDraftFlagsParams { content_hash: hash },
+                )?;
+                Ok((row.draft_blank, row.draft_valid))
             })
             .await
             .unwrap()

@@ -45,6 +45,25 @@ pub(super) fn forget_at_or_below(
     Ok(())
 }
 
+// How many candidates are skipped.
+#[cfg(test)]
+coven::read!(
+    writer SkippedCount { held: i64 },
+    "SELECT COUNT(*) AS held FROM skipped_import_candidates AS skipped"
+);
+
+// Every skipped candidate whose path is from `:below_first` up to
+// `:below_past`.
+#[cfg(any(test, feature = "test-utils"))]
+coven::read!(
+    writer SkippedBelow(below_first: Vec<u8>, below_past: Vec<u8>),
+    r#"
+    SELECT skipped.candidate_path
+    FROM skipped_import_candidates AS skipped
+    WHERE skipped.candidate_path >= :below_first AND skipped.candidate_path < :below_past
+"#
+);
+
 impl ImportTables {
     /// Every skipped candidate under one root, by its path below the root:
     /// what the tests of skipping and of removing a watched folder read back.
@@ -63,12 +82,10 @@ impl ImportTables {
         let paths: Vec<PathBuf> = self
             .store
             .read(move |sql| {
-                Ok(sql.query(
-                    "SELECT candidate_path FROM skipped_import_candidates \
-                     WHERE candidate_path >= ? AND candidate_path < ?",
-                    params![below_first, below_past],
-                    |row| path_column::get(row, 0),
-                )?)
+                statement_rows(&sql, &SkippedBelowParams { below_first, below_past })?
+                    .into_iter()
+                    .map(|row| path_column::decode(row.candidate_path))
+                    .collect()
             })
             .await?;
         let mut below = HashSet::new();

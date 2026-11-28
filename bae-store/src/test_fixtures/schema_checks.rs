@@ -45,6 +45,38 @@ pub fn keyless_tables(schema: Schema) -> Vec<String> {
     keyless
 }
 
+/// The names of the tables and triggers `schema` creates.
+pub fn tables_and_triggers(schema: Schema) -> Vec<String> {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    schema.open_bare_library(&conn);
+    let names = conn
+        .prepare("SELECT name FROM sqlite_schema WHERE type IN ('table', 'trigger') ORDER BY name")
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    names
+}
+
+/// The tables `schema` creates that name `table` in a foreign key, by name.
+pub fn tables_referencing(schema: Schema, table: &str) -> Vec<String> {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    schema.open_bare_library(&conn);
+    let referencing = conn
+        .prepare(
+            "SELECT DISTINCT m.name FROM sqlite_schema AS m, pragma_foreign_key_list(m.name) AS f
+             WHERE m.type = 'table' AND f.\"table\" = ?
+             ORDER BY m.name",
+        )
+        .unwrap()
+        .query_map([table], |row| row.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    referencing
+}
+
 /// Each column an `UPDATE OF` trigger of `schema` names that its table
 /// doesn't have, as `trigger: table.column`. SQLite accepts a name no column
 /// has, and the trigger then never fires on it.

@@ -248,16 +248,33 @@ impl ImportTables {
         let owner = owner.clone();
         self.store
             .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT COUNT(*) FROM import_picture_copy \
-                     WHERE watched_folder_path = ? AND candidate_path = ?",
-                    params![owner.watched_folder_path, owner.candidate_path],
-                    |row| row.get(0),
-                )?)
+                Ok(bae_store::statement_row(
+                    &sql,
+                    &CopiesOfCandidateParams {
+                        watched_folder_path: owner.watched_folder_path,
+                        candidate_path: owner.candidate_path,
+                    },
+                )?
+                .copies)
             })
             .await
     }
 }
+
+// How many copies the candidate at `:candidate_path` under
+// `:watched_folder_path` keeps.
+#[cfg(test)]
+coven::read!(
+    writer CopiesOfCandidate(watched_folder_path: Vec<u8>, candidate_path: Vec<u8>) {
+        copies: u64
+    },
+    r#"
+    SELECT COUNT(*) AS copies
+    FROM import_picture_copy AS copy
+    WHERE copy.watched_folder_path = :watched_folder_path
+      AND copy.candidate_path = :candidate_path
+"#
+);
 
 coven::write!(
     ForgetCopiesForHash(content_hash: &'p str),

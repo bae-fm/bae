@@ -26,22 +26,20 @@ async fn laid_out(tables: &ImportTables, run: SearchRun) -> Vec<Laid> {
     tables
         .store
         .read(move |sql| {
-            Ok(sql.query(
-                "SELECT release_id, pressing, card, record_order \
-                 FROM import_candidate_match AS found \
-                 JOIN import_candidate_search_source AS part \
-                   ON part.search_run = found.search_run AND part.catalog = found.source \
-                 WHERE found.search_run = ? ORDER BY part.position, found.position",
-                [run.number()],
-                |row| {
-                    Ok(Laid {
-                        release_id: row.get(0)?,
-                        pressing: row.get(1)?,
-                        card: row.get(2)?,
-                        record_order: row.get(3)?,
-                    })
-                },
-            )?)
+            Ok(bae_store::statement_rows(
+                &sql,
+                &super::test_reads::SearchLayoutParams { run: run.number() },
+            )?
+            .into_iter()
+            .map(|row| Laid {
+                release_id: row.release_id,
+                pressing: row.pressing.expect("a search's release is in a pressing"),
+                card: row.card.expect("a search's release is on a card"),
+                record_order: row
+                    .record_order
+                    .expect("a search's release has its place on its card"),
+            })
+            .collect())
         })
         .await
         .unwrap()
@@ -53,14 +51,13 @@ async fn card_text(tables: &ImportTables, run: SearchRun) -> Vec<String> {
     tables
         .store
         .read(move |sql| {
-            Ok(sql.query(
-                "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
-                 FROM import_candidate_card_text \
-                 JOIN import_candidate_card_list USING (list) WHERE search_run = ? \
-                 ORDER BY card, kind, ordinal",
-                [run.number()],
-                |row| row.get::<_, String>(0),
-            )?)
+            Ok(bae_store::statement_rows(
+                &sql,
+                &super::test_reads::SearchCardTextParams { run: run.number() },
+            )?
+            .into_iter()
+            .map(|row| row.line)
+            .collect())
         })
         .await
         .unwrap()
@@ -72,15 +69,13 @@ async fn statements(tables: &ImportTables, run: SearchRun) -> Vec<String> {
     tables
         .store
         .read(move |sql| {
-            Ok(sql.query(
-                "SELECT pressing || ' ' || fact || ' ' || line || ' ' || ordinal || ' ' \
-                        || value || ' ' || catalogs \
-                 FROM import_candidate_row_statement \
-                 JOIN import_candidate_card_list USING (list) WHERE search_run = ? \
-                 ORDER BY pressing, fact, line, ordinal",
-                [run.number()],
-                |row| row.get::<_, String>(0),
-            )?)
+            Ok(bae_store::statement_rows(
+                &sql,
+                &super::test_reads::SearchRowStatementsParams { run: run.number() },
+            )?
+            .into_iter()
+            .map(|row| row.line)
+            .collect())
         })
         .await
         .unwrap()
@@ -215,16 +210,13 @@ async fn discogs_answer_after_a_pick_joins_the_cards_by_what_both_print() {
     let stored_links: Vec<String> = tables
         .store
         .read(move |sql| {
-            Ok(sql.query(
-                "SELECT found.release_id || ' ' || found.album_links || ' ' \
-                        || COALESCE(link.catalog || ':' || link.key, '') \
-                 FROM import_candidate_match AS found \
-                 LEFT JOIN import_candidate_match_album_link AS link \
-                   ON link.match_id = found.match_id \
-                 WHERE found.search_run = ? ORDER BY found.release_id",
-                [run.number()],
-                |row| row.get::<_, String>(0),
-            )?)
+            Ok(bae_store::statement_rows(
+                &sql,
+                &super::test_reads::SearchAlbumLinksParams { run: run.number() },
+            )?
+            .into_iter()
+            .map(|row| row.line)
+            .collect())
         })
         .await
         .unwrap();

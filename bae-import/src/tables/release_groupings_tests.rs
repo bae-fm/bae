@@ -247,17 +247,7 @@ async fn fewer_than_two_folders_are_refused_as_too_few() {
 /// the two it replaced are gone from the schema.
 #[tokio::test]
 async fn the_schema_holds_one_grouping_model() {
-    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
-    let tables: Vec<String> = db
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT name FROM sqlite_master WHERE type IN ('table', 'trigger')",
-                [],
-                |row| row.get::<_, String>(0),
-            )?)
-        })
-        .await
-        .unwrap();
+    let tables = bae_store::test_fixtures::schema_checks::tables_and_triggers(crate::TEST_SCHEMA);
     for gone in [
         "folder_release_decisions",
         "candidate_combination",
@@ -583,12 +573,11 @@ async fn the_folder_files_reader_is_found_by_its_index() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", super::ParentFilesReader::SQL),
-                ["/music/Album", "grouping"],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(bae_store::DbError::from)
+            let reader = super::ParentFilesReaderParams {
+                folder: b"/music/Album".to_vec(),
+                key: crate::CandidateKey::grouping("grouping"),
+            };
+            Ok(bae_store::test_fixtures::query_plan::plan_of(&sql, &reader)?)
         })
         .await
         .unwrap();
@@ -601,28 +590,17 @@ async fn the_folder_files_reader_is_found_by_its_index() {
 /// A grouping that goes finds the release it reads as one by the grouping
 /// index, which holds no scanned release outside a grouping: removing it
 /// reads no other release.
-#[tokio::test]
-async fn a_grouping_going_finds_its_release_by_its_index() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    // Explaining the delete runs none of it.
-    let (root, program) = db
-        .call(|sql| {
-            let root = sql.query_row(
-                "SELECT rootpage FROM sqlite_schema WHERE name = 'idx_scan_candidate_grouping'",
-                [],
-                |row| row.get::<_, i64>(0),
-            )?;
-            let program = sql.query(
-                &format!("EXPLAIN {}", super::DeleteGrouping::SQL),
-                [b"grouping".to_vec()],
-                |row| Ok((row.get::<_, String>(1)?, row.get::<_, i64>(3)?)),
-            )?;
-            Ok((root, program))
-        })
-        .await
-        .unwrap();
+#[test]
+fn a_grouping_going_finds_its_release_by_its_index() {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::TEST_SCHEMA.open_bare_library(&conn);
+    let key = crate::CandidateKey::grouping("grouping");
     assert!(
-        program.iter().any(|(opcode, page)| opcode == "OpenRead" && *page == root),
-        "the release is found by the grouping index (root {root}): {program:?}"
+        bae_store::test_fixtures::query_plan::opens_index(
+            &conn,
+            &super::DeleteGroupingParams { key: &key },
+            "idx_scan_candidate_grouping",
+        ),
+        "the release is found by the grouping index"
     );
 }

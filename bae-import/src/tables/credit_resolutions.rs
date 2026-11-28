@@ -167,6 +167,37 @@ pub(crate) fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven
     Ok(())
 }
 
+// Every credit a draft holds, once for each folded name and pair of catalog
+// ids, under the first of its names.
+#[cfg(test)]
+coven::read!(
+    writer HeldCreditNames { name: String },
+    r#"
+    SELECT MIN(held.name) AS name, held.musicbrainz_artist_id, held.discogs_artist_id
+    FROM @crate::tables::import_state::row_fragments::DraftCreditRows AS held
+    WHERE held.assignment_kind = 'credit'
+    GROUP BY bae_artist_name_key(held.name), held.musicbrainz_artist_id, held.discogs_artist_id
+"#
+);
+
+// Every stored answer, with its artists as a JSON array in order.
+#[cfg(test)]
+coven::read!(
+    writer EveryCreditAnswer { artists: String },
+    r#"
+    SELECT answer.name_key, answer.musicbrainz_artist_id, answer.discogs_artist_id,
+           answer.artists
+    FROM @crate::tables::credit_resolutions::row_fragments::StoredCreditAnswers AS answer
+"#
+);
+
+// How many credits wait for an answer.
+#[cfg(test)]
+coven::read!(
+    writer DueCreditCount { waiting: i64 },
+    r#"SELECT COUNT(*) AS waiting FROM import_credit_resolution_due AS due"#
+);
+
 #[cfg(test)]
 #[path = "credit_resolutions_tests.rs"]
 mod tests;

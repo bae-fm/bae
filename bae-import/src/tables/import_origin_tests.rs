@@ -9,16 +9,10 @@ use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
 fn imported_content_hash_lookup_uses_its_unique_index() {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
     crate::TEST_SCHEMA.open_bare_library(&conn);
-    let plan: Vec<String> = conn
-        .prepare(
-            "EXPLAIN QUERY PLAN \
-             SELECT release_id FROM local_release_origin WHERE content_hash = ?",
-        )
-        .unwrap()
-        .query_map(["hash"], |row| row.get(3))
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let plan = bae_store::test_fixtures::query_plan::plan_on(
+        &conn,
+        &super::OriginOfParams { content_hash: "hash".to_string() },
+    );
 
     assert!(
         plan.iter()

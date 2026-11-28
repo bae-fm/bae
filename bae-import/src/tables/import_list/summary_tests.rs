@@ -3,12 +3,12 @@
 
 use super::*;
 use crate::list::ImportListRead;
-use crate::tables::import_list::tests::plan_of;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
 use crate::ImportListView;
 use crate::TriageTab;
 use bae_catalogs::search::MetadataResult;
+use bae_store::test_fixtures::query_plan::plan_of;
 
 /// Two groups and two releases outside any, in two of Found's entries.
 async fn grouped_in_two_entries() -> Library {

@@ -1,3 +1,5 @@
+use bae_store::test_fixtures::query_plan::{plan_on, plant_table_statistics};
+
 /// The entries reading a folder's files are looked up by the root and the
 /// folders they read, never by passing over the root's entries: a scan asks
 /// for them for every folder it writes, so a pass would make filling a
@@ -14,7 +16,7 @@ fn the_entries_reading_a_folder_are_looked_up_by_the_folders_they_read() {
         if let Some(under_root) = under_root {
             plant_one_folders_statistics(&conn, under_root);
         }
-        let plan = plan_of(&conn, super::ReadersCovering::SQL);
+        let plan = plan_on(&conn, &readers_covering());
         let searched: Vec<&String> =
             plan.iter().filter(|step| step.contains("candidate")).collect();
         // One lookup for each part: the folder, those above it, those below.
@@ -46,7 +48,7 @@ fn the_entries_a_read_takes_in_are_searched_by_an_index() {
         if let Some(under_root) = under_root {
             plant_one_folders_statistics(&conn, under_root);
         }
-        let searched: Vec<String> = plan_of(&conn, super::ItemsAtKeys::SQL)
+        let searched: Vec<String> = plan_on(&conn, &items_at_keys())
             .into_iter()
             .filter(|step| {
                 step.starts_with("SCAN candidate ") || step.starts_with("SEARCH candidate ")
@@ -58,7 +60,7 @@ fn the_entries_a_read_takes_in_are_searched_by_an_index() {
             "{under_root:?} under the root"
         );
 
-        let plan = plan_of(&conn, super::super::file_reads::KnownOfRootRows::SQL);
+        let plan = plan_on(&conn, &known_of_root_rows());
         let passes: Vec<&String> = plan
             .iter()
             .filter(|step| {
@@ -71,14 +73,30 @@ fn the_entries_a_read_takes_in_are_searched_by_an_index() {
     }
 }
 
-/// The steps SQLite plans `statement` in on `conn`.
-fn plan_of(conn: &rusqlite::Connection, statement: &str) -> Vec<String> {
-    let mut explain = conn.prepare(&format!("EXPLAIN QUERY PLAN {statement}")).unwrap();
-    // The plan is of the statement, whatever it is bound to.
-    for at in 1..=explain.parameter_count() {
-        explain.raw_bind_parameter(at, rusqlite::types::Null).unwrap();
+/// A read of the entries reading a folder's files.
+fn readers_covering() -> super::ReadersCoveringParams {
+    super::ReadersCoveringParams {
+        root: b"/music".to_vec(),
+        folder: b"/music/Album".to_vec(),
+        above: "[]".to_owned(),
+        below_first: Some(b"/music/Album/".to_vec()),
+        below_past: Some(b"/music/Album0".to_vec()),
+        besides: None,
     }
-    explain.raw_query().mapped(|row| row.get(3)).collect::<Result<_, _>>().unwrap()
+}
+
+/// A read of the entries stored at some keys.
+fn items_at_keys() -> super::ItemsAtKeysParams {
+    super::ItemsAtKeysParams { keys: "[]".to_owned(), grouping_releases: false }
+}
+
+/// A read of what the store knows of a root.
+fn known_of_root_rows() -> super::super::file_reads::KnownOfRootRowsParams {
+    super::super::file_reads::KnownOfRootRowsParams {
+        root: b"/music".to_vec(),
+        below_first: b"/music/".to_vec(),
+        below_past: b"/music0".to_vec(),
+    }
 }
 
 /// Plant in `conn` the statistics of `scan_candidate` holding one watched
@@ -86,37 +104,8 @@ fn plan_of(conn: &rusqlite::Connection, statement: &str) -> Vec<String> {
 /// or a content hash pick out `under_root` entries, any up to another column
 /// one.
 fn plant_one_folders_statistics(conn: &rusqlite::Connection, under_root: u64) {
-    conn.execute_batch("ANALYZE; DELETE FROM sqlite_stat1 WHERE tbl = 'scan_candidate';").unwrap();
-    let indexes: Vec<String> = conn
-        .prepare("SELECT name FROM pragma_index_list('scan_candidate')")
-        .unwrap()
-        .query_map([], |row| row.get(0))
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap();
-    for index in indexes {
-        let columns: Vec<String> = conn
-            .prepare("SELECT name FROM pragma_index_info(?) ORDER BY seqno")
-            .unwrap()
-            .query_map([&index], |row| row.get(0))
-            .unwrap()
-            .collect::<Result<_, _>>()
-            .unwrap();
-        let mut stat = String::from("33790");
-        let mut picked = 33_790;
-        for column in &columns {
-            let per_value = match column.as_str() {
-                "watched_folder_path" | "grouping_key" | "content_hash" => under_root,
-                _ => 1,
-            };
-            picked = picked.min(per_value);
-            stat.push_str(&format!(" {picked}"));
-        }
-        conn.execute(
-            "INSERT INTO sqlite_stat1 (tbl, idx, stat) VALUES ('scan_candidate', ?, ?)",
-            [&index, &stat],
-        )
-        .unwrap();
-    }
-    conn.execute_batch("ANALYZE sqlite_schema").unwrap();
+    plant_table_statistics(conn, "scan_candidate", 33_790, |column| match column {
+        "watched_folder_path" | "grouping_key" | "content_hash" => under_root,
+        _ => 1,
+    });
 }

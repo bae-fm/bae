@@ -544,6 +544,16 @@ async fn clearing_a_found_verdict_takes_its_matches_and_its_placement_with_it() 
         now(&lib, found("Album")),
         "the release goes back to not looked up"
     );
-    let matches = bae_store::test_fixtures::row_count(&lib.db, "import_candidate_match").await;
+    let matches = lib
+        .db
+        .read(|sql| {
+            Ok(bae_store::statement_row(
+                &sql,
+                &crate::tables::import_state::test_reads::MatchCountParams {},
+            )?
+            .held)
+        })
+        .await
+        .unwrap();
     assert_eq!(matches, 0, "no match outlives its verdict");
 }

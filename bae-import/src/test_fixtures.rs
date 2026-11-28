@@ -4,6 +4,8 @@
 //! with a sheet for one of them (test-fixtures/alac); and those files copied
 //! with the tags a test wants written on them.
 
+pub mod library_rows;
+
 use std::path::{Path, PathBuf};
 
 use bae_util::test_files::{read_fixture, TestFolder};

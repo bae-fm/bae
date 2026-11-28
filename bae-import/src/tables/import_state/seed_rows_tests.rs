@@ -185,11 +185,11 @@ async fn a_candidate_with_unmeasured_audio_stores_no_state() {
     assert!(write.is_err(), "the scan stores no audio it has not measured");
     let states: i64 = db
         .read(move |sql| {
-            Ok(sql.query_row(
-                "SELECT COUNT(*) FROM import_candidate_state WHERE content_hash = ?",
-                [hash],
-                |row| row.get(0),
-            )?)
+            Ok(bae_store::statement_row(
+                &sql,
+                &super::test_reads::CandidateStateCountParams { content_hash: hash },
+            )?
+            .held)
         })
         .await
         .unwrap();

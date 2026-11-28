@@ -73,8 +73,6 @@ use bae_store::path_column;
 use bae_store::query::*;
 use bae_store::*;
 use coven::{CovenWrite, SqlReadContext};
-#[cfg(any(test, feature = "test-utils"))]
-use rusqlite::params;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -110,17 +108,6 @@ pub struct ImportTables {
 impl ImportTables {
     pub fn new(store: Store) -> Self {
         Self { store }
-    }
-
-    /// How many rows of `table` have `column` equal to `value`, for a test.
-    #[cfg(test)]
-    pub(crate) async fn count_rows_for_test(
-        &self,
-        table: &str,
-        column: &str,
-        value: &str,
-    ) -> Result<i64, DbError> {
-        self.store.count_rows_for_test(table, column, value).await
     }
 }
 

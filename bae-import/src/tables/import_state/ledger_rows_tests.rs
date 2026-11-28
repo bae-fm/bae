@@ -323,38 +323,29 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
     let (db, hash, _tmp) = stored_verdict(&paired_cell_verdict()).await;
     let (placed, text, statements): (Vec<String>, Vec<String>, Vec<String>) = db
         .read(move |sql| {
-            let query = |statement: &str| {
-                sql.query(statement, [hash.as_str()], |row| row.get::<_, String>(0))
-            };
+            let content_hash = || hash.clone();
             Ok((
-                query(
-                    "SELECT found.release_id || ' ' || lookup.pressing || ' ' || lookup.card \
-                            || ' ' || lookup.record_order \
-                     FROM import_candidate_lookup_release AS lookup \
-                     JOIN import_candidate_match AS found \
-                       ON found.verdict_id = lookup.verdict_id \
-                      AND found.position = lookup.match_position \
-                     JOIN import_candidate_verdict AS verdict \
-                       ON verdict.verdict_id = lookup.verdict_id \
-                     WHERE verdict.content_hash = ? ORDER BY lookup.ordinal",
-                )?,
-                query(
-                    "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
-                     FROM import_candidate_card_text \
-                     JOIN import_candidate_card_list USING (list) \
-                     WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                         WHERE content_hash = ?) AND step IS NOT NULL \
-                     ORDER BY card, kind, ordinal",
-                )?,
-                query(
-                    "SELECT pressing || ' ' || fact || ' ' || line || ' ' || ordinal || ' ' \
-                            || value || ' ' || catalogs \
-                     FROM import_candidate_row_statement \
-                     JOIN import_candidate_card_list USING (list) \
-                     WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                         WHERE content_hash = ?) AND step IS NOT NULL \
-                     ORDER BY pressing, fact, line, ordinal",
-                )?,
+                bae_store::statement_rows(
+                    &sql,
+                    &super::test_reads::LedgerLayoutParams { content_hash: content_hash() },
+                )?
+                .into_iter()
+                .map(|row| row.line)
+                .collect(),
+                bae_store::statement_rows(
+                    &sql,
+                    &super::test_reads::LedgerCardTextParams { content_hash: content_hash() },
+                )?
+                .into_iter()
+                .map(|row| row.line)
+                .collect(),
+                bae_store::statement_rows(
+                    &sql,
+                    &super::test_reads::LedgerRowStatementsParams { content_hash: content_hash() },
+                )?
+                .into_iter()
+                .map(|row| row.line)
+                .collect(),
             ))
         })
         .await

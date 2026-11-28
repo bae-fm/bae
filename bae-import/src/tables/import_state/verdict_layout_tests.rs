@@ -40,55 +40,54 @@ fn printing_cat_a() -> Vec<TextLine> {
     vec![TextLine { text: "Artist - Album [CAT-A]".to_string(), origin: TextOrigin::FolderName }]
 }
 
-/// What each release of `hash`'s verdict agrees with the folder's text about,
-/// as `release_id catalog-agreement`, in position order.
-async fn catalog_agreements(db: &Store, hash: &str) -> Vec<String> {
-    let hash = hash.to_string();
+/// Each release of `hash`'s verdict, in position order.
+async fn verdict_matches(db: &Store, hash: &str) -> Vec<super::test_reads::VerdictMatchesRow> {
+    let content_hash = hash.to_string();
     db.read(move |sql| {
-        Ok(sql.query(
-            "SELECT release_id || ' ' || agrees_catalog FROM import_candidate_match \
-             WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                 WHERE content_hash = ?) ORDER BY position",
-            [hash],
-            |row| row.get::<_, String>(0),
+        Ok(bae_store::statement_rows(
+            &sql,
+            &super::test_reads::VerdictMatchesParams { content_hash },
         )?)
     })
     .await
     .unwrap()
+}
+
+/// What each release of `hash`'s verdict agrees with the folder's text about,
+/// as `release_id catalog-agreement`, in position order.
+async fn catalog_agreements(db: &Store, hash: &str) -> Vec<String> {
+    verdict_matches(db, hash)
+        .await
+        .into_iter()
+        .map(|found| format!("{} {}", found.release_id, found.agrees_catalog))
+        .collect()
 }
 
 /// Where each release of `hash`'s verdict is laid out, as `release_id card
 /// record_order`, in position order.
 async fn places(db: &Store, hash: &str) -> Vec<String> {
-    let hash = hash.to_string();
-    db.read(move |sql| {
-        Ok(sql.query(
-            "SELECT release_id || ' ' || card || ' ' || record_order \
-             FROM import_candidate_match \
-             WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                 WHERE content_hash = ?) ORDER BY position",
-            [hash],
-            |row| row.get::<_, String>(0),
-        )?)
-    })
-    .await
-    .unwrap()
+    verdict_matches(db, hash)
+        .await
+        .into_iter()
+        .map(|found| {
+            let card = found.card.expect("a verdict's release is on a card");
+            let order = found.record_order.expect("a verdict's release has its place on its card");
+            format!("{} {card} {order}", found.release_id)
+        })
+        .collect()
 }
 
 /// What `hash`'s rows list, as `listing pressing fact value`.
 async fn row_statements(db: &Store, hash: &str) -> Vec<String> {
-    let hash = hash.to_string();
+    let content_hash = hash.to_string();
     db.read(move |sql| {
-        Ok(sql.query(
-            "SELECT listing || ' ' || pressing || ' ' || fact || ' ' || value \
-             FROM import_candidate_row_statement \
-             JOIN import_candidate_card_list USING (list) \
-             WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                 WHERE content_hash = ?) \
-             ORDER BY listing, pressing, fact, line, ordinal",
-            [hash],
-            |row| row.get::<_, String>(0),
-        )?)
+        Ok(bae_store::statement_rows(
+            &sql,
+            &super::test_reads::VerdictRowStatementsParams { content_hash },
+        )?
+        .into_iter()
+        .map(|row| row.line)
+        .collect())
     })
     .await
     .unwrap()

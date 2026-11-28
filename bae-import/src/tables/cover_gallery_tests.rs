@@ -252,20 +252,22 @@ async fn a_release_nothing_fetched_for_has_no_answer() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn deleting_the_release_deletes_what_was_fetched_for_it() {
-    let (tables, db, _temp, _files) = seeded().await;
+    let (_tables, db, _temp, _files) = seeded().await;
     bae_records::test_fixtures::delete_release(
         &bae_records::test_fixtures::test_records(&db),
         RELEASE_ID,
     )
     .await;
-    assert_eq!(
-        tables.count_rows_for_test("release_cover_fetch", "release_id", RELEASE_ID).await.unwrap(),
-        0
-    );
-    assert_eq!(
-        tables.count_rows_for_test("release_cover_entry", "release_id", RELEASE_ID).await.unwrap(),
-        0
-    );
+    let kept = db
+        .read(|sql| {
+            bae_store::statement_row(
+                &sql,
+                &super::ReleaseGalleryRowsParams { release: RELEASE_ID.to_string() },
+            )
+        })
+        .await
+        .unwrap();
+    assert_eq!((kept.fetches, kept.entries), (0, 0));
 }
 
 #[tokio::test(flavor = "multi_thread")]

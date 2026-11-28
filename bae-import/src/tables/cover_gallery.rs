@@ -319,6 +319,18 @@ impl ImportTables {
     }
 }
 
+// How many fetches and entries the gallery keeps for the release `:release`.
+#[cfg(test)]
+coven::read!(
+    writer ReleaseGalleryRows(release: String) { fetches: i64, entries: i64 },
+    r#"
+    SELECT (SELECT COUNT(*) FROM release_cover_fetch AS fetched
+            WHERE fetched.release_id = :release) AS fetches,
+        (SELECT COUNT(*) FROM release_cover_entry AS entry
+         WHERE entry.release_id = :release) AS entries
+"#
+);
+
 #[cfg(test)]
 #[path = "cover_gallery_tests.rs"]
 mod tests;

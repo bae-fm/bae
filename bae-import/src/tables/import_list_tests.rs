@@ -3,6 +3,7 @@
 //! take them, and the list read the way a surface reads it; and candidates
 //! scanned and looked up through the import tables' own writes.
 
+use super::import_list::test_reads;
 use super::*;
 use crate::folder_scanner::{FolderCandidate, ScanItem};
 use crate::list::ImportListRead;
@@ -16,7 +17,8 @@ use crate::{
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_identify::TerminalVerdict;
-use bae_store::test_fixtures::{empty_db, exec_batch};
+use bae_store::test_fixtures::empty_db;
+use bae_store::WriteStatements as _;
 
 #[path = "import_list_tests/preparations.rs"]
 mod preparations;
@@ -227,10 +229,12 @@ impl Library {
     pub(crate) async fn counted(&self) {
         assert_eq!(
             self.stored_counts().await,
-            self.count_rows(
-                "SELECT tab, item, pending_entry, COUNT(*) FROM import_list_placement \
-                 GROUP BY tab, item, pending_entry ORDER BY tab, item, pending_entry",
-            )
+            self.read_rows(|sql| {
+                Ok(bae_store::statement_rows(sql, &test_reads::PlacedCountsParams {})?
+                    .into_iter()
+                    .map(|row| (row.tab, row.item, row.pending_entry, row.held))
+                    .collect::<Vec<CountRow>>())
+            })
             .await,
             "the counts kept beside the placement"
         );
@@ -244,114 +248,89 @@ impl Library {
     /// Each group's members in each filter entry, as a COUNT over the
     /// placement says, in the order of [`Library::stored_group_counts`].
     pub(crate) async fn placed_group_counts(&self) -> Vec<GroupCountRow> {
-        self.count_rows(
-            "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
-                    pending_entry, COUNT(*) \
-             FROM import_list_placement WHERE item <> 'group' AND group_folder IS NOT NULL \
-             GROUP BY watched_folder_path, group_folder, pending_entry ORDER BY 1, 2, 3",
-        )
+        self.read_rows(|sql| {
+            Ok(bae_store::statement_rows(sql, &test_reads::PlacedGroupCountsParams {})?
+                .into_iter()
+                .map(|row| {
+                    let entry = row.pending_entry.expect("a group's member is in a filter entry");
+                    (row.watched, row.group_text, entry, row.held)
+                })
+                .collect())
+        })
         .await
     }
 
     /// The group counts kept beside the placement as they stand, in order.
     pub(crate) async fn stored_group_counts(&self) -> Vec<GroupCountRow> {
-        self.count_rows(
-            "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
-                    pending_entry, count \
-             FROM import_list_group_count ORDER BY 1, 2, 3",
-        )
+        self.read_rows(|sql| {
+            Ok(bae_store::statement_rows(sql, &test_reads::StoredGroupCountsParams {})?
+                .into_iter()
+                .map(|row| (row.watched, row.group_text, row.pending_entry, row.count))
+                .collect())
+        })
         .await
     }
 
     /// The counts kept beside the placement as they stand, in order.
     pub(crate) async fn stored_counts(&self) -> Vec<CountRow> {
-        self.count_rows(
-            "SELECT tab, item, pending_entry, count FROM import_list_count \
-             ORDER BY tab, item, pending_entry",
-        )
+        self.read_rows(|sql| {
+            Ok(bae_store::statement_rows(sql, &test_reads::StoredCountsParams {})?
+                .into_iter()
+                .map(|row| (row.tab, row.item, row.pending_entry, row.count))
+                .collect())
+        })
         .await
     }
 
-    /// The rows `statement` selects, each three columns that say what it
-    /// counts (a tab, an item and a filter entry; or a watched folder, a
-    /// group and a filter entry) and a count.
-    async fn count_rows<A, B, C>(&self, statement: &'static str) -> Vec<(A, B, C, i64)>
-    where
-        A: rusqlite::types::FromSql + Send + 'static,
-        B: rusqlite::types::FromSql + Send + 'static,
-        C: rusqlite::types::FromSql + Send + 'static,
-    {
-        self.db
-            .read(move |sql| {
-                Ok(sql.query(statement, [], |row| {
-                    Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-                })?)
-            })
-            .await
-            .unwrap()
+    /// What `read` reads of the library.
+    async fn read_rows<T: Send + 'static>(
+        &self,
+        read: impl FnOnce(&coven::SqlReadContext<'_>) -> Result<T, DbError> + Send + 'static,
+    ) -> T {
+        self.db.read(move |sql| read(&sql)).await.unwrap()
     }
 
     /// Check the search index holds each release's folded shown text under
     /// its placement row's number, and nothing else; and that every header
     /// says whether its folder is offered to be read as one release.
     pub(crate) async fn searchable(&self) {
-        let (indexed, placed) = self
-            .db
-            .read(|sql| {
-                let rows = |statement: &str| {
-                    sql.query(statement, [], |row| {
-                        Ok((
-                            row.get::<_, i64>(0)?,
-                            row.get::<_, Option<String>>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                        ))
-                    })
-                };
+        let (indexed, placed): (Vec<_>, Vec<_>) = self
+            .read_rows(|sql| {
                 Ok((
-                    rows("SELECT rowid, title, artists FROM import_list_search ORDER BY rowid")?,
-                    rows(
-                        "SELECT entry, filter_title, filter_artists FROM import_list_placement \
-                         WHERE item <> 'group' ORDER BY entry",
-                    )?,
+                    bae_store::statement_rows(sql, &test_reads::IndexedTextParams {})?
+                        .into_iter()
+                        .map(|row| (row.entry, row.title, row.artists))
+                        .collect(),
+                    bae_store::statement_rows(sql, &test_reads::PlacedTextParams {})?
+                        .into_iter()
+                        .map(|row| (row.entry, row.filter_title, row.filter_artists))
+                        .collect(),
                 ))
             })
-            .await
-            .unwrap();
+            .await;
         assert_eq!(indexed, placed, "the search index");
-        let unjudged = self
-            .db
-            .read(|sql| {
-                Ok(sql.query(
-                    "SELECT coven_path_text(key) FROM import_list_placement \
-                     WHERE item = 'group' AND combinable IS NULL",
-                    [],
-                    |row| row.get::<_, String>(0),
-                )?)
+        let unjudged: Vec<String> = self
+            .read_rows(|sql| {
+                Ok(bae_store::statement_rows(sql, &test_reads::UnjudgedHeadersParams {})?
+                    .into_iter()
+                    .map(|row| row.folder)
+                    .collect())
             })
-            .await
-            .unwrap();
+            .await;
         assert!(unjudged.is_empty(), "headers saying nothing of combining: {unjudged:?}");
-        let misplaced = self
-            .db
-            .read(|sql| {
-                Ok(sql.query(
-                    "SELECT coven_path_text(p.key) FROM import_list_placement AS p \
-                     WHERE p.unit_entry IS NOT COALESCE(( \
-                         SELECT header.entry FROM import_list_placement AS header \
-                         WHERE header.watched_folder_path = p.watched_folder_path \
-                           AND header.item = 'group' AND header.key = p.group_folder), p.entry)",
-                    [],
-                    |row| row.get::<_, String>(0),
-                )?)
+        let misplaced: Vec<String> = self
+            .read_rows(|sql| {
+                Ok(bae_store::statement_rows(sql, &test_reads::MisplacedRowsParams {})?
+                    .into_iter()
+                    .map(|row| row.folder)
+                    .collect())
             })
-            .await
-            .unwrap();
+            .await;
         assert!(misplaced.is_empty(), "rows not sorting under their group: {misplaced:?}");
-        exec_batch(
-            &self.db,
-            "INSERT INTO import_list_search (import_list_search, rank) VALUES ('integrity-check', 1);",
-        )
-        .await;
+        self.db
+            .write(|sql| Ok::<_, DbError>(sql.run(&test_reads::CheckSearchIndexParams {})?))
+            .await
+            .expect("the search index agrees with its own records");
     }
 
     /// One read of `list` through one window over every item, with nothing
@@ -746,16 +725,4 @@ pub(crate) async fn scan_finished(
     tables.save_folder_scan_item(std::path::Path::new(root), generation, &item).await.unwrap();
     tables.finish_folder_scan(std::path::Path::new(root), generation, None).await.unwrap();
     candidate
-}
-
-/// SQLite's plan for the compiled statement `statement`, one line per step.
-pub(crate) fn plan_of<S: coven::Statement>(
-    sql: &impl bae_store::WriterRead,
-    statement: &S,
-) -> Result<Vec<String>, bae_store::DbError> {
-    Ok(sql.query(
-        &format!("EXPLAIN QUERY PLAN {}", S::SQL),
-        statement.params().as_slice(),
-        |row| row.get::<_, String>(3),
-    )?)
 }

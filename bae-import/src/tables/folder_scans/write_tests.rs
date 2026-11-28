@@ -10,18 +10,10 @@ const KEPT_ACROSS_REWRITE: [&str; 1] = ["import_picture_copy"];
 /// foreign key are exactly those two lists.
 #[test]
 fn an_entry_written_again_clears_every_table_below_its_row() {
-    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::TEST_SCHEMA.open_bare_library(&conn);
-    let mut referencing: Vec<String> = conn
-        .prepare(
-            "SELECT DISTINCT m.name FROM sqlite_schema AS m, pragma_foreign_key_list(m.name) AS f \
-             WHERE m.type = 'table' AND f.\"table\" = 'scan_candidate'",
-        )
-        .unwrap()
-        .query_map([], |row| row.get(0))
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let mut referencing = bae_store::test_fixtures::schema_checks::tables_referencing(
+        crate::TEST_SCHEMA,
+        "scan_candidate",
+    );
     referencing.sort();
     let mut cleared: Vec<String> = super::ENTRY_ROW_CLEARS
         .iter()

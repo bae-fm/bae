@@ -87,19 +87,12 @@ async fn a_window_counts_its_headers_from_the_group_counts() {
                 .into_iter()
                 .map(|view| {
                     let request = ImportListRequest::of(view.clone());
-                    let statement = WindowStatement::of(&request, &ListWindow::top(50))?;
-                    let (statement, params) = statement.parts();
-                    let plan = sql.query(
-                        &format!("EXPLAIN QUERY PLAN {statement}"),
-                        params.as_slice(),
-                        |row| {
-                            Ok((
-                                row.get::<_, i64>(0)?,
-                                row.get::<_, i64>(1)?,
-                                row.get::<_, String>(3)?,
-                            ))
-                        },
-                    )?;
+                    let plan: Vec<(i64, i64, String)> =
+                        WindowStatement::of(&request, &ListWindow::top(50))?
+                            .plan(&sql)?
+                            .into_iter()
+                            .map(|step| (step.id, step.parent, step.detail))
+                            .collect();
                     Ok((view, plan))
                 })
                 .collect::<Result<Vec<_>, DbError>>()

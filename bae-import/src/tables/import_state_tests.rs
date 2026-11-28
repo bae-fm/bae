@@ -430,14 +430,13 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
         loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict.clone();
     let listings = db
         .read(move |sql| {
-            sql.query(
-                "SELECT release_id || ' ' || listing FROM import_candidate_match \
-                 WHERE verdict_id = (SELECT verdict_id FROM import_candidate_verdict \
-                                     WHERE content_hash = ?) ORDER BY position",
-                [hash],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(bae_store::DbError::from)
+            Ok(bae_store::statement_rows(
+                &sql,
+                &super::import_state::test_reads::VerdictMatchesParams { content_hash: hash },
+            )?
+            .into_iter()
+            .map(|found| format!("{} {}", found.release_id, found.listing))
+            .collect())
         })
         .await
         .unwrap();

@@ -5,12 +5,12 @@
 use super::*;
 use crate::list::ImportListRead;
 use crate::tables::import_list::summary;
-use crate::tables::import_list::tests::plan_of;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
 use crate::ImportListView;
 use crate::{FolderReleaseDecisionKey, ImportListFolds};
 use bae_catalogs::search::MetadataResult;
+use bae_store::test_fixtures::query_plan::plan_of;
 
 impl Library {
     /// The scan's releases at `display_paths`, each its folder's date.
@@ -637,7 +637,7 @@ impl ImportTables {
         list: ImportListRequest,
         key: crate::CandidateKey,
     ) -> Result<Vec<String>, DbError> {
-        self.store.read(move |sql| plan_of(&sql, &summary::reveal_params(&list, &key))).await
+        self.store.read(move |sql| Ok(plan_of(&sql, &summary::reveal_params(&list, &key))?)).await
     }
 
     /// The plans `list`'s windows are read by, from its top and by each seek
@@ -657,7 +657,7 @@ impl ImportTables {
     ) -> Result<Vec<String>, DbError> {
         self.store
             .read(move |sql| match summary::CountStatement::of(&list) {
-                summary::CountStatement::Search(statement) => plan_of(&sql, &statement),
+                summary::CountStatement::Search(statement) => Ok(plan_of(&sql, &statement)?),
                 summary::CountStatement::Kept(_) => panic!("the list searches"),
             })
             .await

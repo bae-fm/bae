@@ -346,10 +346,7 @@ fn a_cloud_release_from_another_device_reads_its_rip_log() {
             .unwrap();
         insert_two_tracks(&records, &release_id).await;
         devices
-            .converge(
-                "SELECT f.id, f.file, hex(c.hash), c.coordinates FROM release_files AS f \
-                 LEFT JOIN coven_files AS c ON c.id = f.file",
-            )
+            .converge_rows(|| crate::test_fixtures::library_rows::ReleaseFilesStoredParams {})
             .await;
         let files = bae_records::test_fixtures::test_records(devices.b())
             .get_files_for_release(&release_id)

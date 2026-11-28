@@ -258,8 +258,8 @@ async fn an_import_whose_claim_cannot_be_written_fails_and_claims_nothing() {
 }
 
 /// Every release in the library.
-async fn release_count(handle: &ImportServiceHandle) -> usize {
-    bae_store::test_fixtures::row_count(&handle.services.store, "releases").await
+async fn release_count(handle: &ImportServiceHandle) -> i64 {
+    crate::test_fixtures::library_rows::library_counts(&handle.services.store).await.releases
 }
 
 #[tokio::test(flavor = "multi_thread")]

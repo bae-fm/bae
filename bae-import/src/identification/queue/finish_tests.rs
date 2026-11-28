@@ -118,15 +118,7 @@ async fn an_import_whose_full_read_of_its_release_fails_fails() {
     let (_, failure) = await_import_ending(&mut events, &key).await;
     assert!(failure.is_some(), "the import fails: {:?}", fixture.provider.requests());
     assert_eq!(fixture.count_release_lookups("mb-full"), 1, "{:?}", fixture.provider.requests());
-    assert_eq!(
-        fixture
-            .db
-            .query_texts_for_test("SELECT catalog || ' ' || key FROM release_records")
-            .await
-            .unwrap(),
-        Vec::<String>::new(),
-        "nothing was written"
-    );
+    assert_eq!(release_records(&fixture.db).await, Vec::<String>::new(), "nothing was written");
 }
 
 /// An unattended pick drafts from its run's read, and the import commits the
@@ -159,13 +151,7 @@ async fn an_import_commits_the_records_its_full_read_of_its_release_adds() {
     let (_, failure) = await_import_ending(&mut events, &key).await;
     assert_eq!(failure, None, "the import completes: {:?}", fixture.provider.requests());
     assert_eq!(
-        fixture
-            .db
-            .query_texts_for_test(
-                "SELECT catalog || ' ' || key FROM release_records ORDER BY catalog"
-            )
-            .await
-            .unwrap(),
+        release_records(&fixture.db).await,
         vec!["discogs 4242".to_string(), "musicbrainz mb-full".to_string()],
     );
 }
@@ -307,11 +293,7 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
         "the import's write deletes the verdict it imported the pick of"
     );
     assert_eq!(
-        fixture
-            .db
-            .query_texts_for_test("SELECT catalog || ' ' || key FROM release_records")
-            .await
-            .unwrap(),
+        release_records(&fixture.db).await,
         vec!["musicbrainz mb-pane".to_string()],
         "what imported is the pick's draft, read from the picked release"
     );
@@ -473,4 +455,19 @@ async fn an_unreadable_import_setting_is_the_candidates_failed_import() {
         .await
         .unwrap();
     assert!(pane.failure.is_some(), "the refused start is recorded");
+}
+
+/// Each catalog record of every release, as its catalog and key.
+async fn release_records(db: &bae_store::Store) -> Vec<String> {
+    db.read(|sql| {
+        Ok(bae_store::statement_rows(
+            &sql,
+            &crate::test_fixtures::library_rows::EveryReleaseRecordParams {},
+        )?
+        .into_iter()
+        .map(|row| row.record)
+        .collect())
+    })
+    .await
+    .unwrap()
 }

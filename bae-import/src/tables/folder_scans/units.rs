@@ -202,11 +202,8 @@ impl crate::tables::ImportTables {
         let content_hash = content_hash.to_owned();
         self.store
             .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT blank_cover_file FROM scan_candidate WHERE content_hash = ?",
-                    [content_hash],
-                    |row| row.get(0),
-                )?)
+                let cover = super::test_reads::BlankCoverParams { content_hash };
+                Ok(bae_store::statement_row(&sql, &cover)?.blank_cover_file)
             })
             .await
             .unwrap()
@@ -218,27 +215,20 @@ impl crate::tables::ImportTables {
         let content_hash = content_hash.to_owned();
         self.store
             .read(move |sql| {
-                sql.query(
-                    "SELECT u.file_id, u.sheet_id, u.slice_index, u.duration_ms, u.start_sample, \
-                            u.end_sample, u.disc, u.number \
-                     FROM scan_candidate AS c JOIN scan_candidate_unit AS u \
-                         ON (u.watched_folder_path, u.candidate_path) = (c.watched_folder_path, c.path) \
-                     WHERE c.content_hash = ? ORDER BY u.position",
-                    [content_hash],
-                    |row| {
-                        Ok(StoredUnit {
-                            file_id: row.get(0)?,
-                            sheet_id: row.get(1)?,
-                            slice_index: row.get(2)?,
-                            duration_ms: row.get(3)?,
-                            start_sample: row.get(4)?,
-                            end_sample: row.get(5)?,
-                            disc: row.get(6)?,
-                            number: row.get(7)?,
-                        })
-                    },
-                )
-                .map_err(Into::into)
+                let units = super::test_reads::StoredCandidateUnitsParams { content_hash };
+                Ok(bae_store::statement_rows(&sql, &units)?
+                    .into_iter()
+                    .map(|unit| StoredUnit {
+                        file_id: unit.file_id,
+                        sheet_id: unit.sheet_id,
+                        slice_index: unit.slice_index,
+                        duration_ms: unit.duration_ms,
+                        start_sample: unit.start_sample,
+                        end_sample: unit.end_sample,
+                        disc: unit.disc,
+                        number: unit.number,
+                    })
+                    .collect::<Vec<_>>())
             })
             .await
             .unwrap()

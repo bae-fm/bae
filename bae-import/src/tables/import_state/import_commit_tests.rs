@@ -400,50 +400,42 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     )
     .await;
 
-    assert_eq!(
-        db.query_texts_for_test(&format!(
-            "SELECT work_id FROM work_artists WHERE artist_id = '{}'",
-            composer.id
-        ))
-        .await
-        .unwrap(),
-        [WORK_A],
-        "the work is the composer's"
-    );
-    let release_role_count = db
-        .read(|conn| {
-            conn.query_row(
-                "SELECT COUNT(*) FROM release_artist_roles WHERE id = '9b72bbbf-621e-41ca-8930-1623b643a20d'",
-                [],
-                |row| row.get::<_, i64>(0),
-            )
-            .map_err(DbError::from)
+    use crate::test_fixtures::library_rows::{
+        ReleaseRoleCountParams, TrackRoleCountParams, TracksPerformingParams, WorkComposersParams,
+    };
+    let composer_name = composer.name.clone();
+    let (composers, release_roles, performing, track_roles) = db
+        .read(|sql| {
+            let composers =
+                bae_store::statement_row(&sql, &WorkComposersParams { work: WORK_A.to_string() })?
+                    .composers;
+            let release_roles = bae_store::statement_row(
+                &sql,
+                &ReleaseRoleCountParams {
+                    role: "9b72bbbf-621e-41ca-8930-1623b643a20d".to_string(),
+                },
+            )?
+            .held;
+            let performing: Vec<String> = bae_store::statement_rows(
+                &sql,
+                &TracksPerformingParams { work: WORK_A.to_string() },
+            )?
+            .into_iter()
+            .map(|row| row.track_id)
+            .collect();
+            let track_roles = bae_store::statement_row(
+                &sql,
+                &TrackRoleCountParams { role: "fa0c8483-f09a-4b69-8903-b1ebcdc31322".to_string() },
+            )?
+            .held;
+            Ok((composers, release_roles, performing, track_roles))
         })
         .await
         .unwrap();
-    assert_eq!(release_role_count, 1);
-
-    assert_eq!(
-        db.query_texts_for_test(&format!(
-            "SELECT track_id FROM track_works WHERE work_id = '{WORK_A}'"
-        ))
-        .await
-        .unwrap(),
-        [TRACK_A],
-        "the track performs the work"
-    );
-    let track_role_count = db
-        .read(|conn| {
-            conn.query_row(
-                "SELECT COUNT(*) FROM track_artist_roles WHERE id = 'fa0c8483-f09a-4b69-8903-b1ebcdc31322'",
-                [],
-                |row| row.get::<_, i64>(0),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-    .unwrap();
-    assert_eq!(track_role_count, 1);
+    assert_eq!(composers, Some(composer_name), "the work is the composer's");
+    assert_eq!(release_roles, 1);
+    assert_eq!(performing, [TRACK_A], "the track performs the work");
+    assert_eq!(track_roles, 1);
 }
 
 /// An import reads as importing from its start until the write of its
@@ -607,18 +599,21 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
             (artist.discogs_artist_id.clone(), artist.musicbrainz_artist_id.clone())
         );
     }
-    let placed: Vec<(Option<String>, Option<String>)> = db
-        .read(|sql| {
-            Ok(sql.query(
-                "SELECT l.discogs_label_id, r.label_id FROM release_labels r \
-                 JOIN labels l ON l.id = r.label_id WHERE r.release_id = ? ORDER BY r.position",
-                [RELEASE_A],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?)
-        })
+    let placed: Vec<Option<String>> = records
+        .get_releases_for_album(&album.id)
         .await
-        .unwrap();
-    assert_eq!(placed, [(None, Some(label_by_musicbrainz))]);
+        .unwrap()
+        .into_iter()
+        .flat_map(|release| release.pressing.typed.labels)
+        .map(|label| label.name().map(str::to_string))
+        .collect();
+    assert_eq!(
+        placed,
+        [Some("Other Label Name".to_string())],
+        "the label is the one by MusicBrainz"
+    );
+    let stored = bae_records::test_fixtures::labels::stored_label(&db, &label_by_musicbrainz).await;
+    assert_eq!(stored.discogs_label_id, None);
 }
 
 /// Put an album titled `title` of one release and one track in the library

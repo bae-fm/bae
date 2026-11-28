@@ -84,8 +84,8 @@ async fn assert_imports_again(handle: &ImportServiceHandle, key: &crate::Candida
         .unwrap_or_else(|error| panic!("the import after the cancel failed: {error}"));
 }
 
-async fn album_count(handle: &ImportServiceHandle) -> usize {
-    bae_store::test_fixtures::row_count(&handle.services.store, "albums").await
+async fn album_count(handle: &ImportServiceHandle) -> i64 {
+    crate::test_fixtures::library_rows::library_counts(&handle.services.store).await.albums
 }
 
 #[tokio::test(flavor = "multi_thread")]

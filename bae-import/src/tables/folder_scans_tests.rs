@@ -24,23 +24,19 @@ impl ImportTables {
 fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
-    let roots = sql.query(
-        "SELECT watched_folder_path, generation, status, detail, \
-                unwatched_directory, unwatched_cause \
-         FROM folder_scan_roots \
-         ORDER BY watched_folder_path",
-        [],
-        |row| {
+    let roots: Vec<_> = bae_store::statement_rows(sql, &test_reads::EveryRootParams {})?
+        .into_iter()
+        .map(|root| {
             Ok((
-                path_column::get(row, 0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<Vec<u8>>>(4)?,
-                row.get::<_, Option<String>>(5)?,
+                path_column::decode(root.watched_folder_path)?,
+                root.generation,
+                root.status,
+                root.detail,
+                root.unwatched_directory,
+                root.unwatched_cause,
             ))
-        },
-    )?;
+        })
+        .collect::<Result<_, DbError>>()?;
 
     let mut snapshots = Vec::with_capacity(roots.len());
     for (watched_folder_path, generation, status, detail, directory, cause) in roots {

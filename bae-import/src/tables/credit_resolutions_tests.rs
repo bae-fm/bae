@@ -84,44 +84,29 @@ fn resolution_of(mut artists: Vec<ExistingArtist>) -> CreditResolution {
 /// credit none holds has one, and that none is left due.
 async fn stored_answers(db: &Store) -> Answers {
     db.read(|sql| {
-        let held = sql.query(
-            "SELECT MIN(name), musicbrainz_artist_id, discogs_artist_id FROM ( \
-                 SELECT name, musicbrainz_artist_id, discogs_artist_id \
-                 FROM import_candidate_album_artist_assignment WHERE assignment_kind = 'credit' \
-                 UNION ALL SELECT name, musicbrainz_artist_id, discogs_artist_id \
-                 FROM import_candidate_track_artist_assignment WHERE assignment_kind = 'credit') \
-             GROUP BY bae_artist_name_key(name), musicbrainz_artist_id, discogs_artist_id",
-            [],
-            |row| {
-                let (name, musicbrainz, discogs): (String, Option<String>, Option<String>) =
-                    (row.get(0)?, row.get(1)?, row.get(2)?);
-                Ok(credit(&name, discogs.as_deref(), musicbrainz.as_deref()))
-            },
-        )?;
-        let stored = sql.query(
-            "SELECT name_key, musicbrainz_artist_id, discogs_artist_id, \
-                    (SELECT json_group_array(json_object( \
-                         'artist_id', a.artist_id, 'name', a.name, 'sort_name', a.sort_name, \
-                         'musicbrainz_artist_id', a.musicbrainz_artist_id, \
-                         'discogs_artist_id', a.discogs_artist_id) ORDER BY a.position) \
-                     FROM import_credit_resolution_artist AS a WHERE a.resolution = r.id) \
-             FROM import_credit_resolution AS r",
-            [],
-            |row| {
+        let held: Vec<_> = bae_store::statement_rows(&sql, &super::HeldCreditNamesParams {})?
+            .into_iter()
+            .map(|held| {
+                credit(
+                    &held.name,
+                    held.discogs_artist_id.as_deref(),
+                    held.musicbrainz_artist_id.as_deref(),
+                )
+            })
+            .collect();
+        let stored: Vec<_> = bae_store::statement_rows(&sql, &super::EveryCreditAnswerParams {})?
+            .into_iter()
+            .map(|answer| {
                 let key = CreditKey {
-                    name_key: row.get(0)?,
-                    musicbrainz_artist_id: row.get(1)?,
-                    discogs_artist_id: row.get(2)?,
+                    name_key: answer.name_key,
+                    musicbrainz_artist_id: answer.musicbrainz_artist_id,
+                    discogs_artist_id: answer.discogs_artist_id,
                 };
-                let artists: Vec<ExistingArtist> =
-                    serde_json::from_str(&row.get::<_, String>(3)?).unwrap();
-                Ok((key, resolution_of(artists)))
-            },
-        )?;
-        let due: i64 =
-            sql.query_row("SELECT COUNT(*) FROM import_credit_resolution_due", [], |row| {
-                row.get(0)
-            })?;
+                let artists: Vec<ExistingArtist> = serde_json::from_str(&answer.artists).unwrap();
+                (key, resolution_of(artists))
+            })
+            .collect();
+        let due = bae_store::statement_row(&sql, &super::DueCreditCountParams {})?.waiting;
         assert_eq!(due, 0, "no credit is left due after a commit");
         assert_eq!(stored.len(), held.len(), "one answer per credit held: {stored:?}");
         let mut answers = Vec::new();

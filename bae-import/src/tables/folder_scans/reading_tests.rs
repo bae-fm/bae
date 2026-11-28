@@ -35,9 +35,14 @@ async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
 
     let folder = |name: &str| coven::path_text(&root.join(name));
     assert_eq!(
-        db.query_texts_for_test("SELECT coven_path_text(folder) FROM scan_sidecar ORDER BY folder")
-            .await
-            .unwrap(),
+        db.read(|sql| {
+            Ok(bae_store::statement_rows(&sql, &super::super::test_reads::SidecarFoldersParams {})?
+                .into_iter()
+                .map(|row| row.folder)
+                .collect::<Vec<_>>())
+        })
+        .await
+        .unwrap(),
         [folder("Album 2"), folder("Album0")]
     );
 }
@@ -45,11 +50,8 @@ async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
 async fn row_generation(db: &Store, root: &std::path::Path, name: &str) -> i64 {
     let path = key_of(root, name);
     db.read(move |sql| {
-        Ok(sql.query_row(
-            "SELECT generation FROM scan_candidate WHERE path = ?",
-            [path],
-            |row| row.get::<_, i64>(0),
-        )?)
+        let entry = super::super::test_reads::EntryGenerationParams { path };
+        Ok(bae_store::statement_row(&sql, &entry)?.generation)
     })
     .await
     .unwrap()

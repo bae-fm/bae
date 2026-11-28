@@ -48,6 +48,8 @@ mod read;
 mod search;
 mod selection;
 pub mod summary;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) mod test_reads;
 mod window;
 
 use super::*;

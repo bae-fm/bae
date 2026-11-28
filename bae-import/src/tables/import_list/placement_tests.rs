@@ -166,39 +166,34 @@ impl Library {
     pub(crate) async fn placed(&self) -> BTreeMap<Item, Placed> {
         self.db
             .read(|sql| {
-                let rows = sql.query(
-                    "SELECT coven_path_text(watched_folder_path), item, coven_path_text(key),
-                            root_position, tab, pending_state,
-                            needs_you_reason, group_name, own_date,
-                            CASE item WHEN 'group' THEN group_date ELSE own_date END,
-                            iif(folder IS NULL, NULL, path_text),
-                            shown_title, shown_artists
-                     FROM import_list_placement",
-                    [],
-                    |row| {
-                        let item = match row.get::<_, String>(1)?.as_str() {
-                            "candidate" => "candidate",
-                            "invalid" => "invalid",
-                            "group" => "group",
-                            other => panic!("placement row of unknown item {other}"),
-                        };
-                        Ok((
-                            (row.get::<_, String>(0)?, item, row.get::<_, String>(2)?),
-                            Placed {
-                                root_position: row.get(3)?,
-                                tab: row.get(4)?,
-                                pending_state: row.get(5)?,
-                                needs_you_reason: row.get(6)?,
-                                group_name: row.get(7)?,
-                                own_date: row.get(8)?,
-                                unit_date: row.get(9)?,
-                                display_path: row.get(10)?,
-                                shown_title: row.get(11)?,
-                                shown_artists: row.get(12)?,
-                            },
-                        ))
-                    },
-                )?;
+                let rows = bae_store::statement_rows(
+                    &sql,
+                    &crate::tables::import_list::test_reads::EveryPlacementParams {},
+                )?
+                .into_iter()
+                .map(|row| {
+                    let item = match row.item.as_str() {
+                        "candidate" => "candidate",
+                        "invalid" => "invalid",
+                        "group" => "group",
+                        other => panic!("placement row of unknown item {other}"),
+                    };
+                    (
+                        (row.watched, item, row.key_text),
+                        Placed {
+                            root_position: row.root_position,
+                            tab: row.tab,
+                            pending_state: row.pending_state,
+                            needs_you_reason: row.needs_you_reason,
+                            group_name: row.group_name,
+                            own_date: row.own_date,
+                            unit_date: row.unit_date,
+                            display_path: row.display_path,
+                            shown_title: row.shown_title,
+                            shown_artists: row.shown_artists,
+                        },
+                    )
+                });
                 Ok(rows.into_iter().collect())
             })
             .await

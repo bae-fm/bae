@@ -37,10 +37,6 @@ use bae_records::UploadProgress;
 use bae_store::list_windows::{OrderKey, WindowRead};
 use bae_store::ListWindow;
 use bae_types::credits::CreditLine;
-#[cfg(test)]
-use coven::Statement as _;
-#[cfg(test)]
-use rusqlite::ToSql;
 
 /// The columns of a window, before they are shaped into the rows the list shows.
 pub(super) type WindowRows = WindowRead<StoredItem>;
@@ -255,18 +251,22 @@ impl WindowStatement {
         })
     }
 
-    /// The statement's SQL and the values it binds.
+    /// The steps of the plan SQLite reads the statement by on `sql`.
     #[cfg(test)]
-    pub(super) fn parts(&self) -> (&'static str, Vec<(&'static str, &dyn ToSql)>) {
+    pub(super) fn plan(
+        &self,
+        sql: &impl bae_store::WriterRead,
+    ) -> rusqlite::Result<Vec<bae_store::test_fixtures::query_plan::PlanStep>> {
+        use bae_store::test_fixtures::query_plan::plan_steps_of;
         match self {
-            Self::NewestFirstTop(params) => (NewestFirstTop::SQL, params.params()),
-            Self::OldestFirstTop(params) => (OldestFirstTop::SQL, params.params()),
-            Self::PathAscendingTop(params) => (PathAscendingTop::SQL, params.params()),
-            Self::PathDescendingTop(params) => (PathDescendingTop::SQL, params.params()),
-            Self::NewestFirst(params) => (NewestFirstWindow::SQL, params.params()),
-            Self::OldestFirst(params) => (OldestFirstWindow::SQL, params.params()),
-            Self::PathAscending(params) => (PathAscendingWindow::SQL, params.params()),
-            Self::PathDescending(params) => (PathDescendingWindow::SQL, params.params()),
+            Self::NewestFirstTop(params) => plan_steps_of(sql, params),
+            Self::OldestFirstTop(params) => plan_steps_of(sql, params),
+            Self::PathAscendingTop(params) => plan_steps_of(sql, params),
+            Self::PathDescendingTop(params) => plan_steps_of(sql, params),
+            Self::NewestFirst(params) => plan_steps_of(sql, params),
+            Self::OldestFirst(params) => plan_steps_of(sql, params),
+            Self::PathAscending(params) => plan_steps_of(sql, params),
+            Self::PathDescending(params) => plan_steps_of(sql, params),
         }
     }
 
@@ -362,11 +362,8 @@ pub(super) fn window_plans(
     windows
         .iter()
         .map(|window| {
-            let statement = WindowStatement::of(request, window)?;
-            let (statement, params) = statement.parts();
-            Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params.as_slice(), |row| {
-                row.get::<_, String>(3)
-            })?)
+            let plan = WindowStatement::of(request, window)?.plan(sql)?;
+            Ok(plan.into_iter().map(|step| step.detail).collect())
         })
         .collect()
 }

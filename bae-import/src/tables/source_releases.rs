@@ -369,6 +369,23 @@ coven::read!(
 "#
 );
 
+// Whether the release `release_id` of `catalog` is stored, and how many
+// barcodes are stored under it.
+#[cfg(test)]
+coven::read!(
+    writer StoredReleaseRows(catalog: String, release_id: String) {
+        stored: bool,
+        barcodes: i64
+    },
+    r#"
+    SELECT EXISTS (SELECT 1 FROM source_release AS release
+                   WHERE release.catalog = :catalog AND release.release_id = :release_id)
+            AS stored,
+        (SELECT COUNT(*) FROM source_release_barcode AS barcode
+         WHERE barcode.catalog = :catalog AND barcode.release_id = :release_id) AS barcodes
+"#
+);
+
 // The documents the stored release `release_id` of `catalog` lists as
 // unfetched.
 coven::read!(
@@ -481,14 +498,14 @@ impl ImportTables {
             .call(move |sql| {
                 let catalog = release.release.catalog.as_str();
                 let key = release.release.key.as_str();
-                let claimed = sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM import_candidate_release_link \
-                                    WHERE source = ?1 AND release_id = ?2) \
-                         OR EXISTS (SELECT 1 FROM import_candidate_release_link_partner \
-                                    WHERE source = ?1 AND release_id = ?2)",
-                    params![catalog, key],
-                    |row| row.get::<_, bool>(0),
-                )?;
+                let claimed = bae_store::statement_row(
+                    sql,
+                    &super::import_state::test_reads::ClaimedByLinkParams {
+                        source: catalog.to_string(),
+                        release_id: key.to_string(),
+                    },
+                )?
+                .claimed;
                 assert!(!claimed, "{:?} is claimed by a link", release.release);
                 replace_source_release_on(sql, &release)
             })

@@ -231,17 +231,13 @@ async fn assert_batch(db: &Store, expected: (u32, u32), after: &str) {
     assert_eq!((ended, admitted), expected, "the count after {after}");
     let (full, in_flight) = db
         .read(|sql| {
-            let full = sql.query_row(
-                "SELECT COALESCE(SUM(ended), 0), COUNT(*) FROM import_identification_batch",
-                [],
-                |row| Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?)),
-            )?;
-            let in_flight = sql.query_row(
-                "SELECT COUNT(*) FROM import_candidate_standing \
-                 WHERE identification IN ('queued', 'running', 'finalizing', 'reading_pick')",
-                [],
-                |row| row.get::<_, u32>(0),
-            )?;
+            let totals = bae_store::statement_row(&sql, &super::test_reads::BatchTotalsParams {})?;
+            let full = (totals.ended, totals.batches);
+            let in_flight = bae_store::statement_row(
+                &sql,
+                &super::test_reads::IdentificationsInFlightParams {},
+            )?
+            .held;
             Ok::<_, DbError>((full, in_flight))
         })
         .await
@@ -390,10 +386,10 @@ async fn the_count_reads_one_row_by_its_key() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
-            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::ImportCountsRead::SQL), [], |row| {
-                row.get::<_, String>(3)
-            })
-            .map_err(DbError::from)
+            Ok(bae_store::test_fixtures::query_plan::plan_of(
+                &sql,
+                &super::ImportCountsReadParams {},
+            )?)
         })
         .await
         .unwrap();
@@ -608,7 +604,15 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
 
     assert!(searched(db.clone()).await.is_none());
     assert_eq!(
-        db.count_rows_for_test("import_candidate_match", "source", "discogs").await.unwrap(),
+        db.read(|sql| {
+            Ok(bae_store::statement_row(
+                &sql,
+                &super::test_reads::MatchesFromParams { source: "discogs".to_string() },
+            )?
+            .held)
+        })
+        .await
+        .unwrap(),
         0,
         "the releases it held went with it"
     );

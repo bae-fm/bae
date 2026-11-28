@@ -77,6 +77,8 @@ mod signal_rows;
 mod standing_rows;
 pub(crate) mod state_fragments;
 mod stored_verdict_read;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) mod test_reads;
 mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;

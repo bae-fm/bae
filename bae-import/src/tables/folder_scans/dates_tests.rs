@@ -14,13 +14,10 @@ use std::sync::Arc;
 
 async fn dates(db: &Store) -> Vec<(String, i64, Option<i64>, Option<String>)> {
     db.read(|sql| {
-        Ok(sql.query(
-            "SELECT c.name, d.first_seen_at, d.source_date, d.source_date_kind \
-         FROM scan_candidate AS c JOIN folder_discovery AS d ON d.folder = c.folder \
-         ORDER BY c.name",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )?)
+        Ok(bae_store::statement_rows(&sql, &super::super::test_reads::CandidateDatesParams {})?
+            .into_iter()
+            .map(|row| (row.name, row.first_seen_at, row.source_date, row.source_date_kind))
+            .collect())
     })
     .await
     .unwrap()
@@ -205,11 +202,13 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
     // Joining records no folder as found: only the scanned folders are dated.
     let discovered: Vec<String> = joined
         .read(|sql| {
-            Ok(sql.query(
-                "SELECT coven_path_text(folder) FROM folder_discovery ORDER BY folder",
-                [],
-                |row| row.get(0),
-            )?)
+            Ok(bae_store::statement_rows(
+                &sql,
+                &super::super::test_reads::DiscoveredFoldersParams {},
+            )?
+            .into_iter()
+            .map(|row| row.folder)
+            .collect())
         })
         .await
         .unwrap();

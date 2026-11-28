@@ -2,6 +2,7 @@
 
 use crate::tables::tests::*;
 use bae_records::test_fixtures::live_query::live_db;
+use bae_store::test_fixtures::query_plan::plan_of;
 use bae_util::test_channels::HANG_GUARD;
 
 /// The tables of a library watching `/music`, with its root.
@@ -435,15 +436,7 @@ async fn stored_scans_list_the_folders_in_their_order() {
         roots
     );
 
-    let plan = db
-        .read(|sql| {
-            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::StoredFolderScans::SQL), [], |row| {
-                row.get::<_, String>(3)
-            })
-            .map_err(bae_store::DbError::from)
-        })
-        .await
-        .unwrap();
+    let plan = db.read(|sql| Ok(plan_of(&sql, &super::StoredFolderScansParams {})?)).await.unwrap();
     assert!(
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),
         "the read sorts after reading: {plan:?}"
@@ -469,20 +462,16 @@ async fn progress_lists_the_folders_in_their_order_from_the_index() {
         roots
     );
 
-    use coven::Read;
-    let statuses = (super::FolderScanStatusesParams::compiled().sql, vec![]);
-    let scanning = (super::ScanningFoldersParams::compiled().sql, Vec::<&str>::new());
-    for (statement, values) in [statuses, scanning] {
-        let plan = db
-            .read(move |sql| {
-                let values = rusqlite::params_from_iter(values);
-                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), values, |row| {
-                    row.get::<_, String>(3)
-                })
-                .map_err(bae_store::DbError::from)
-            })
-            .await
-            .unwrap();
+    let plans = db
+        .read(|sql| {
+            Ok([
+                plan_of(&sql, &super::FolderScanStatusesParams {})?,
+                plan_of(&sql, &super::ScanningFoldersParams {})?,
+            ])
+        })
+        .await
+        .unwrap();
+    for plan in plans {
         assert!(
             !plan.iter().any(|step| step.contains("TEMP B-TREE")),
             "the read sorts after reading: {plan:?}"
@@ -561,14 +550,7 @@ async fn reading_the_scanning_folders_counts_off_an_index() {
 #[tokio::test]
 async fn the_found_count_is_counted_off_the_found_folders_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let plan = db
-        .read(|sql| {
-            let scanning = <super::ScanningFoldersParams as coven::Read>::compiled().sql;
-            sql.query(&format!("EXPLAIN QUERY PLAN {scanning}"), [], |row| row.get::<_, String>(3))
-                .map_err(bae_store::DbError::from)
-        })
-        .await
-        .unwrap();
+    let plan = db.read(|sql| Ok(plan_of(&sql, &super::ScanningFoldersParams {})?)).await.unwrap();
     assert!(
         plan.iter().any(|step| step.contains("USING COVERING INDEX idx_scan_candidate_found")),
         "the count walks the index of a root's folders: {plan:?}"

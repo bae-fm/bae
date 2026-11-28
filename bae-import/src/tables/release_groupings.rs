@@ -136,6 +136,16 @@ impl GroupingChanges {
 
 // The groupings anchored at, or taking a release from, the folder `root` or
 // a folder below it, each with whether the scan lists its release.
+// How many groupings and grouping members are stored.
+#[cfg(test)]
+coven::read!(
+    writer GroupingRowCounts { groupings: i64, members: i64 },
+    r#"
+    SELECT (SELECT COUNT(*) FROM release_grouping AS grouping) AS groupings,
+        (SELECT COUNT(*) FROM release_grouping_member AS member) AS members
+"#
+);
+
 coven::read!(
     writer GroupingsAtOrBelow(root: Vec<u8>, below_first: Vec<u8>, below_past: Vec<u8>) {
         key: CandidateKey,

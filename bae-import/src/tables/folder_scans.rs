@@ -31,6 +31,8 @@ mod roots;
 pub mod row_fragments;
 mod sidecar;
 pub(super) mod tag_snapshot;
+#[cfg(any(test, feature = "test-utils"))]
+pub(crate) mod test_reads;
 mod units;
 mod write;
 
