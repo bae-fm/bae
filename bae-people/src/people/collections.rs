@@ -149,7 +149,8 @@ impl People {
 
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn ratings(&self) -> Result<Vec<Rating>, DbError> {
-        self.inner.store.read(|sql| Ok(ratings(&sql)?)).await
+        let ratings = self.inner.store.read_rows(EveryRatingParams {}).await?;
+        ratings.into_iter().map(EveryRatingRow::into_rating).collect()
     }
 
     /// Writes the playlist and an entry for each of `tracks`, in the list's
@@ -372,20 +373,29 @@ impl People {
     }
 }
 
+// Every rating the library holds, in the order they were made.
 #[cfg(any(test, feature = "test-utils"))]
-fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
-    sql.query("SELECT person_id, album_id, track_id, stars FROM ratings ORDER BY id", [], |row| {
-        let target = match (row.get::<_, Option<String>>(1)?, row.get::<_, Option<String>>(2)?) {
+coven::read!(
+    writer EveryRating { person_id: coven::MemberId },
+    r#"
+    SELECT rating.person_id, rating.album_id, rating.track_id, rating.stars
+    FROM ratings AS rating
+    ORDER BY rating.id
+"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl EveryRatingRow {
+    fn into_rating(self) -> Result<Rating, DbError> {
+        let target = match (self.album_id, self.track_id) {
             (Some(album), None) => RatingTarget::Album(album),
             (None, Some(track)) => RatingTarget::Track(track),
-            _ => return Err(rusqlite::Error::InvalidQuery),
+            targets => return Err(DbError::unreadable("a rating's album and track", targets)),
         };
-        Ok(Rating {
-            person: coven::MemberId(uuid_column(row, 0)?),
-            target,
-            stars: crate::collections::stars_from_sql(row.get(3)?)?,
-        })
-    })
+        let stars = crate::collections::Stars::from_stored(self.stars)
+            .ok_or_else(|| DbError::unreadable("ratings.stars", self.stars))?;
+        Ok(Rating { person: self.person_id, target, stars })
+    }
 }
 
 // One playlist's entries, in order; `playlist_entries_position` serves the

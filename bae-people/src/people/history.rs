@@ -90,22 +90,47 @@ impl People {
     /// recording a play read back. No surface lists plays.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn history(&self) -> Result<Vec<HistoryEntry>, DbError> {
-        self.inner.store.read(|sql| Ok(history_rows(&sql)?)).await
+        let plays = self.inner.store.read_rows(EveryPlayParams {}).await?;
+        plays.into_iter().map(EveryPlayRow::into_entry).collect()
     }
 }
 
+// Every play the library holds, newest first.
 #[cfg(any(test, feature = "test-utils"))]
-fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>> {
-    sql.query("SELECT id, track_id, started_at, played_ms, person_id, audience, played_on FROM history ORDER BY started_at DESC, id", [], |row| {
-        let started_at = bae_store::read::rfc3339_column(row, "started_at")?;
-        let played_ms: i64 = row.get(3)?;
-        #[expect(clippy::map_err_ignore, reason = "the out-of-range error carries the column and the value itself")]
-        let played_ms = u64::try_from(played_ms).map_err(|_| rusqlite::Error::IntegralValueOutOfRange(3, played_ms))?;
-        let played_on: String = row.get(6)?;
-        let played_on = time::Date::parse(&played_on, &time::format_description::well_known::Iso8601::DATE)
-            .map_err(|error| rusqlite::Error::FromSqlConversionFailure(6, rusqlite::types::Type::Text, Box::new(error)))?;
-        Ok(HistoryEntry { id: uuid_column(row, 0)?, track_id: row.get(1)?, started_at, played_on, played: Duration::from_millis(played_ms), person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? })
-    })
+coven::read!(
+    writer EveryPlay {
+        played_ms: u64,
+        person_id: coven::MemberId,
+        audience: coven::Audience,
+    },
+    r#"
+    SELECT play.id, play.track_id, play.started_at, play.played_ms, play.person_id,
+           play.audience, play.played_on
+    FROM history AS play
+    ORDER BY play.started_at DESC, play.id
+"#
+);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl EveryPlayRow {
+    fn into_entry(self) -> Result<HistoryEntry, DbError> {
+        let started_at = bae_util::timestamp::parse_rfc3339(&self.started_at)
+            .map_err(|_error| DbError::unreadable("history.started_at", &self.started_at))?;
+        let played_on = time::Date::parse(
+            &self.played_on,
+            &time::format_description::well_known::Iso8601::DATE,
+        )
+        .map_err(|_error| DbError::unreadable("history.played_on", &self.played_on))?;
+        Ok(HistoryEntry {
+            id: stored_uuid("history.id", &self.id)?,
+            track_id: self.track_id,
+            started_at,
+            played_on,
+            played: Duration::from_millis(self.played_ms),
+            person: self.person_id,
+            audience: self.audience,
+        })
+    }
 }
 
 #[cfg(test)]

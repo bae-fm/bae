@@ -49,13 +49,6 @@ impl People {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
-fn uuid_column(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
-    let value: String = row.get(index)?;
-    uuid::Uuid::parse_str(&value)
-        .map_err(|error| bae_store::read::column_conversion_error(row, index, error))
-}
-
 /// The UUID `text` that `what` holds.
 fn stored_uuid(what: &str, text: &str) -> Result<uuid::Uuid, DbError> {
     uuid::Uuid::parse_str(text).map_err(|_error| DbError::unreadable(what, text))

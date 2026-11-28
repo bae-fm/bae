@@ -62,12 +62,6 @@ pub struct PlaylistEntryRow {
     pub can_move_down: bool,
 }
 
-/// The stars a stored count names, read in a row closure.
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) fn stars_from_sql(value: i64) -> rusqlite::Result<Stars> {
-    Stars::from_stored(value).ok_or(rusqlite::Error::IntegralValueOutOfRange(0, value))
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RatingTarget {
     Album(String),
